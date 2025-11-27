@@ -25,17 +25,28 @@ export const AppLayout = () => {
 
     // Initial Check
     useEffect(() => {
-        const hasCompletedOnboarding = localStorage.getItem('hasCompletedOnboarding');
         const hasSelectedLanguage = localStorage.getItem('hasSelectedLanguage');
+        const hasSeenIntro = localStorage.getItem('hasSeenIntro');
+        const hasCompletedTour = localStorage.getItem('hasCompletedTour');
 
         if (!hasSelectedLanguage) {
             setOnboardingStep('language');
-        } else if (!hasCompletedOnboarding) {
+        } else if (!hasSeenIntro) {
             setOnboardingStep('intro');
         } else if (!user) {
-            // If onboarding done but not logged in, just show auth if triggered manually, 
-            // but here we might want to just be in 'complete' state and let user click login.
-            // However, user request implies a flow. Let's stick to manual login for returning users.
+            // If intro seen but not logged in, show auth
+            // We only force auth if they haven't completed the tour (meaning they are new)
+            // If they have completed tour, they are returning user, so we don't force auth (unless we want to)
+            // But user said "then registration".
+            if (!hasCompletedTour) {
+                setOnboardingStep('auth');
+                setIsAuthOpen(true);
+            } else {
+                setOnboardingStep('complete');
+            }
+        } else if (!hasCompletedTour) {
+            setOnboardingStep('tour');
+        } else {
             setOnboardingStep('complete');
         }
     }, [user]);
@@ -48,6 +59,7 @@ export const AppLayout = () => {
 
     // Step 2: Intro Finished
     const handleIntroFinished = () => {
+        localStorage.setItem('hasSeenIntro', 'true');
         setOnboardingStep('auth');
         setIsAuthOpen(true);
     };
@@ -56,18 +68,12 @@ export const AppLayout = () => {
     const handleAuthFinished = (userData: any) => {
         login(userData);
         setIsAuthOpen(false);
-        // Only show tour if it's part of the initial onboarding
-        const hasCompletedOnboarding = localStorage.getItem('hasCompletedOnboarding');
-        if (!hasCompletedOnboarding) {
-            setOnboardingStep('tour');
-        } else {
-            setOnboardingStep('complete');
-        }
+        // The useEffect will pick up the user change and switch to 'tour' if needed
     };
 
     // Step 4: Tour Finished
     const handleTourFinished = () => {
-        localStorage.setItem('hasCompletedOnboarding', 'true');
+        localStorage.setItem('hasCompletedTour', 'true');
         setOnboardingStep('complete');
         setIsTutorialOpen(false);
     };

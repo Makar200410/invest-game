@@ -287,4 +287,5 @@ app.get('/api/leaderboard', async (req, res) => {
 // Listen on all network interfaces (0.0.0.0)
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Backend server running on port ${PORT}`);
+    console.log('Features active: Market Data, News, Indicators, Player DB');
 });

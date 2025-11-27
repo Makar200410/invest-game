@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // Default Public Tunnel URL
-const DEFAULT_BACKEND_URL = 'https://perfect-fulfillment-production-3a58.up.railway.app';
+const DEFAULT_BACKEND_URL = 'https://invest-game-production.up.railway.app';
 
 // Get URL from storage or use default
 const getBackendUrl = () => {
