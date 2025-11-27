@@ -1,0 +1,432 @@
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import { ArrowLeft, TrendingUp, TrendingDown, Activity, Zap } from 'lucide-react';
+import { Card } from '../../components/ui/Card';
+import { useGameStore } from '../../store/gameStore';
+import { formatPrice } from '../../utils/format';
+import { fetchCryptoMarket, fetchMarketChart, fetchMarketChartByInterval, type MarketItem } from '../../services/api';
+import { OrderForm } from '../../components/trading/OrderForm';
+import { getMarketSignal } from '../../utils/signalCalculator';
+
+export const StockDetail: React.FC = () => {
+    const { id } = useParams();
+    const navigate = useNavigate();
+    const { balance, buyAsset, sellAsset, portfolio, skills, shortPositions } = useGameStore();
+    const [asset, setAsset] = useState<MarketItem | null>(null);
+    const [history, setHistory] = useState<{ price: number; date: string }[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [hoverData, setHoverData] = useState<{ price: number; date: string; index: number } | null>(null);
+    const [timeframe, setTimeframe] = useState<string>('5m');
+
+    // Trading State
+    const [amount, setAmount] = useState('1');
+    const [leverage, setLeverage] = useState(1);
+
+    // Filter short positions for this asset (safely)
+    const assetShorts = (shortPositions || []).filter(p => p.assetId === id);
+
+    const loadData = async (interval: string = '5m') => {
+        if (!id) return;
+        setLoading(true);
+
+        try {
+            const market = await fetchCryptoMarket();
+            const currentAsset = market.find(m => m.id === id);
+
+            if (currentAsset) {
+                setAsset({
+                    ...currentAsset,
+                    description: currentAsset.type === 'crypto'
+                        ? `${currentAsset.name} is a leading cryptocurrency in the digital market.`
+                        : `${currentAsset.name} is a major publicly traded company.`
+                });
+
+                // Use interval-based fetch if not default 5m
+                const chartHistory = interval === '5m'
+                    ? await fetchMarketChart(id)
+                    : await fetchMarketChartByInterval(id, interval);
+                setHistory(chartHistory.slice(-90));
+            } else {
+                setAsset(null);
+            }
+        } catch (error) {
+            console.error('Error loading asset data:', error);
+            setAsset(null);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleTimeframeChange = (newTimeframe: string) => {
+        setTimeframe(newTimeframe);
+        loadData(newTimeframe);
+    };
+
+    useEffect(() => {
+        loadData(timeframe);
+        const interval = setInterval(() => loadData(timeframe), 60000);
+        return () => clearInterval(interval);
+    }, [id]);
+
+    if (loading) {
+        return (
+            <div className="flex justify-center items-center min-h-screen pb-24">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+            </div>
+        );
+    }
+
+    if (!asset) {
+        return (
+            <div className="flex flex-col justify-center items-center min-h-screen pb-24 space-y-4">
+                <p className="text-xl font-bold text-red-500">Asset not found</p>
+                <button
+                    onClick={() => navigate('/')}
+                    className="px-4 py-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-white"
+                >
+                    Return to Market
+                </button>
+            </div>
+        );
+    }
+
+    const owned = portfolio.find(p => p.id === asset.id)?.amount || 0;
+    const displayPrice = hoverData ? hoverData.price : asset.price;
+
+    // Chart Calculations
+    const prices = history.length > 0 ? history.map(h => h.price) : [];
+    const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
+    const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
+    const priceRange = maxPrice - minPrice || 1;
+
+    const chartData = history.map((point, index) => ({
+        x: history.length > 1 ? (index / (history.length - 1)) * 100 : 50,
+        y: 100 - ((point.price - minPrice) / priceRange) * 100
+    }));
+
+    const pathData = chartData.length > 0 ? `M ${chartData.map(p => `${p.x} ${p.y}`).join(' L ')}` : '';
+
+    // Trading Logic
+    const totalCost = (parseFloat(amount) * asset.price) / leverage;
+    const canBuy = balance >= totalCost;
+
+    const handleBuy = () => {
+        if (canBuy) {
+            buyAsset(asset.id, asset.price, parseFloat(amount), leverage);
+            setAmount('1');
+            setLeverage(1);
+        }
+    };
+
+    const handleSell = () => {
+        if (owned >= parseFloat(amount)) {
+            sellAsset(asset.id, asset.price, parseFloat(amount));
+            setAmount('1');
+        }
+    };
+
+    const handleShort = () => {
+        if (skills.shortSelling) {
+            sellAsset(asset.id, asset.price, parseFloat(amount), undefined, true);
+            setAmount('1');
+        }
+    };
+
+    const handleCoverShort = (positionId: string, positionAmount: number) => {
+        buyAsset(asset.id, asset.price, positionAmount, 1, positionId);
+    };
+
+    return (
+        <div className="space-y-6 pb-40">
+            {/* Header */}
+            <div className="flex items-center gap-4">
+                <button
+                    onClick={() => navigate(-1)}
+                    className="p-2 rounded-full backdrop-blur-md transition-colors"
+                    style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}
+                >
+                    <ArrowLeft />
+                </button>
+                <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{asset.name}</h1>
+            </div>
+
+            {/* Main Price Card */}
+            <Card className="p-6 backdrop-blur-md border-white/20 transition-colors duration-300"
+                style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
+                <div className="flex justify-between items-start">
+                    <div>
+                        <p className="text-sm font-medium opacity-70" style={{ color: 'var(--text-primary)' }}>Current Price</p>
+                        <h2 className="text-4xl font-black tracking-tight mt-1" style={{ color: 'var(--text-primary)' }}>
+                            ${formatPrice(displayPrice)}
+                        </h2>
+                    </div>
+                    <div className="flex flex-col gap-2 items-end">
+                        <div className={`flex items-center px-3 py-1.5 rounded-full font-bold ${asset.change24h >= 0 ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                            {asset.change24h >= 0 ? <TrendingUp size={16} className="mr-1" /> : <TrendingDown size={16} className="mr-1" />}
+                            {asset.change24h.toFixed(2)}%
+                        </div>
+                        {skills.marketTimer && (() => {
+                            const signal = getMarketSignal(history);
+                            if (signal === 'buy') {
+                                return (
+                                    <div className="flex items-center px-3 py-1.5 rounded-full text-sm font-bold bg-emerald-100 text-emerald-700 border border-emerald-300">
+                                        BUY ↑
+                                    </div>
+                                );
+                            } else if (signal === 'sell') {
+                                return (
+                                    <div className="flex items-center px-3 py-1.5 rounded-full text-sm font-bold bg-rose-100 text-rose-700 border border-rose-300">
+                                        SELL ↓
+                                    </div>
+                                );
+                                viewBox = "0 0 100 100"
+                                className = "w-full h-full overflow-visible"
+                                preserveAspectRatio = "none"
+                                onMouseMove = {(e) => {
+                                    const rect = e.currentTarget.getBoundingClientRect();
+                        const x = e.clientX - rect.left;
+                        const width = rect.width;
+                        const index = Math.floor((x / width) * history.length);
+                                    if (index >= 0 && index < history.length) {
+                            setHoverData({
+                                price: history[index].price,
+                                date: history[index].date,
+                                index
+                            });
+                                    }
+                                }}
+                            >
+                        <defs>
+                            <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="var(--accent-color)" stopOpacity="0.5" />
+                                <stop offset="100%" stopColor="var(--accent-color)" stopOpacity="0" />
+                            </linearGradient>
+                        </defs>
+
+                        <motion.path
+                            d={`${pathData} L 100 100 L 0 100 Z`}
+                            fill="url(#chartGradient)"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ duration: 1, delay: 0.5 }}
+                        />
+
+                        <motion.path
+                            d={pathData}
+                            fill="none"
+                            stroke="var(--accent-color)"
+                            strokeWidth="2"
+                            initial={{ pathLength: 0 }}
+                            animate={{ pathLength: 1 }}
+                            transition={{ duration: 1.5, ease: "easeInOut" }}
+                        />
+
+                        {hoverData && (
+                            <>
+                                <line
+                                    x1={chartData[hoverData.index].x}
+                                    y1="0"
+                                    x2={chartData[hoverData.index].x}
+                                    y2="100"
+                                    stroke="var(--text-primary)"
+                                    strokeWidth="0.5"
+                                    strokeDasharray="2 2"
+                                    opacity="0.5"
+                                />
+                                <circle
+                                    cx={chartData[hoverData.index].x}
+                                    cy={chartData[hoverData.index].y}
+                                    r="2"
+                                    fill="var(--text-primary)"
+                                />
+                            </>
+                        )}
+                    </svg>
+
+                    {hoverData && (
+                        <div
+                            className="absolute top-0 bg-black/80 text-white text-xs px-2 py-1 rounded backdrop-blur-md pointer-events-none transform -translate-x-1/2 -translate-y-full flex flex-col items-center"
+                            style={{
+                                left: `${chartData[hoverData.index].x}%`,
+                                top: `${chartData[hoverData.index].y}%`
+                            }}
+                        >
+                            <span className="font-bold">${formatPrice(hoverData.price)}</span>
+                            <span className="text-[10px] opacity-80">
+                                {new Date(hoverData.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                        </div>
+                    )}
+                </>
+                ) : (
+                <div className="flex items-center justify-center h-full text-sm opacity-50" style={{ color: 'var(--text-primary)' }}>
+                    Loading chart data...
+                </div>
+                    )}
+        </div>
+            </Card >
+
+    {/* Stats Grid */ }
+    < div className = "grid grid-cols-2 gap-4" >
+                <Card className="p-4" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
+                    <div className="flex items-center gap-2 mb-2 opacity-70">
+                        <Activity size={16} />
+                        <span className="text-xs font-bold uppercase">Volume (24h)</span>
+                    </div>
+                    <p className="text-lg font-bold">$1.2B</p>
+                </Card>
+                <Card className="p-4" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
+                    <div className="flex items-center gap-2 mb-2 opacity-70">
+                        <Activity size={16} />
+                        <span className="text-xs font-bold uppercase">Market Cap</span>
+                    </div>
+                    <p className="text-lg font-bold">$850B</p>
+                </Card>
+            </div >
+
+    {/* About */ }
+    < Card className = "p-5" style = {{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
+                <h3 className="font-bold text-lg mb-2">About {asset.name}</h3>
+                <p className="text-sm leading-relaxed opacity-80">
+                    {asset.description}
+                </p>
+            </Card >
+
+    {/* Position Info */ }
+    < div className = "grid grid-cols-2 gap-4" >
+                <Card className="p-4" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
+                    <p className="text-xs opacity-70">Your Position</p>
+                    <p className="text-xl font-bold">{owned} {asset.symbol}</p>
+                    <p className="text-xs opacity-50">≈ ${formatPrice(owned * asset.price)}</p>
+                </Card>
+                <Card className="p-4" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
+                    <p className="text-xs opacity-70">Available Balance</p>
+                    <p className="text-xl font-bold text-green-400">${formatPrice(balance)}</p>
+                </Card>
+            </div >
+
+    {/* Trading Controls */ }
+    < Card className = "p-5 space-y-4" style = {{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
+        <div className="flex justify-between items-center">
+            <span className="font-bold">Amount</span>
+            <div className="flex items-center gap-3">
+                <button onClick={() => setAmount(Math.max(1, parseFloat(amount) - 1).toString())} className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20">-</button>
+                <input
+                    type="number"
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    className="w-20 text-center bg-transparent font-bold text-xl outline-none"
+                />
+                <button onClick={() => setAmount((parseFloat(amount) + 1).toString())} className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20">+</button>
+            </div>
+        </div>
+
+{/* Leverage Toggle */ }
+{
+    skills.leverageTrading && (
+        <div className="flex items-center justify-between p-3 rounded-xl bg-purple-500/10 border border-purple-500/30">
+            <div className="flex items-center gap-2">
+                <Zap size={18} className="text-purple-400" />
+                <span className="text-sm font-bold text-purple-300">Leverage</span>
+            </div>
+            <div className="flex bg-black/40 rounded-lg p-1">
+                <button
+                    onClick={() => setLeverage(1)}
+                    className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${leverage === 1 ? 'bg-purple-500 text-white shadow-lg' : 'text-white/50 hover:text-white'}`}
+                >
+                    1x
+                </button>
+                <button
+                    onClick={() => setLeverage(2)}
+                    className={`px-3 py-1 rounded-md text-xs font-bold transition-all ${leverage === 2 ? 'bg-purple-500 text-white shadow-lg' : 'text-white/50 hover:text-white'}`}
+                >
+                    2x
+                </button>
+            </div>
+        </div>
+    )
+}
+
+<div className="grid grid-cols-2 gap-3 pt-2">
+    <button
+        onClick={handleSell}
+        disabled={owned < parseFloat(amount)}
+        className="py-3 rounded-xl bg-red-500/20 text-red-500 font-bold border border-red-500/50 hover:bg-red-500/30 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+    >
+        Sell
+    </button>
+    <button
+        onClick={handleBuy}
+        disabled={!canBuy}
+        className="py-3 rounded-xl bg-green-500 text-white font-bold shadow-lg shadow-green-500/20 hover:bg-green-400 disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed transition-all"
+    >
+        Buy {leverage > 1 ? `(2x)` : ''}
+    </button>
+</div>
+
+{/* Short Selling Button */ }
+{
+    skills.shortSelling && (
+        <button
+            onClick={handleShort}
+            className="w-full py-3 rounded-xl bg-yellow-500/20 text-yellow-500 font-bold border border-yellow-500/50 hover:bg-yellow-500/30 transition-all"
+        >
+            Short Sell
+        </button>
+    )
+}
+
+<div className="text-center">
+    <span className="text-xs opacity-50">
+        Total Cost: <span className={canBuy ? 'text-green-400' : 'text-red-400'}>${formatPrice(totalCost)}</span>
+    </span>
+</div>
+            </Card >
+
+    {/* Active Short Positions */ }
+{
+    skills.shortSelling && assetShorts.length > 0 && (
+        <Card className="p-5" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
+            <h3 className="font-bold text-lg mb-4">Active Short Positions</h3>
+            <div className="space-y-3">
+                {assetShorts.map(short => {
+                    const currentVal = short.amount * asset.price;
+                    const entryVal = short.amount * short.entryPrice;
+                    const pnl = entryVal - currentVal;
+                    const pnlPercent = ((entryVal - currentVal) / entryVal) * 100;
+
+                    return (
+                        <div key={short.id} className="p-3 rounded-lg bg-black/20 border border-white/10 flex justify-between items-center">
+                            <div>
+                                <div className="text-sm font-bold">{short.amount} {asset.symbol}</div>
+                                <div className="text-xs opacity-50">Entry: ${formatPrice(short.entryPrice)}</div>
+                            </div>
+                            <div className="text-right">
+                                <div className={`font-bold ${pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                    {pnl >= 0 ? '+' : ''}{formatPrice(pnl)} ({pnlPercent.toFixed(2)}%)
+                                </div>
+                                <button
+                                    onClick={() => handleCoverShort(short.id, short.amount)}
+                                    className="text-xs bg-white/10 hover:bg-white/20 px-2 py-1 rounded mt-1 transition-colors"
+                                >
+                                    Cover
+                                </button>
+                            </div>
+                        </div>
+                    );
+                })}
+            </div>
+        </Card>
+    )
+}
+
+{/* Order Form (Stop Loss / Take Profit) */ }
+<OrderForm
+    assetId={asset.id}
+    currentPrice={asset.price}
+    ownedAmount={owned}
+/>
+        </div >
+    );
+};
