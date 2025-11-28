@@ -259,8 +259,14 @@ app.post('/api/register', async (req, res) => {
         res.json({ success: true, user: { id: newUser.id, username: newUser.username, portfolioValue: newUser.portfolioValue, gameState: newUser.gameState } });
     } catch (error: any) {
         console.error('Registration error:', error);
+
+        let errorMessage = error.message || String(error);
+        if (error.name === 'AggregateError' && error.errors) {
+            errorMessage += ` (Inner: ${error.errors.map((e: any) => e.message).join(', ')})`;
+        }
+
         // Return detailed error for debugging
-        res.status(500).json({ error: `Registration failed: ${error.message || String(error)}` });
+        res.status(500).json({ error: `Registration failed: ${errorMessage}` });
     }
 });
 
