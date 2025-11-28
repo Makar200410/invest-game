@@ -200,8 +200,8 @@ export const AppLayout = () => {
                 </motion.div>
             </main>
 
-            {/* Floating Navigation */}
-            <nav className="fixed bottom-6 left-4 right-4 z-50 backdrop-blur-xl rounded-2xl shadow-2xl border flex justify-around items-center py-3 px-2 max-w-md mx-auto transition-all duration-300"
+            {/* Fixed Bottom Navigation */}
+            <nav className="fixed bottom-0 left-0 right-0 z-50 backdrop-blur-xl border-t flex justify-around items-center py-2 px-2 transition-all duration-300"
                 style={{
                     backgroundColor: 'var(--card-bg)',
                     borderColor: 'var(--card-border)'

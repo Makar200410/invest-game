@@ -46,6 +46,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
 
             if (result && result.success) {
                 if (mode === 'register' || mode === 'login') {
+                    // Enforce Dark Theme on new login/register if not set
+                    if (!localStorage.getItem('theme')) {
+                        localStorage.setItem('theme', 'dark');
+                        document.documentElement.classList.add('dark');
+                        document.documentElement.classList.remove('swiss');
+                    }
                     onLogin(result.user);
                     onClose();
                 }
@@ -201,21 +207,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
                             <button
                                 onClick={async () => {
                                     try {
-                                        alert(`Testing connection to: ${localStorage.getItem('custom_backend_url') || 'Default URL'}`);
+                                        const baseUrl = localStorage.getItem('custom_backend_url') || 'https://invest-game-production.up.railway.app';
+                                        alert(`Testing connection to: ${baseUrl}`);
                                         const start = Date.now();
-                                        // Try to fetch a simple endpoint (e.g., market)
-                                        // We use fetch directly to bypass axios interceptors for raw testing if needed, 
-                                        // but using the imported api service is better to test the actual flow.
-                                        // Let's use fetch to be independent.
-                                        const baseUrl = localStorage.getItem('custom_backend_url') || 'https://recipes-jews-curtis-moral.trycloudflare.com';
-                                        const res = await fetch(`${baseUrl}/api/market`, {
+                                        const res = await fetch(`${baseUrl}/api/health`, {
                                             headers: { 'Bypass-Tunnel-Reminder': 'true' }
                                         });
                                         const end = Date.now();
                                         const text = await res.text();
-                                        alert(`Success! Status: ${res.status}\nTime: ${end - start}ms\nSize: ${text.length} bytes`);
+                                        alert(`Success! Status: ${res.status}\nTime: ${end - start}ms\nResponse: ${text}`);
                                     } catch (e: any) {
-                                        alert(`Connection Failed!\nError: ${e.message}\nName: ${e.name}\nPossible causes: Server down, wrong URL, or network block.`);
+                                        alert(`Connection Failed!\nError: ${e.message}\nName: ${e.name}`);
                                     }
                                 }}
                                 className="block w-full text-xs text-blue-400 hover:text-blue-300 underline"

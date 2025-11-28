@@ -1,8 +1,6 @@
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
-import { useState, useEffect } from 'react';
-import { useGameStore } from './store/gameStore';
-import { AuthModal } from './components/auth/AuthModal';
+import { useEffect } from 'react';
 import { AppLayout } from './components/layout/AppLayout';
 
 import { Market } from './features/game/Market';
@@ -15,32 +13,33 @@ import { Portfolio } from './features/game/Portfolio'; // Assuming Portfolio is 
 
 function App() {
   const location = useLocation(); // This line is added to use useLocation hook
-  const { user, login } = useGameStore(); // Get user and login from gameStore
-  const [isAuthOpen, setIsAuthOpen] = useState(false); // State to control AuthModal visibility
+  // const { user, login } = useGameStore(); // Auth handled in AppLayout now
+  // const [isAuthOpen, setIsAuthOpen] = useState(false);
 
   useEffect(() => {
-    // If user is not logged in, open the AuthModal
-    if (!user) {
-      setIsAuthOpen(true);
+    // Theme Initialization
+    const savedTheme = localStorage.getItem('theme');
+    if (!savedTheme) {
+      localStorage.setItem('theme', 'dark');
+      document.documentElement.classList.add('dark');
+      document.documentElement.classList.remove('swiss');
+    } else {
+      document.documentElement.classList.add(savedTheme);
+      if (savedTheme === 'dark') {
+        document.documentElement.classList.remove('swiss');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
     }
-  }, [user]); // Re-run when user state changes
 
-  const handleLogin = (userData: any) => {
-    login(userData); // Call the login action from the store
-    setIsAuthOpen(false); // Close the modal after successful login
-  };
+    // Diagnostic Check
+    import('./services/api').then(({ checkBackendHealth }) => checkBackendHealth());
+  }, []);
 
   return (
     <>
       {/* Render AuthModal, it will be visible if isAuthOpen is true */}
-      <AuthModal
-        isOpen={isAuthOpen}
-        onClose={() => {
-          // Only allow closing if user is logged in
-          if (user) setIsAuthOpen(false);
-        }}
-        onLogin={handleLogin}
-      />
+      {/* AuthModal is now handled in AppLayout to prevent duplicates */}
       <AnimatePresence mode="wait"> {/* AnimatePresence is moved here */}
         <Routes location={location} key={location.pathname}> {/* Routes now uses location and key for animations */}
           <Route element={<AppLayout />}>

@@ -180,7 +180,7 @@ export const useGameStore = create<GameState>()(
                 insiderInfo: false
             },
             lastLogin: null,
-            skillPoints: 8,
+            skillPoints: 0,
             user: null,
             tradesToday: 0,
             lastTradeDate: null,

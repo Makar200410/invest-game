@@ -110,8 +110,9 @@ export const fetchHistory = async (symbol: string, interval: string = '5m') => {
         // Check cache first for non-default intervals if needed, but usually we fetch fresh for charts
         // For '5m' we might want to check DB, but this function is often called when DB is empty or for specific chart view.
         // Let's check DB for '5m' to avoid re-fetching if we just did it.
-        if (interval === '5m') {
-            const cached = await getMarketHistory(symbol, '5m');
+        // Check DB for '5m' and '1d' to avoid re-fetching
+        if (interval === '5m' || interval === '1d') {
+            const cached = await getMarketHistory(symbol, interval);
             if (cached.length > 0) return cached;
         }
 
@@ -123,7 +124,7 @@ export const fetchHistory = async (symbol: string, interval: string = '5m') => {
             case '15m': periodDays = 5; break;
             case '1h': periodDays = 30; break;
             case '3h': periodDays = 60; break;
-            case '1d': periodDays = 365; break;
+            case '1d': periodDays = 1825; break; // 5 years for monthly charts
             default: periodDays = 1;
         }
 
@@ -164,8 +165,11 @@ export const fetchHistory = async (symbol: string, interval: string = '5m') => {
         }
 
         // For default 5m, update cache
+        // For default 5m and 1d (used for weekly/monthly), update cache
         if (interval === '5m') {
             await saveMarketHistory(symbol, '5m', historyData.slice(-100));
+        } else if (interval === '1d') {
+            await saveMarketHistory(symbol, '1d', historyData);
         }
 
         return historyData;

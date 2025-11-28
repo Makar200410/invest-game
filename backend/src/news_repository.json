@@ -1,0 +1,78 @@
+[
+    {
+        "id": "news-1",
+        "title": "Market Rally Continues as Tech Stocks Surge",
+        "url": "#",
+        "site": "Financial Times",
+        "time": 1732264564000,
+        "favicon_url": "https://www.ft.com/favicon.ico",
+        "tags": [
+            "Market",
+            "Tech"
+        ],
+        "tickers": [
+            "AAPL",
+            "NVDA"
+        ]
+    },
+    {
+        "id": "news-2",
+        "title": "Bitcoin Breaks Resistance Levels",
+        "url": "#",
+        "site": "CoinDesk",
+        "time": 1732260964000,
+        "favicon_url": "https://www.coindesk.com/favicon.ico",
+        "tags": [
+            "Crypto",
+            "Bitcoin"
+        ],
+        "tickers": [
+            "BTC-USD"
+        ]
+    },
+    {
+        "id": "news-3",
+        "title": "Fed Signals Potential Rate Cuts",
+        "url": "#",
+        "site": "Bloomberg",
+        "time": 1732257364000,
+        "favicon_url": "https://www.bloomberg.com/favicon.ico",
+        "tags": [
+            "Economy",
+            "Fed"
+        ],
+        "tickers": [
+            "SPY"
+        ]
+    },
+    {
+        "id": "news-4",
+        "title": "Tesla Announces New Battery Technology",
+        "url": "#",
+        "site": "Reuters",
+        "time": 1732253764000,
+        "favicon_url": "https://www.reuters.com/favicon.ico",
+        "tags": [
+            "EV",
+            "Tech"
+        ],
+        "tickers": [
+            "TSLA"
+        ]
+    },
+    {
+        "id": "news-5",
+        "title": "Oil Prices Stabilize Amid Global Tensions",
+        "url": "#",
+        "site": "CNBC",
+        "time": 1732250164000,
+        "favicon_url": "https://www.cnbc.com/favicon.ico",
+        "tags": [
+            "Commodities",
+            "Oil"
+        ],
+        "tickers": [
+            "USO"
+        ]
+    }
+]

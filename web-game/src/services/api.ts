@@ -1,26 +1,13 @@
 import axios from 'axios';
 
+import newsRepo from '../data/news_repository.json';
+
 // Default Public Tunnel URL
 const DEFAULT_BACKEND_URL = 'https://invest-game-production.up.railway.app';
 
 // Get URL from storage or use default
 const getBackendUrl = () => {
     const storedUrl = localStorage.getItem('custom_backend_url');
-    // Ensure we don't double-append /api if it's already there or not needed, 
-    // but the backend routes are /api/..., so base URL should probably NOT have /api 
-    // if the endpoints in the functions include /api.
-    // Looking at the code below: api.get('/market') -> if base is .../api, result is .../api/market.
-    // My previous DEFAULT was .../api.
-    // The Railway URL is root.
-    // So DEFAULT should probably be .../api if the code expects it.
-    // Let's check the code below.
-    // fetchCryptoMarket calls api.get('/market').
-    // If server has app.use('/api/news', ...), and app.get('/api/market', ...).
-    // Then we need the request to go to /api/market.
-    // If baseURL is .../api, then axios.get('/market') -> .../api/market. Correct.
-    // If baseURL is root, then axios.get('/market') -> .../market. WRONG.
-    // So DEFAULT_BACKEND_URL should end with /api.
-
     return storedUrl ? (storedUrl.endsWith('/api') ? storedUrl : `${storedUrl}/api`) : `${DEFAULT_BACKEND_URL}/api`;
 };
 
@@ -37,6 +24,17 @@ api.interceptors.request.use((config) => {
     return config;
 });
 
+export const checkBackendHealth = async () => {
+    try {
+        const response = await api.get('/health');
+        console.log('Backend Health:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error('Backend Health Check Failed:', error);
+        return null;
+    }
+};
+
 export interface MarketItem {
     id: string;
     symbol: string;
@@ -50,6 +48,7 @@ export interface MarketItem {
     low24h?: number;
 }
 
+// Use backend API
 export const fetchCryptoMarket = async (): Promise<MarketItem[]> => {
     try {
         const response = await api.get('/market');
@@ -61,13 +60,7 @@ export const fetchCryptoMarket = async (): Promise<MarketItem[]> => {
 };
 
 export const fetchMarketChart = async (symbol: string): Promise<{ price: number; date: string; open?: number; high?: number; low?: number; close?: number; volume?: number }[]> => {
-    try {
-        const response = await api.get(`/history/${symbol}`);
-        return response.data;
-    } catch (error) {
-        console.error('Error fetching market chart:', error);
-        return [];
-    }
+    return fetchMarketChartByInterval(symbol, '5m');
 };
 
 export const fetchMarketChartByInterval = async (symbol: string, interval: string): Promise<{ price: number; date: string; open?: number; high?: number; low?: number; close?: number; volume?: number }[]> => {
@@ -75,19 +68,17 @@ export const fetchMarketChartByInterval = async (symbol: string, interval: strin
         const response = await api.get(`/history/${symbol}/${interval}`);
         return response.data;
     } catch (error) {
-        console.error('Error fetching market chart with interval:', error);
+        console.error(`Error fetching chart for ${symbol} (${interval}):`, error);
         return [];
     }
 };
 
 export const fetchIndicators = async (symbol: string, interval: string = '1d') => {
     try {
-        const response = await api.get(`/indicators/${symbol}`, {
-            params: { interval }
-        });
+        const response = await api.get(`/indicators/${symbol}`, { params: { interval } });
         return response.data;
-    } catch (error) {
-        console.error('Error fetching indicators:', error);
+    } catch (e) {
+        console.error('Error fetching indicators:', e);
         return [];
     }
 };
@@ -102,7 +93,7 @@ export const fetchFundamentals = async (symbol: string) => {
     }
 };
 
-// Auth & Rating API
+// Auth & Rating API (Keep Server Side)
 
 export const registerUser = async (username: string, password: string, email?: string) => {
     const response = await api.post('/register', { username, password, email });
@@ -145,11 +136,12 @@ export const fetchNews = async () => {
 };
 
 export const fetchInsiderTips = async () => {
-    try {
-        const response = await api.get('/news/insider');
-        return response.data;
-    } catch (error) {
-        console.error('Error fetching insider tips:', error);
-        return [];
-    }
+    // Filter news for "insider" tags or simulate
+    await new Promise(resolve => setTimeout(resolve, 500));
+    return (newsRepo as any[]).slice(0, 2).map(n => ({
+        ...n,
+        content: "Insider Tip: Market movement expected.",
+        impact: "High",
+        reliability: "Unverified"
+    }));
 };

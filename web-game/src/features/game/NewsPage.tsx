@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Lock, AlertTriangle, ExternalLink, ShieldAlert, Globe } from 'lucide-react';
+import { Lock, AlertTriangle, ExternalLink, ShieldAlert, Globe, Newspaper, TrendingUp } from 'lucide-react';
 import { useGameStore } from '../../store/gameStore';
-import { Card } from '../../components/ui/Card';
+import { useTranslation } from 'react-i18next';
 
 interface TickerTickStory {
     id: string;
@@ -26,8 +26,10 @@ interface InsiderTip {
 }
 
 export const NewsPage: React.FC = () => {
+    const { t } = useTranslation();
     const { skills } = useGameStore();
-    const [activeTab, setActiveTab] = useState<'general' | 'insider'>('general');
+    const activeTabState = useState<'general' | 'insider'>('general');
+    const [activeTab, setActiveTab] = activeTabState;
     const [news, setNews] = useState<TickerTickStory[]>([]);
     const [insiderTips, setInsiderTips] = useState<InsiderTip[]>([]);
     const [loading, setLoading] = useState(false);
@@ -78,31 +80,41 @@ export const NewsPage: React.FC = () => {
     };
 
     return (
-        <div className="pb-24 space-y-6">
+        <div className="pb-24 space-y-6 pt-20 px-4">
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-white to-gray-400 bg-clip-text text-transparent">
-                    Market Intel
+            <div className="flex flex-col gap-4">
+                <h1 className="text-3xl font-black tracking-tight" style={{ color: 'var(--text-primary)' }}>
+                    {t('market_news', 'Market News')}
                 </h1>
-                <div className="flex gap-2">
+
+                <div className="flex p-1 rounded-2xl w-full max-w-md" style={{ backgroundColor: 'var(--card-bg)' }}>
                     <button
                         onClick={() => setActiveTab('general')}
-                        className={`px-4 py-2 rounded-xl font-bold transition-all ${activeTab === 'general'
-                            ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/20'
-                            : 'bg-gray-800/50 text-gray-400 hover:bg-gray-800'
+                        className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${activeTab === 'general'
+                            ? 'shadow-sm'
+                            : 'opacity-60 hover:opacity-100'
                             }`}
+                        style={{
+                            backgroundColor: activeTab === 'general' ? 'var(--bg-primary)' : 'transparent',
+                            color: activeTab === 'general' ? 'var(--text-primary)' : 'var(--text-primary)'
+                        }}
                     >
-                        News
+                        <Globe size={18} />
+                        {t('news')}
                     </button>
                     <button
                         onClick={() => setActiveTab('insider')}
-                        className={`px-4 py-2 rounded-xl font-bold transition-all flex items-center gap-2 ${activeTab === 'insider'
-                            ? 'bg-red-500 text-white shadow-lg shadow-red-500/20'
-                            : 'bg-gray-800/50 text-gray-400 hover:bg-gray-800'
+                        className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${activeTab === 'insider'
+                            ? 'shadow-sm'
+                            : 'opacity-60 hover:opacity-100'
                             }`}
+                        style={{
+                            backgroundColor: activeTab === 'insider' ? 'var(--bg-primary)' : 'transparent',
+                            color: activeTab === 'insider' ? '#ef4444' : 'var(--text-primary)'
+                        }}
                     >
-                        <ShieldAlert size={16} />
-                        Insider
+                        <ShieldAlert size={18} />
+                        {t('insider_channel')}
                     </button>
                 </div>
             </div>
@@ -111,59 +123,74 @@ export const NewsPage: React.FC = () => {
                 {activeTab === 'general' ? (
                     <motion.div
                         key="general"
-                        initial={{ opacity: 0, y: 20 }}
+                        initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
+                        exit={{ opacity: 0, y: -10 }}
                         className="space-y-4"
                     >
                         {!skills.newsAlert ? (
-                            <Card className="p-8 flex flex-col items-center text-center space-y-4 border-dashed border-2 border-gray-700">
-                                <div className="w-16 h-16 rounded-full bg-gray-800 flex items-center justify-center">
-                                    <Lock className="text-gray-400" size={32} />
+                            <div className="p-8 rounded-3xl bg-gray-900 text-white text-center relative overflow-hidden shadow-xl">
+                                <div className="absolute inset-0 bg-gradient-to-br from-blue-900/40 to-purple-900/40 z-0"></div>
+                                <div className="relative z-10 flex flex-col items-center gap-4">
+                                    <div className="w-20 h-20 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20">
+                                        <Lock className="text-white" size={32} />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-2xl font-bold mb-2">{t('news_alert_locked')}</h3>
+                                        <p className="text-gray-300 max-w-xs mx-auto text-sm leading-relaxed">{t('skill_newsAlert_desc')}</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h3 className="text-xl font-bold text-white">News Alert Locked</h3>
-                                    <p className="text-gray-400 mt-2">Unlock the News Alert skill to access real-time market news.</p>
-                                </div>
-                            </Card>
+                            </div>
                         ) : (
                             <div className="space-y-4">
                                 {loading ? (
-                                    <div className="text-center py-12 text-gray-500">Loading market news...</div>
+                                    <div className="flex flex-col items-center justify-center py-20 text-gray-400 gap-3">
+                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                                        <p className="text-sm font-medium">{t('loading_chart_data')}</p>
+                                    </div>
                                 ) : (
                                     news.map((item) => (
-                                        <Card key={item.id} className="p-4 hover:bg-gray-800/80 transition-colors group cursor-pointer">
-                                            <a href={item.url} target="_blank" rel="noopener noreferrer" className="flex gap-4">
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-2 mb-1">
+                                        <a
+                                            key={item.id}
+                                            href={item.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="block group"
+                                        >
+                                            <div className="p-5 rounded-2xl shadow-sm border hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+                                                style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
+                                                <div className="flex items-start justify-between mb-3">
+                                                    <div className="flex items-center gap-2">
                                                         {item.favicon_url ? (
-                                                            <img src={item.favicon_url} alt="" className="w-4 h-4 rounded-full" />
+                                                            <img src={item.favicon_url} alt="" className="w-5 h-5 rounded-full" />
                                                         ) : (
-                                                            <Globe size={14} className="text-gray-500" />
+                                                            <div className="w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--bg-primary)' }}>
+                                                                <Newspaper size={12} className="opacity-60" style={{ color: 'var(--text-primary)' }} />
+                                                            </div>
                                                         )}
-                                                        <span className="text-xs font-bold text-blue-400 uppercase tracking-wider">
-                                                            {item.site}
-                                                        </span>
-                                                        <span className="text-xs text-gray-500">
-                                                            {formatDate(item.time)}
-                                                        </span>
+                                                        <span className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{item.site}</span>
+                                                        <span className="text-xs opacity-60" style={{ color: 'var(--text-primary)' }}>• {formatDate(item.time)}</span>
                                                     </div>
-                                                    <h3 className="font-bold text-lg leading-tight mb-2 group-hover:text-blue-400 transition-colors line-clamp-2">
-                                                        {item.title}
-                                                    </h3>
-                                                    {item.tickers && (
-                                                        <div className="flex gap-2 overflow-x-auto">
-                                                            {item.tickers.slice(0, 5).map(ticker => (
-                                                                <span key={ticker} className="text-xs font-bold bg-gray-700/50 px-2 py-1 rounded text-gray-300">
-                                                                    {ticker}
-                                                                </span>
-                                                            ))}
-                                                        </div>
-                                                    )}
+                                                    <ExternalLink size={14} className="opacity-40 group-hover:text-blue-500 transition-colors" style={{ color: 'var(--text-primary)' }} />
                                                 </div>
-                                                <ExternalLink className="text-gray-600 group-hover:text-blue-400 transition-colors flex-shrink-0" size={20} />
-                                            </a>
-                                        </Card>
+
+                                                <h3 className="font-bold text-lg leading-snug mb-3 group-hover:text-blue-600 transition-colors" style={{ color: 'var(--text-primary)' }}>
+                                                    {item.title}
+                                                </h3>
+
+                                                {item.tickers && (
+                                                    <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                                                        {item.tickers.slice(0, 4).map(ticker => (
+                                                            <span key={ticker} className="text-[10px] font-bold px-2.5 py-1 rounded-full flex items-center gap-1"
+                                                                style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
+                                                                <TrendingUp size={10} />
+                                                                {ticker}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </a>
                                     ))
                                 )}
                             </div>
@@ -172,57 +199,73 @@ export const NewsPage: React.FC = () => {
                 ) : (
                     <motion.div
                         key="insider"
-                        initial={{ opacity: 0, y: 20 }}
+                        initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
+                        exit={{ opacity: 0, y: -10 }}
                         className="space-y-4"
                     >
                         {!skills.insiderInfo ? (
-                            <Card className="p-8 flex flex-col items-center text-center space-y-4 border-dashed border-2 border-red-900/30 bg-red-900/5">
-                                <div className="w-16 h-16 rounded-full bg-red-900/20 flex items-center justify-center">
-                                    <Lock className="text-red-400" size={32} />
+                            <div className="p-8 rounded-3xl bg-red-50 text-center border border-red-100 relative overflow-hidden">
+                                <div className="relative z-10 flex flex-col items-center gap-4">
+                                    <div className="w-20 h-20 rounded-full bg-red-100 flex items-center justify-center">
+                                        <Lock className="text-red-500" size={32} />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-2xl font-bold text-red-900 mb-2">{t('insider_info_locked')}</h3>
+                                        <p className="text-red-800/70 max-w-xs mx-auto text-sm leading-relaxed">{t('skill_insiderInfo_desc')}</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h3 className="text-xl font-bold text-red-100">Insider Info Locked</h3>
-                                    <p className="text-red-300/70 mt-2">Unlock Insider Info to access high-impact market rumors and tips.</p>
-                                </div>
-                            </Card>
+                            </div>
                         ) : (
                             <div className="space-y-4">
                                 {loading ? (
-                                    <div className="text-center py-12 text-gray-500">Decrypting insider data...</div>
+                                    <div className="flex flex-col items-center justify-center py-20 text-gray-400 gap-3">
+                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500"></div>
+                                        <p className="text-sm font-medium">{t('decrypting')}</p>
+                                    </div>
                                 ) : (
                                     insiderTips.map((tip) => (
-                                        <Card key={tip.id} className="p-0 overflow-hidden border-l-4 border-l-red-500 relative">
-                                            <div className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-bl-lg uppercase tracking-widest">
-                                                Confidential
+                                        <div key={tip.id} className="bg-gray-900 rounded-2xl overflow-hidden shadow-lg relative group">
+                                            <div className="absolute top-0 right-0 bg-red-600 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl uppercase tracking-widest z-10">
+                                                {t('confidential')}
                                             </div>
-                                            <div className="p-5">
-                                                <div className="flex items-center gap-3 mb-3">
-                                                    <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center text-red-500">
-                                                        <AlertTriangle size={20} />
+
+                                            <div className="p-6 relative z-10">
+                                                <div className="flex items-center gap-4 mb-4">
+                                                    <div className="w-12 h-12 rounded-2xl bg-red-500/20 flex items-center justify-center text-red-500 shrink-0">
+                                                        <AlertTriangle size={24} />
                                                     </div>
                                                     <div>
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-sm font-bold text-red-400">High Priority Intel</span>
-                                                            <span className="text-xs text-gray-500">• {formatDate(tip.date)}</span>
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <span className="text-sm font-bold text-red-400 uppercase tracking-wide">{t('high_priority_intel')}</span>
                                                         </div>
-                                                        <div className="text-xs text-gray-400 flex items-center gap-2">
-                                                            Reliability: <span className="text-green-400 font-bold">{tip.reliability}</span>
+                                                        <div className="flex items-center gap-3 text-xs text-gray-400">
+                                                            <span>{formatDate(tip.date)}</span>
+                                                            <span className="w-1 h-1 rounded-full bg-gray-600"></span>
+                                                            <span className="text-green-400 font-bold">Reliability: {tip.reliability}</span>
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <h3 className="text-xl font-bold text-white mb-2">{tip.title}</h3>
-                                                <p className="text-gray-300 leading-relaxed bg-gray-800/50 p-3 rounded-lg border border-gray-700/50">
-                                                    {tip.content}
-                                                </p>
+
+                                                <h3 className="text-xl font-bold text-white mb-3 leading-snug">{tip.title}</h3>
+
+                                                <div className="bg-black/30 p-4 rounded-xl border border-white/5 backdrop-blur-sm">
+                                                    <p className="text-gray-300 text-sm leading-relaxed font-mono">
+                                                        {tip.content}
+                                                    </p>
+                                                </div>
+
                                                 {tip.url && tip.url !== '#' && (
-                                                    <a href={tip.url} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300">
-                                                        View Source <ExternalLink size={12} />
+                                                    <a href={tip.url} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex items-center gap-2 text-xs font-bold text-blue-400 hover:text-blue-300 transition-colors uppercase tracking-wide">
+                                                        {t('view_source')} <ExternalLink size={12} />
                                                     </a>
                                                 )}
                                             </div>
-                                        </Card>
+
+                                            {/* Background Pattern */}
+                                            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-5 pointer-events-none"></div>
+                                            <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-red-600/10 rounded-full blur-3xl pointer-events-none"></div>
+                                        </div>
                                     ))
                                 )}
                             </div>

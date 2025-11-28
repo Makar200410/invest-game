@@ -1,17 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { TrendingUp, TrendingDown, RefreshCcw } from 'lucide-react';
+import { RefreshCcw } from 'lucide-react';
 import { useGameStore } from '../../store/gameStore';
 import { fetchCryptoMarket, type MarketItem, updateScore } from '../../services/api';
 import { formatPrice } from '../../utils/format';
-import { motion } from 'framer-motion';
-import { Card } from '../../components/ui/Card';
+
 
 export const Market: React.FC = () => {
     const { t } = useTranslation();
     const navigate = useNavigate();
-    const { balance, loan, buyAsset, sellAsset, portfolio, leveragedPositions, user, skills, tradesToday, getDiversificationBonus, checkOrders } = useGameStore();
+    const { balance, loan, portfolio, leveragedPositions, shortPositions, user, skills, tradesToday, getDiversificationBonus, checkOrders } = useGameStore();
     const [items, setItems] = useState<MarketItem[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -48,165 +47,210 @@ export const Market: React.FC = () => {
         }
     }, [user, balance, portfolio, items]);
 
-    const handleTrade = (item: MarketItem, type: 'buy' | 'sell') => {
-        if (type === 'buy') {
-            buyAsset(item.id, item.price, 1);
-        } else {
-            sellAsset(item.id, item.price, 1);
-        }
-    };
+
+
+    // Calculate Net Worth and PnL
+    const currentPortfolioValue = portfolio.reduce((acc, item) => {
+        const marketItem = items.find(i => i.id === item.id);
+        return acc + (marketItem ? marketItem.price * item.amount : 0);
+    }, 0);
+
+    const leveragedEquity = leveragedPositions.reduce((acc, pos) => {
+        const marketItem = items.find(i => i.id === pos.assetId);
+        if (!marketItem) return acc;
+        const currentValue = marketItem.price * pos.amount;
+        const borrowed = (pos.entryPrice * pos.amount) * (pos.leverage - 1) / pos.leverage;
+        return acc + (currentValue - borrowed);
+    }, 0);
+
+    const shortEquity = shortPositions.reduce((acc, pos) => {
+        const marketItem = items.find(i => i.id === pos.assetId);
+        if (!marketItem) return acc;
+        const pnl = (pos.entryPrice - marketItem.price) * pos.amount;
+        return acc + (pos.marginLocked + pnl);
+    }, 0);
+
+    const totalNetWorth = balance + currentPortfolioValue + leveragedEquity + shortEquity;
+
+    // Calculate PnL of open positions
+    const portfolioCost = portfolio.reduce((acc, item) => acc + (item.amount * item.avgPrice), 0);
+    const portfolioPnL = currentPortfolioValue - portfolioCost;
+
+    const leveragedPnL = leveragedPositions.reduce((acc, pos) => {
+        const marketItem = items.find(i => i.id === pos.assetId);
+        if (!marketItem) return acc;
+        return acc + (marketItem.price - pos.entryPrice) * pos.amount;
+    }, 0);
+
+    const shortPnL = shortPositions.reduce((acc, pos) => {
+        const marketItem = items.find(i => i.id === pos.assetId);
+        if (!marketItem) return acc;
+        return acc + (pos.entryPrice - marketItem.price) * pos.amount;
+    }, 0);
+
+    const totalPnL = portfolioPnL + leveragedPnL + shortPnL;
+    const totalPnLPercent = (totalNetWorth - totalPnL) > 0 ? (totalPnL / (totalNetWorth - totalPnL)) * 100 : 0;
 
     return (
-        <div className="space-y-6 pb-24">
-            <Card className="sticky top-20 z-40 backdrop-blur-md border-white/20 transition-colors duration-300"
-                style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
-                <div className="flex justify-between items-center">
-                    <div className="flex-1">
-                        <h2 className="text-sm font-medium uppercase tracking-wider" style={{ color: 'var(--text-primary)', opacity: 0.7 }}>{t('balance')}</h2>
-                        <p className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-600">
-                            ${balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </p>
-                        {loan > 0 && (
-                            <p className="text-sm font-bold text-red-500 mt-1">
-                                Loan: ${loan.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </p>
-                        )}
-                        <div className="flex gap-3 mt-3">
+        <div className="space-y-4 pb-24"> {/* Removed extra top padding, AppLayout handles it */}
+            {/* Balance Card - Scrollable */}
+            <div className="px-4 pt-0 pb-2">
+                <div className="rounded-3xl overflow-hidden shadow-2xl shadow-blue-900/20 relative">
+                    <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700"></div>
+                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500/60 via-purple-600/60 to-indigo-700/60"></div>
+                    <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10"></div>
+
+                    <div className="relative p-6 text-white">
+                        <div className="flex justify-between items-start mb-4">
+                            <div>
+                                <h2 className="text-blue-100 text-xs font-bold uppercase tracking-widest mb-1">{t('net_worth', 'Net Worth')}</h2>
+                                <p className="text-4xl font-black tracking-tight">
+                                    ${totalNetWorth.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </p>
+                                <div className="flex items-center gap-2 mt-1">
+                                    <span className={`text-sm font-bold ${totalPnL >= 0 ? 'text-green-300' : 'text-red-300'}`}>
+                                        {totalPnL >= 0 ? '+' : ''}{totalPnL.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ({totalPnLPercent.toFixed(2)}%)
+                                    </span>
+                                    {loan > 0 && (
+                                        <span className="text-sm font-bold text-red-200 opacity-80 border-l border-white/20 pl-2">
+                                            Loan: ${loan.toLocaleString(undefined, { minimumFractionDigits: 0 })}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                            <button
+                                onClick={loadData}
+                                className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors backdrop-blur-sm"
+                            >
+                                <RefreshCcw size={18} className="text-white/80" />
+                            </button>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
                             {skills.portfolioManager && getDiversificationBonus() > 1 && (
-                                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-500/10 border border-green-500/20">
-                                    <span className="text-xs font-semibold text-green-600">+5% Diversity Bonus</span>
+                                <div className="px-3 py-1.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/10 text-xs font-bold text-green-100 flex items-center gap-1.5">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-green-400"></div>
+                                    +5% Diversity
                                 </div>
                             )}
                             {skills.dayTrader && (
-                                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-blue-500/10 border border-blue-500/20">
-                                    <span className="text-xs font-semibold text-blue-600">{tradesToday} Trades Today</span>
+                                <div className="px-3 py-1.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/10 text-xs font-bold text-blue-100 flex items-center gap-1.5">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-blue-400"></div>
+                                    {tradesToday} Trades
                                 </div>
                             )}
                             {skills.riskManager && (
-                                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-purple-500/10 border border-purple-500/20">
-                                    <span className="text-xs font-semibold text-purple-600">Risk Protection Active</span>
+                                <div className="px-3 py-1.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/10 text-xs font-bold text-purple-100 flex items-center gap-1.5">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-purple-400"></div>
+                                    Risk Protected
                                 </div>
                             )}
                         </div>
                     </div>
-                    <button
-                        onClick={loadData}
-                        className="p-3 rounded-full hover:rotate-180 transition-all duration-500 shadow-sm hover:shadow-md"
-                        style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}
-                    >
-                        <RefreshCcw size={20} />
-                    </button>
                 </div>
-            </Card>
+            </div>
 
             {loading ? (
                 <div className="flex justify-center p-12">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
                 </div>
             ) : (
-                <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-2">
-                    {items.map((item) => {
+                <div className="grid gap-2 grid-cols-1 px-3">
+                    {items.map((item, index) => {
                         const portfolioItem = portfolio.find(p => p.id === item.id);
                         const leveragedAmount = leveragedPositions
                             .filter(p => p.assetId === item.id)
                             .reduce((sum, p) => sum + p.amount, 0);
                         const owned = (portfolioItem?.amount || 0) + leveragedAmount;
 
-                        // Create full chart data using last 60 points
-                        const chartHistory = item.sparkline?.slice(-60) || [];
+                        // Create sparkline data with 12 points for hourly chart (assuming 5m interval)
+                        const chartHistory = item.sparkline?.slice(-12) || [];
                         const prices = chartHistory.map(p => p.price);
                         const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
                         const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
                         const priceRange = maxPrice - minPrice || 1;
+                        const chartColor = item.change24h >= 0 ? '#22c55e' : '#ef4444';
 
-                        const chartData = chartHistory.map((point, index) => ({
-                            x: chartHistory.length > 1 ? (index / (chartHistory.length - 1)) * 100 : 50,
-                            y: 100 - ((point.price - minPrice) / priceRange) * 100
-                        }));
+                        const sparklinePoints = chartHistory.map((point, idx) => {
+                            const x = (idx / (chartHistory.length - 1)) * 100; // Width 100px
+                            const y = 60 - ((point.price - minPrice) / priceRange) * 60; // Height 60px
+                            return `${x},${y}`;
+                        }).join(' ');
 
-                        const pathData = chartData.length > 0 ? `M ${chartData.map(p => `${p.x} ${p.y}`).join(' L ')}` : '';
+                        const fillPoints = `0,60 ${sparklinePoints} 100,60`;
+
+                        // Determine layout: even index = chart right, odd index = chart left
+                        const chartOnRight = index % 2 === 0;
 
                         return (
-                            <Card
+                            <div
                                 key={item.id}
-                                className="group hover:-translate-y-1 hover:shadow-2xl cursor-pointer transition-all backdrop-blur-md p-4"
-                                style={{
-                                    backgroundColor: 'var(--card-bg)',
-                                    borderColor: 'var(--card-border)',
-                                    color: 'var(--text-primary)'
-                                }}
                                 onClick={() => navigate(`/stock/${item.id}`)}
+                                className="group rounded-2xl p-4 shadow-sm border hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer relative overflow-hidden"
+                                style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--card-border)' }}
                             >
-                                <div className="flex justify-between items-center mb-2">
-                                    {/* Left Side: Info */}
-                                    <div className="flex-1 min-w-0 pr-2">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <div className={`p-1.5 rounded-lg ${item.type === 'crypto' ? 'bg-orange-100 text-orange-500' : 'bg-blue-100 text-blue-500'}`}>
-                                                {item.type === 'crypto' ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-                                            </div>
-                                            <div>
-                                                <h3 className="font-bold text-base leading-tight truncate">{item.symbol}</h3>
-                                                <p className="text-[10px] font-medium opacity-70 truncate">{item.name}</p>
-                                            </div>
+                                <div className={`flex gap-4 items-center ${chartOnRight ? 'flex-row' : 'flex-row-reverse'}`}>
+                                    {/* Left/Right Content: Icon + Info */}
+                                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                                        <div className="flex-1 min-w-0">
+                                            <h3 className="font-bold text-lg leading-tight truncate" style={{ color: 'var(--text-primary)' }}>{item.symbol}</h3>
+                                            <p className="text-xs font-medium truncate opacity-60" style={{ color: 'var(--text-primary)' }}>{item.name}</p>
+                                            {owned > 0 && (
+                                                <span className="inline-block text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md mt-1 font-bold">
+                                                    {owned} Owned
+                                                </span>
+                                            )}
                                         </div>
+                                    </div>
 
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <div className={`flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-bold ${item.change24h >= 0
-                                                ? 'bg-green-100 text-green-600'
-                                                : 'bg-red-100 text-red-600'
-                                                }`}>
+                                    {/* Right/Left Content: Chart + Price */}
+                                    <div className={`flex items-center gap-4 ${chartOnRight ? 'flex-row' : 'flex-row-reverse'}`}>
+                                        {/* Larger Chart */}
+                                        {chartHistory.length > 1 && (
+                                            <svg width="100" height="60" className="overflow-visible opacity-70 shrink-0">
+                                                <polygon
+                                                    points={fillPoints}
+                                                    fill={chartColor}
+                                                    fillOpacity="0.2"
+                                                />
+                                                <polyline
+                                                    points={sparklinePoints}
+                                                    fill="none"
+                                                    stroke={chartColor}
+                                                    strokeWidth="2.5"
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                />
+                                            </svg>
+                                        )}
+
+                                        {/* Price Info */}
+                                        <div className={`text-${chartOnRight ? 'right' : 'left'} shrink-0`}>
+                                            <p className="font-black text-lg" style={{ color: 'var(--text-primary)' }}>${formatPrice(item.price)}</p>
+                                            <p className={`text-xs font-bold ${item.change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                                                 {item.change24h >= 0 ? '+' : ''}{item.change24h.toFixed(2)}%
-                                            </div>
-                                        </div>
-
-                                        <div>
-                                            <p className="text-xl font-black tracking-tight">${formatPrice(item.price)}</p>
-                                            <p className="text-[10px] font-medium mt-0.5 opacity-70">
-                                                Owned: <span style={{ color: 'var(--accent-color)' }}>{owned}</span>
                                             </p>
                                         </div>
                                     </div>
-
-                                    {/* Right Side: Chart */}
-                                    <div className="w-32 h-24 opacity-80 group-hover:opacity-100 transition-opacity flex-shrink-0">
-                                        {chartHistory.length > 0 ? (
-                                            <svg viewBox="0 0 100 100" className="w-full h-full overflow-visible" preserveAspectRatio="none">
-                                                <motion.path
-                                                    d={pathData}
-                                                    fill="none"
-                                                    stroke="var(--accent-color)"
-                                                    strokeWidth="2"
-                                                    initial={{ pathLength: 0 }}
-                                                    animate={{ pathLength: 1 }}
-                                                    transition={{ duration: 1.5, ease: "easeInOut" }}
-                                                />
-                                            </svg>
-                                        ) : (
-                                            <div className="flex items-center justify-center h-full text-[10px] opacity-50">
-                                                No data
-                                            </div>
-                                        )}
-                                    </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-2 pt-1">
+                                {/* Always Visible Action Buttons */}
+                                <div className="flex gap-2 mt-4 pt-3 border-t" style={{ borderColor: 'var(--card-border)' }}>
                                     <button
-                                        onClick={(e) => { e.stopPropagation(); handleTrade(item, 'sell'); }}
+                                        onClick={(e) => { e.stopPropagation(); navigate(`/trade/${item.id}?type=sell`); }}
                                         disabled={owned <= 0}
-                                        className="py-1.5 rounded-lg bg-red-50 text-red-600 font-bold text-xs hover:bg-red-100 disabled:opacity-50 disabled:hover:bg-red-50 transition-colors"
+                                        className="flex-1 px-3 py-1.5 rounded-lg bg-red-50 text-red-600 font-bold text-xs hover:bg-red-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                                     >
-                                        Sell
+                                        {t('sell')}
                                     </button>
                                     <button
-                                        onClick={(e) => { e.stopPropagation(); handleTrade(item, 'buy'); }}
-                                        disabled={balance < item.price}
-                                        className="py-1.5 rounded-lg text-white font-bold text-xs shadow-md disabled:opacity-50 disabled:shadow-none transition-all active:scale-95"
-                                        style={{ backgroundColor: 'var(--accent-color)', boxShadow: '0 2px 8px 0 rgba(0,0,0,0.1)' }}
+                                        onClick={(e) => { e.stopPropagation(); navigate(`/trade/${item.id}?type=buy`); }}
+                                        className="flex-1 px-3 py-1.5 rounded-lg bg-black text-white font-bold text-xs hover:bg-gray-800 transition-all"
                                     >
-                                        Buy
+                                        {t('buy')}
                                     </button>
                                 </div>
-                            </Card>
+                            </div>
                         );
                     })}
                 </div>

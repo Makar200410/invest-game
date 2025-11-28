@@ -41,6 +41,7 @@ export const Card: React.FC<CardProps> = ({ children, className = '', ...props }
                 rotateX,
                 rotateY,
                 transformStyle: "preserve-3d",
+                ...props.style
             }}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

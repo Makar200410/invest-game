@@ -14,11 +14,22 @@ export const Ranking: React.FC = () => {
     const { t } = useTranslation();
     const { user } = useGameStore();
     const [leaderboard, setLeaderboard] = useState<LeaderboardUser[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
 
     useEffect(() => {
         const loadLeaderboard = async () => {
-            const data = await fetchLeaderboard();
-            setLeaderboard(data);
+            try {
+                setLoading(true);
+                const data = await fetchLeaderboard();
+                console.log('Leaderboard data:', data);
+                setLeaderboard(data);
+            } catch (err) {
+                console.error('Failed to load leaderboard:', err);
+                setError('Failed to load ranking.');
+            } finally {
+                setLoading(false);
+            }
         };
         loadLeaderboard();
     }, []);
@@ -31,7 +42,11 @@ export const Ranking: React.FC = () => {
             </h2>
 
             <div className="space-y-3">
-                {leaderboard.length === 0 ? (
+                {loading ? (
+                    <div className="text-center py-8">Loading ranking...</div>
+                ) : error ? (
+                    <div className="text-center py-8 text-red-500">{error}</div>
+                ) : leaderboard.length === 0 ? (
                     <div className="text-center opacity-50 py-8">No players yet. Be the first!</div>
                 ) : (
                     leaderboard.map((player, index) => {

@@ -7,6 +7,7 @@
 
   /* Default/Glass Theme Variables */
   --bg-primary: #f3f4f6;
+  --bg-primary-rgb: 243, 244, 246;
   --text-primary: #111827;
   --card-bg: rgba(255, 255, 255, 0.7);
   --card-border: rgba(255, 255, 255, 0.5);
@@ -21,6 +22,7 @@
   color: #000000;
   font-family: 'Helvetica Now', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   --bg-primary: #ffffff;
+  --bg-primary-rgb: 255, 255, 255;
   --text-primary: #000000;
   --card-bg: #f5f5f5;
   --card-border: transparent;
@@ -37,15 +39,16 @@
   color: #ffffff;
   font-family: 'Helvetica Now', 'Helvetica Neue', Helvetica, Arial, sans-serif;
   --bg-primary: #000000;
+  --bg-primary-rgb: 0, 0, 0;
   --text-primary: #ffffff;
-  --card-bg: #1a1a1a;
-  --card-border: transparent;
-  --accent-color: #ff3b30;
-  /* Swiss Red (High contrast on black too) */
+  --card-bg: #1C1C1E;
+  --card-border: rgba(255, 255, 255, 0.1);
+  --accent-color: #0A84FF;
+  /* iOS Blue */
   --glass-blur: 0px;
   /* Light Shadow (Opposite of dark shadow) */
-  --shadow-color: rgba(255, 255, 255, 0.15);
-  --shadow-strong: rgba(255, 255, 255, 0.25);
+  --shadow-color: rgba(0, 0, 0, 0.5);
+  --shadow-strong: rgba(0, 0, 0, 0.8);
 }
 
 /* Global Shadow Utility */
