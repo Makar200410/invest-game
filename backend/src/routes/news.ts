@@ -17,6 +17,13 @@ interface TickerTickStory {
 let newsCache: { data: TickerTickStory[], timestamp: number } | null = null;
 const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes
 
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 router.get('/', async (req, res) => {
     try {
         const now = Date.now();
@@ -27,8 +34,6 @@ router.get('/', async (req, res) => {
         }
 
         // Fetch general market news from TickerTick
-        // q=z:SPY fetches news for S&P 500 which serves as general market news
-        // We can also try q=tt:technology or similar if needed
         const response = await fetch('https://api.tickertick.com/feed?q=z:SPY&n=50');
 
         if (!response.ok) {
@@ -44,15 +49,24 @@ router.get('/', async (req, res) => {
             };
             res.json(data.stories);
         } else {
-            res.json([]);
+            throw new Error("No stories found");
         }
     } catch (error) {
-        console.error('Error fetching news:', error);
-        // Fallback to cache if available even if expired
-        if (newsCache) {
-            return res.json(newsCache.data);
+        console.error('Error fetching news, falling back to repository:', error);
+
+        // Fallback to local repository
+        try {
+            const repoPath = path.join(__dirname, '../news_repository.json');
+            if (fs.existsSync(repoPath)) {
+                const repoData = JSON.parse(fs.readFileSync(repoPath, 'utf-8'));
+                res.json(repoData);
+            } else {
+                res.json([]);
+            }
+        } catch (repoError) {
+            console.error("Error loading news repository:", repoError);
+            res.json([]);
         }
-        res.status(500).json({ error: 'Failed to fetch news' });
     }
 });
 

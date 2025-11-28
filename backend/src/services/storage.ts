@@ -67,6 +67,7 @@ export const initDB = async () => {
 export const getUsers = async (): Promise<User[]> => {
     try {
         const res = await query('SELECT * FROM users');
+        console.log(`getUsers: Retrieved ${res.rows.length} users.`);
         return res.rows.map(row => ({
             id: row.id,
             username: row.username,
@@ -85,9 +86,13 @@ export const getUsers = async (): Promise<User[]> => {
 
 export const getUser = async (username: string): Promise<User | undefined> => {
     try {
+        console.log(`getUser: Querying for username='${username}'`);
         const res = await query('SELECT * FROM users WHERE username = $1', [username]);
+        console.log(`getUser: Found ${res.rows.length} rows for '${username}'`);
         if (res.rows.length === 0) return undefined;
         const row = res.rows[0];
+        // Log found user details (masking password)
+        console.log(`getUser: User found. ID=${row.id}, StoredPwd=${row.password ? '***' : 'MISSING'}`);
         return {
             id: row.id,
             username: row.username,
@@ -125,13 +130,15 @@ export const getUsersByIp = async (ip: string): Promise<User[]> => {
 
 export const createUser = async (user: User): Promise<void> => {
     try {
-        await query(
+        const res = await query(
             `INSERT INTO users (id, username, password, ip, email, game_state, portfolio_value, last_active)
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
             [user.id, user.username, user.password, user.ip, user.email, user.gameState, user.portfolioValue, user.lastActive]
         );
+        console.log(`createUser: Inserted ${res.rowCount} row(s) for user ${user.username}`);
     } catch (error) {
         console.error('Error creating user:', error);
+        throw error; // Rethrow to let caller know
     }
 };
 

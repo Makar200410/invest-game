@@ -8,71 +8,100 @@ const SYMBOLS = [
     'AAPL', 'TSLA', 'MSFT', 'GOOGL', 'AMZN', 'NVDA' // Stocks
 ];
 
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 export const updateMarketData = async () => {
     console.log('====================================');
-    console.log('Fetching market data from Yahoo Finance...');
-    console.log(`Symbols to fetch: ${SYMBOLS.join(', ')}`);
+    console.log('Fetching market data...');
 
-    const items = [];
+    let items = [];
 
-    for (const symbol of SYMBOLS) {
-        try {
-            console.log(`Fetching ${symbol}...`);
-            const quoteResult = await yahooFinance.quote(symbol);
+    // Try fetching from Yahoo Finance first
+    try {
+        console.log(`Symbols to fetch: ${SYMBOLS.join(', ')}`);
+        for (const symbol of SYMBOLS) {
+            try {
+                console.log(`Fetching ${symbol}...`);
+                const quoteResult = await yahooFinance.quote(symbol);
 
-            // Optimize history: Append new data instead of re-fetching all
-            // Use '5m' as default interval for sparklines
-            let history = await getMarketHistory(symbol, '5m');
-
-            if (history.length === 0) {
-                // Initial fetch if empty
-                history = await fetchHistory(symbol);
-            } else {
-                // Append new data point if it's new
-                const lastPoint = history[history.length - 1];
-                const newTime = quoteResult.regularMarketTime ? new Date(quoteResult.regularMarketTime).toISOString() : new Date().toISOString();
-
-                // Only append if time is different (and newer)
-                if (lastPoint && lastPoint.date !== newTime) {
-                    console.log(`Appending new data point for ${symbol}: ${newTime}`);
-                    history.push({
-                        date: newTime,
-                        open: quoteResult.regularMarketPrice,
-                        high: quoteResult.regularMarketPrice,
-                        low: quoteResult.regularMarketPrice,
-                        close: quoteResult.regularMarketPrice,
-                        volume: 0, // Volume not always available in quote
-                        price: quoteResult.regularMarketPrice
-                    });
-
-                    // Limit size to prevent memory overload (keep last 300 points)
-                    if (history.length > 300) {
-                        history = history.slice(-300);
+                // ... (existing history logic) ...
+                let history = await getMarketHistory(symbol, '5m');
+                if (history.length === 0) {
+                    history = await fetchHistory(symbol);
+                } else {
+                    // Append logic
+                    const lastPoint = history[history.length - 1];
+                    const newTime = quoteResult.regularMarketTime ? new Date(quoteResult.regularMarketTime).toISOString() : new Date().toISOString();
+                    if (lastPoint && lastPoint.date !== newTime) {
+                        history.push({
+                            date: newTime,
+                            open: quoteResult.regularMarketPrice,
+                            high: quoteResult.regularMarketPrice,
+                            low: quoteResult.regularMarketPrice,
+                            close: quoteResult.regularMarketPrice,
+                            volume: 0,
+                            price: quoteResult.regularMarketPrice
+                        });
+                        if (history.length > 300) history = history.slice(-300);
+                        await saveMarketHistory(symbol, '5m', history);
                     }
-
-                    // Update repo
-                    await saveMarketHistory(symbol, '5m', history);
                 }
-            }
 
-            const item = {
-                id: symbol,
-                symbol: symbol.replace('-USD', ''),
-                name: quoteResult.shortName || quoteResult.longName || symbol,
-                price: quoteResult.regularMarketPrice,
-                change24h: quoteResult.regularMarketChangePercent,
-                type: symbol.includes('-USD') ? 'crypto' : 'stock',
-                sparkline: history
-            };
-            items.push(item);
-            console.log(`✓ ${symbol}: $${item.price} (${item.change24h?.toFixed(2)}%)`);
-        } catch (error) {
-            console.error(`✗ Error fetching ${symbol}:`, error instanceof Error ? error.message : error);
+                const item = {
+                    id: symbol,
+                    symbol: symbol.replace('-USD', ''),
+                    name: quoteResult.shortName || quoteResult.longName || symbol,
+                    price: quoteResult.regularMarketPrice,
+                    change24h: quoteResult.regularMarketChangePercent,
+                    type: symbol.includes('-USD') ? 'crypto' : 'stock',
+                    sparkline: history
+                };
+                items.push(item);
+                console.log(`✓ ${symbol}: $${item.price}`);
+            } catch (err) {
+                console.error(`Error fetching ${symbol}:`, err);
+            }
+        }
+    } catch (error) {
+        console.error("Yahoo Finance fetch failed:", error);
+    }
+
+    // If Yahoo Finance failed or returned partial data, load from repository
+    if (items.length === 0) {
+        console.log("Fetching failed or empty. Loading from local repository...");
+        try {
+            const repoPath = path.join(__dirname, '../market_repository.json');
+            if (fs.existsSync(repoPath)) {
+                const repoData = JSON.parse(fs.readFileSync(repoPath, 'utf-8'));
+                if (repoData.items) {
+                    items = repoData.items;
+                    // Also save history from repo if needed
+                    for (const item of items) {
+                        if (item.sparkline) {
+                            await saveMarketHistory(item.id, '5m', item.sparkline);
+                        }
+                    }
+                    console.log(`Loaded ${items.length} items from repository.`);
+                }
+            } else {
+                console.warn("market_repository.json not found.");
+            }
+        } catch (repoError) {
+            console.error("Error loading repository:", repoError);
         }
     }
 
-    await saveMarketItems(items);
-    console.log(`Market data updated. Total items: ${items.length}/10`);
+    if (items.length > 0) {
+        await saveMarketItems(items);
+        console.log(`Market data updated. Total items: ${items.length}`);
+    } else {
+        console.error("Failed to update market data from any source.");
+    }
     console.log('====================================');
 };
 
