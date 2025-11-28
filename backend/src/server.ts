@@ -257,9 +257,10 @@ app.post('/api/register', async (req, res) => {
         await createUser(newUser);
         console.log('User registered successfully:', username);
         res.json({ success: true, user: { id: newUser.id, username: newUser.username, portfolioValue: newUser.portfolioValue, gameState: newUser.gameState } });
-    } catch (error) {
+    } catch (error: any) {
         console.error('Registration error:', error);
-        res.status(500).json({ error: 'Internal server error during registration' });
+        // Return detailed error for debugging
+        res.status(500).json({ error: `Registration failed: ${error.message || String(error)}` });
     }
 });
 
