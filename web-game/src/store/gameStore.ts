@@ -137,6 +137,14 @@ interface GameState {
     tradesToday: number;
     lastTradeDate: string | null;
     user: User | null;
+    tutorialActive: boolean;
+    tutorialStep: number;
+    hasCompletedTutorial: boolean;
+
+    setTutorialActive: (active: boolean) => void;
+    setTutorialStep: (step: number) => void;
+    completeTutorial: () => void;
+    startTutorial: () => void;
 
     buyAsset: (id: string, price: number, amount: number, leverage?: number, shortPositionId?: string) => void;
     sellAsset: (id: string, price: number, amount: number, positionId?: string, isShort?: boolean, leverage?: number) => void;
@@ -179,11 +187,19 @@ export const useGameStore = create<GameState>()(
                 newsAlert: false,
                 insiderInfo: false
             },
+            tutorialActive: false,
+            tutorialStep: 0,
+            hasCompletedTutorial: false,
             lastLogin: null,
             skillPoints: 0,
             user: null,
             tradesToday: 0,
             lastTradeDate: null,
+
+            setTutorialActive: (active) => set({ tutorialActive: active }),
+            setTutorialStep: (step) => set({ tutorialStep: step }),
+            completeTutorial: () => set({ tutorialActive: false, hasCompletedTutorial: true }),
+            startTutorial: () => set({ tutorialActive: true, tutorialStep: 0, hasCompletedTutorial: false }),
 
             buyAsset: (id, price, amount, leverage = 1, _shortPositionId) => {
                 const state = get();
@@ -596,7 +612,10 @@ export const useGameStore = create<GameState>()(
                             stopLossMaster: persistedState.skills?.stopLossMaster || false,
                             leverageTrading: persistedState.skills?.leverageTrading || false,
                             shortSelling: persistedState.skills?.shortSelling || false,
-                        }
+                        },
+                        tutorialActive: false,
+                        tutorialStep: 0,
+                        hasCompletedTutorial: false
                     };
                 }
                 return persistedState;

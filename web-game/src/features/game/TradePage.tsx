@@ -104,7 +104,7 @@ export const TradePage: React.FC = () => {
                 </div>
             </div>
 
-            <div className="flex-1 max-w-md mx-auto w-full px-4 pb-4 flex flex-col gap-[180px] overflow-y-auto">
+            <div className="flex-1 max-w-md mx-auto w-full px-4 pb-4 flex flex-col gap-6 overflow-y-auto">
 
                 <div className="space-y-1">
                     {/* Balance Pill */}

@@ -253,11 +253,21 @@ export const StockDetail: React.FC = () => {
                 <button className="px-4 py-1.5 rounded-full bg-white/10 text-sm font-bold whitespace-nowrap" style={{ color: 'var(--text-primary)' }}>
                     {t('overview', 'Overview')}
                 </button>
-                <button className="px-4 py-1.5 rounded-full hover:bg-white/5 text-sm font-bold opacity-60 whitespace-nowrap" style={{ color: 'var(--text-primary)' }}>
+                <button
+                    disabled={!skills.technicalAnalyst}
+                    className={`px-4 py-1.5 rounded-full hover:bg-white/5 text-sm font-bold whitespace-nowrap flex items-center gap-1 ${!skills.technicalAnalyst ? 'opacity-30 cursor-not-allowed' : 'opacity-60'}`}
+                    style={{ color: 'var(--text-primary)' }}
+                >
                     {t('indicators', 'Indicators')}
+                    {!skills.technicalAnalyst && <Lock size={12} />}
                 </button>
-                <button className="px-4 py-1.5 rounded-full hover:bg-white/5 text-sm font-bold opacity-60 whitespace-nowrap" style={{ color: 'var(--text-primary)' }}>
+                <button
+                    disabled={!skills.newsAlert}
+                    className={`px-4 py-1.5 rounded-full hover:bg-white/5 text-sm font-bold whitespace-nowrap flex items-center gap-1 ${!skills.newsAlert ? 'opacity-30 cursor-not-allowed' : 'opacity-60'}`}
+                    style={{ color: 'var(--text-primary)' }}
+                >
                     {t('news', 'News')}
+                    {!skills.newsAlert && <Lock size={12} />}
                 </button>
             </div>
 
@@ -272,7 +282,7 @@ export const StockDetail: React.FC = () => {
             </div>
 
             {/* Chart Area */}
-            <div className="relative w-full" onMouseLeave={() => setHoverData(null)}>
+            <div id="tutorial-chart-area" className="relative w-full" onMouseLeave={() => setHoverData(null)}>
                 <div className="h-72 w-full overflow-hidden">
                     {history.length > 0 ? (
                         <svg
@@ -461,7 +471,8 @@ export const StockDetail: React.FC = () => {
                                 key={t}
                                 onClick={() => !isLocked && setIntervalState(t)}
                                 disabled={isLocked}
-                                className={`text-sm font-bold transition-colors flex items-center ${interval === t ? 'bg-white/20 text-white px-3 py-1 rounded-full' : 'text-white/40 hover:text-white'} ${isLocked ? 'opacity-30 cursor-not-allowed' : ''}`}
+                                className={`text-sm font-bold transition-colors flex items-center ${interval === t ? 'bg-white/20 px-3 py-1 rounded-full' : 'opacity-40 hover:opacity-100'} ${isLocked ? 'opacity-30 cursor-not-allowed' : ''}`}
+                                style={{ color: 'var(--text-primary)' }}
                             >
                                 {t}
                                 {isLocked && <span className="ml-1 text-[10px]">🔒</span>}
@@ -757,7 +768,7 @@ export const StockDetail: React.FC = () => {
             {
                 createPortal(
                     <div className="fixed bottom-[72px] left-0 right-0 px-4 pb-2 bg-gradient-to-t from-black via-black/90 to-transparent z-40 pointer-events-none">
-                        <div className="max-w-md mx-auto grid grid-cols-2 gap-4 pointer-events-auto">
+                        <div id="tutorial-trade-buttons" className="max-w-md mx-auto grid grid-cols-2 gap-4 pointer-events-auto">
                             {owned > 0 ? (
                                 <button
                                     onClick={() => navigate(`/trade/${asset.id}?type=sell`)}

@@ -183,7 +183,7 @@ export const Market: React.FC = () => {
         <div className="space-y-4 pb-24"> {/* Removed extra top padding, AppLayout handles it */}
             {/* Balance Card - Scrollable */}
             <div className="px-4 pt-0 pb-2">
-                <div className="rounded-3xl overflow-hidden shadow-2xl shadow-blue-900/20 relative">
+                <div id="tutorial-balance-card" className="rounded-3xl overflow-hidden shadow-2xl shadow-blue-900/20 relative">
                     <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700"></div>
                     <div className="absolute inset-0 bg-gradient-to-br from-blue-500/60 via-purple-600/60 to-indigo-700/60"></div>
                     <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10"></div>
@@ -286,8 +286,9 @@ export const Market: React.FC = () => {
                                         disabled={isLocked}
                                         className={`px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${marketInterval === interval
                                             ? 'bg-blue-500 text-white'
-                                            : 'bg-white/5 text-white/60 hover:bg-white/10'
+                                            : 'bg-gray-500/10 hover:bg-gray-500/20'
                                             } ${isLocked ? 'opacity-30 cursor-not-allowed' : ''}`}
+                                        style={{ color: marketInterval === interval ? '#ffffff' : 'var(--text-primary)' }}
                                     >
                                         {interval}
                                         {isLocked && <span className="ml-1">🔒</span>}
@@ -342,6 +343,7 @@ export const Market: React.FC = () => {
                         return (
                             <div
                                 key={item.id}
+                                id={`tutorial-stock-item-${index}`}
                                 onClick={() => navigate(`/stock/${item.id}`)}
                                 className={`group rounded-2xl p-4 shadow-sm border hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer relative overflow-hidden ${flashClass}`}
                                 style={{ backgroundColor: flash ? undefined : 'var(--card-bg)', borderColor: 'var(--card-border)', transition: 'background-color 0.5s ease' }}

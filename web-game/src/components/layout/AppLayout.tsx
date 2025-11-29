@@ -7,7 +7,7 @@ import { TrendingUp, Trophy, Zap, Newspaper, User as UserIcon, LogOut, HelpCircl
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../../store/gameStore';
 import { AuthModal } from '../auth/AuthModal';
-import { TutorialOverlay, type TutorialStep } from '../ui/TutorialOverlay';
+import { TutorialManager } from '../tutorial/TutorialManager';
 import { LanguageSelectionModal } from '../auth/LanguageSelectionModal';
 
 type OnboardingStep = 'language' | 'intro' | 'auth' | 'tour' | 'complete';
@@ -15,124 +15,73 @@ type OnboardingStep = 'language' | 'intro' | 'auth' | 'tour' | 'complete';
 export const AppLayout = () => {
     const { t } = useTranslation();
     const location = useLocation();
-    const { user, login, logout } = useGameStore();
+    const { user, login, logout, startTutorial, hasCompletedTutorial } = useGameStore();
 
     // Onboarding State
     const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>('complete');
     const [isAuthOpen, setIsAuthOpen] = useState(false);
-    const [isTutorialOpen, setIsTutorialOpen] = useState(false);
-    const [tutorialSteps, setTutorialSteps] = useState<TutorialStep[]>([]);
 
     // Initial Check
     useEffect(() => {
         const hasSelectedLanguage = localStorage.getItem('hasSelectedLanguage');
-        const hasSeenIntro = localStorage.getItem('hasSeenIntro');
-        const hasCompletedTour = localStorage.getItem('hasCompletedTour');
+        // const hasSeenIntro = localStorage.getItem('hasSeenIntro'); // Removed Intro step
+        // const hasCompletedTour = localStorage.getItem('hasCompletedTour'); // Use store instead
 
         if (!hasSelectedLanguage) {
             setOnboardingStep('language');
-        } else if (!hasSeenIntro) {
-            setOnboardingStep('intro');
         } else if (!user) {
-            // If intro seen but not logged in, show auth
-            // We only force auth if they haven't completed the tour (meaning they are new)
-            // If they have completed tour, they are returning user, so we don't force auth (unless we want to)
-            // But user said "then registration".
-            if (!hasCompletedTour) {
+            // If not logged in, show auth
+            if (!hasCompletedTutorial) {
                 setOnboardingStep('auth');
                 setIsAuthOpen(true);
             } else {
                 setOnboardingStep('complete');
             }
-        } else if (!hasCompletedTour) {
+        } else if (!hasCompletedTutorial) {
             setOnboardingStep('tour');
         } else {
             setOnboardingStep('complete');
         }
-    }, [user]);
+    }, [user, hasCompletedTutorial]);
 
     // Step 1: Language Selected
     const handleLanguageSelected = () => {
         localStorage.setItem('hasSelectedLanguage', 'true');
-        setOnboardingStep('intro');
+        // Skip intro, go to auth or tour
+        if (!user && !hasCompletedTutorial) {
+            setOnboardingStep('auth');
+            setIsAuthOpen(true);
+        } else if (!hasCompletedTutorial) {
+            setOnboardingStep('tour');
+        } else {
+            setOnboardingStep('complete');
+        }
     };
 
-    // Step 2: Intro Finished
-    const handleIntroFinished = () => {
-        localStorage.setItem('hasSeenIntro', 'true');
-        setOnboardingStep('auth');
-        setIsAuthOpen(true);
-    };
+    // Step 2: Intro Finished - Removed
 
     // Step 3: Auth Finished (Login/Register)
     const handleAuthFinished = (userData: any) => {
         login(userData);
         setIsAuthOpen(false);
-        // The useEffect will pick up the user change and switch to 'tour' if needed
-    };
-
-    // Step 4: Tour Finished
-    const handleTourFinished = () => {
-        localStorage.setItem('hasCompletedTour', 'true');
+        // Start tutorial after login
+        startTutorial();
         setOnboardingStep('complete');
-        setIsTutorialOpen(false);
     };
 
-    // Define Steps
-    const introSteps: TutorialStep[] = [
-        {
-            title: t('tutorial_welcome_title', 'Welcome!'),
-            description: t('tutorial_welcome_desc', 'Invest Game is a real-market simulator. Let\'s quickly go over the basics.'),
-            image: '👋'
-        },
-        {
-            title: t('tutorial_goal_title', 'Your Goal'),
-            description: t('tutorial_goal_desc', 'Start with $100k virtual cash. Buy stocks and crypto to grow your portfolio and climb the leaderboard.'),
-            image: '🏆'
-        }
-    ];
-
-    const tourSteps: TutorialStep[] = [
-        {
-            title: t('tutorial_market_title', 'Market'),
-            description: t('tutorial_market_desc', 'Here you see live prices for stocks and crypto. Tap any asset to see details.'),
-            image: '📈'
-        },
-        {
-            title: t('tutorial_trade_title', 'Trading'),
-            description: t('tutorial_trade_desc', 'Buy low, sell high. Use "Short Sell" to profit from falling prices (requires skill).'),
-            image: '💰'
-        },
-        {
-            title: t('tutorial_skills_title', 'Skills'),
-            description: t('tutorial_skills_desc', 'Earn Skill Points (SP) by leveling up or watching ads. Unlock powerful tools like Leverage and Technical Analysis.'),
-            image: '⚡'
-        },
-        {
-            title: t('tutorial_news_title', 'News'),
-            description: t('tutorial_news_desc', 'Stay updated with real-time financial news to make informed decisions.'),
-            image: '📰'
-        }
-    ];
-
-    // Manage Tutorial Overlay Content based on step
+    // Manage Tutorial Trigger
     useEffect(() => {
-        if (onboardingStep === 'intro') {
-            setTutorialSteps(introSteps);
-            setIsTutorialOpen(true);
-        } else if (onboardingStep === 'tour') {
-            setTutorialSteps(tourSteps);
-            setIsTutorialOpen(true);
-        } else {
-            setIsTutorialOpen(false);
+        if (onboardingStep === 'tour') {
+            startTutorial();
+            setOnboardingStep('complete');
         }
-    }, [onboardingStep, t]);
+    }, [onboardingStep, startTutorial]);
 
     const navItems = [
-        { path: '/', icon: TrendingUp, label: t('market') },
-        { path: '/ranking', icon: Trophy, label: t('rank') },
-        { path: '/skills', icon: Zap, label: t('skills') },
-        { path: '/news', icon: Newspaper, label: t('news') },
+        { path: '/', icon: TrendingUp, label: t('market'), id: 'nav-market' },
+        { path: '/ranking', icon: Trophy, label: t('rank'), id: 'nav-ranking' },
+        { path: '/skills', icon: Zap, label: t('skills'), id: 'nav-skills' },
+        { path: '/news', icon: Newspaper, label: t('news'), id: 'nav-news' },
     ];
 
     return (
@@ -153,10 +102,7 @@ export const AppLayout = () => {
                 </div>
                 <div className="flex items-center gap-2">
                     <button
-                        onClick={() => {
-                            setTutorialSteps(tourSteps);
-                            setIsTutorialOpen(true);
-                        }}
+                        onClick={startTutorial}
                         className="p-2 rounded-full hover:bg-white/10 transition-colors text-slate-500 dark:text-slate-400"
                         title="Help / Tutorial"
                     >
@@ -206,11 +152,12 @@ export const AppLayout = () => {
                     backgroundColor: 'var(--card-bg)',
                     borderColor: 'var(--card-border)'
                 }}>
-                {navItems.map(({ path, icon: Icon, label }) => {
+                {navItems.map(({ path, icon: Icon, label, id }) => {
                     const isActive = location.pathname === path;
                     return (
                         <NavLink
                             key={path}
+                            id={id}
                             to={path}
                             className={`flex flex-col items-center justify-center w-16 h-14 rounded-xl transition-all duration-300 ${isActive
                                 ? '-translate-y-1 shadow-lg'
@@ -239,34 +186,16 @@ export const AppLayout = () => {
             <AuthModal
                 isOpen={isAuthOpen}
                 onClose={() => {
-                    // If in onboarding flow, prevent closing without login? 
-                    // Or allow closing but stay in 'auth' step?
-                    // User said "Then comes the registration".
-                    // Let's allow close, but if they are not logged in, they are just in 'complete' state (guest mode).
                     setIsAuthOpen(false);
                     if (onboardingStep === 'auth') {
-                        // If they skip auth, maybe skip tour? Or show tour anyway?
-                        // "Then the basic tabs... are taught".
-                        // Let's show tour even if they don't login, so they know the app.
+                        // If they skip auth, show tour anyway
                         setOnboardingStep('tour');
                     }
                 }}
                 onLogin={handleAuthFinished}
             />
 
-            <TutorialOverlay
-                isOpen={isTutorialOpen}
-                onClose={() => {
-                    if (onboardingStep === 'intro') {
-                        handleIntroFinished();
-                    } else if (onboardingStep === 'tour') {
-                        handleTourFinished();
-                    } else {
-                        setIsTutorialOpen(false);
-                    }
-                }}
-                steps={tutorialSteps}
-            />
+            <TutorialManager />
         </div>
     );
 };
