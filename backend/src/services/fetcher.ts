@@ -8,6 +8,24 @@ const SYMBOLS = [
     'AAPL', 'TSLA', 'MSFT', 'GOOGL', 'AMZN', 'NVDA' // Stocks
 ];
 
+// Helper to fetch crypto price from Binance
+const fetchCryptoPrice = async (symbol: string): Promise<{ price: number, time: number } | null> => {
+    try {
+        // Map Yahoo symbol to Binance symbol
+        const binanceSymbol = symbol.replace('-USD', 'USDT');
+        const response = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${binanceSymbol}`);
+        if (!response.ok) return null;
+        const data = await response.json();
+        return {
+            price: parseFloat(data.price),
+            time: Date.now()
+        };
+    } catch (error) {
+        console.error(`Binance fetch failed for ${symbol}:`, error);
+        return null;
+    }
+};
+
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -27,29 +45,48 @@ export const updateMarketData = async () => {
         for (const symbol of SYMBOLS) {
             try {
                 console.log(`Fetching ${symbol}...`);
-                // Always get fresh quote data
-                const quoteResult = await yahooFinance.quote(symbol);
+                let price = 0;
+                let marketTime = 0;
 
-                if (!quoteResult || !quoteResult.regularMarketPrice) {
+                // Try Binance for Crypto first
+                if (symbol.includes('-USD')) {
+                    const binanceData = await fetchCryptoPrice(symbol);
+                    if (binanceData) {
+                        price = binanceData.price;
+                        marketTime = binanceData.time;
+                        console.log(`✓ ${symbol} (Binance): $${price}`);
+                    }
+                }
+
+                // Fallback to Yahoo or if it's a Stock
+                let quoteResult: any = null;
+                if (price === 0) {
+                    quoteResult = await yahooFinance.quote(symbol);
+                    if (quoteResult && quoteResult.regularMarketPrice) {
+                        price = quoteResult.regularMarketPrice;
+                        marketTime = quoteResult.regularMarketTime ? new Date(quoteResult.regularMarketTime).getTime() : Date.now();
+                        console.log(`✓ ${symbol} (Yahoo): $${price}`);
+                    }
+                }
+
+                if (price === 0) {
                     console.warn(`No price data for ${symbol}, skipping...`);
                     continue;
                 }
 
-                console.log(`✓ ${symbol}: $${quoteResult.regularMarketPrice}`);
-
                 // Update 5m history with new data point
                 let history5m = await getMarketHistory(symbol, '5m');
-                const currentTime = quoteResult.regularMarketTime ? new Date(quoteResult.regularMarketTime).toISOString() : new Date().toISOString();
+                const currentTime = new Date(marketTime).toISOString();
 
                 // Always append new data point
                 const newDataPoint = {
                     date: currentTime,
-                    open: quoteResult.regularMarketPrice,
-                    high: quoteResult.regularMarketDayHigh || quoteResult.regularMarketPrice,
-                    low: quoteResult.regularMarketDayLow || quoteResult.regularMarketPrice,
-                    close: quoteResult.regularMarketPrice,
-                    volume: quoteResult.regularMarketVolume || 0,
-                    price: quoteResult.regularMarketPrice
+                    open: price,
+                    high: price, // Approximation for live update
+                    low: price,  // Approximation for live update
+                    close: price,
+                    volume: quoteResult?.regularMarketVolume || 0,
+                    price: price
                 };
 
                 // Check if we need to add a new point (different timestamp)
@@ -69,9 +106,9 @@ export const updateMarketData = async () => {
                 const item = {
                     id: symbol,
                     symbol: symbol.replace('-USD', ''),
-                    name: quoteResult.shortName || quoteResult.longName || symbol,
-                    price: quoteResult.regularMarketPrice,
-                    change24h: quoteResult.regularMarketChangePercent || 0,
+                    name: quoteResult?.shortName || quoteResult?.longName || symbol,
+                    price: price,
+                    change24h: quoteResult?.regularMarketChangePercent || 0,
                     type: symbol.includes('-USD') ? 'crypto' : 'stock',
                     sparkline: history1d // Use 1d data for main page sparklines
                 };
