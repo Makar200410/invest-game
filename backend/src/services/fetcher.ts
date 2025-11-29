@@ -1,5 +1,5 @@
 import YahooFinance from 'yahoo-finance2';
-import { getMarketHistory, saveMarketHistory, saveMarketItems } from './storage.js';
+import { getMarketHistory, saveMarketHistory, saveMarketItems, getMarketHistoryWithMeta } from './storage.js';
 
 // Create Yahoo Finance instance
 const yahooFinance = new YahooFinance();
@@ -63,12 +63,8 @@ export const updateMarketData = async () => {
                 }
 
                 // Update or fetch 1d history for Sparkline (Main Page)
-                let history1d = await getMarketHistory(symbol, '1d');
-                if (history1d.length === 0) {
-                    console.log(`Fetching initial 1d history for ${symbol}...`);
-                    history1d = await fetchHistory(symbol, '1d');
-                    console.log(`Fetched ${history1d.length} daily points for ${symbol}`);
-                }
+                // fetchHistory now handles caching and staleness checks
+                const history1d = await fetchHistory(symbol, '1d');
 
                 const item = {
                     id: symbol,
@@ -125,13 +121,25 @@ export const updateMarketData = async () => {
 
 export const fetchHistory = async (symbol: string, interval: string = '5m') => {
     try {
-        // Check cache first for non-default intervals if needed, but usually we fetch fresh for charts
-        // For '5m' we might want to check DB, but this function is often called when DB is empty or for specific chart view.
-        // Let's check DB for '5m' to avoid re-fetching if we just did it.
         // Check DB for '5m' and '1d' to avoid re-fetching
         if (interval === '5m' || interval === '1d') {
-            const cached = await getMarketHistory(symbol, interval);
-            if (cached.length > 0) return cached;
+            const cached = await getMarketHistoryWithMeta(symbol, interval);
+
+            if (cached && cached.data.length > 0) {
+                const now = new Date();
+                const lastUpdated = new Date(cached.lastUpdated);
+                const diffMs = now.getTime() - lastUpdated.getTime();
+
+                // Define staleness thresholds
+                // 5m: 5 minutes
+                // 1d: 1 hour (to keep daily charts somewhat fresh during the day)
+                const staleThreshold = interval === '5m' ? 5 * 60 * 1000 : 60 * 60 * 1000;
+
+                if (diffMs < staleThreshold) {
+                    return cached.data;
+                }
+                console.log(`Cache stale for ${symbol} (${interval}). Age: ${Math.round(diffMs / 1000)}s. Fetching fresh...`);
+            }
         }
 
         // Map interval to appropriate range/period with correct Yahoo Finance limits

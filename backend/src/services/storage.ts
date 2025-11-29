@@ -215,3 +215,20 @@ export const getMarketHistory = async (symbol: string, interval: string): Promis
         return [];
     }
 };
+
+export const getMarketHistoryWithMeta = async (symbol: string, interval: string): Promise<{ data: any[], lastUpdated: Date } | null> => {
+    try {
+        const res = await query('SELECT data, last_updated FROM market_history WHERE symbol = $1 AND interval = $2', [symbol, interval]);
+        if (res.rows.length > 0) {
+            return {
+                data: res.rows[0].data,
+                lastUpdated: res.rows[0].last_updated
+            };
+        }
+        return null;
+    } catch (error) {
+        console.error('Error fetching market history with meta:', error);
+        return null;
+    }
+};
+
