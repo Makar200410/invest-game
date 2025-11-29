@@ -18,6 +18,9 @@ export interface MarketData {
     users: User[];
 }
 
+// In-memory cache
+let marketItemsCache: any[] = [];
+
 // Initialize Database Tables
 export const initDB = async () => {
     try {
@@ -166,6 +169,10 @@ export const updateUser = async (username: string, updates: Partial<User>): Prom
 
 // Market Data Functions
 export const saveMarketItems = async (items: any[]) => {
+    // Update cache immediately
+    marketItemsCache = items;
+    console.log(`saveMarketItems: Updated in-memory cache with ${items.length} items.`);
+
     try {
         for (const item of items) {
             await query(
@@ -176,17 +183,25 @@ export const saveMarketItems = async (items: any[]) => {
             );
         }
     } catch (error) {
-        console.error('Error saving market items:', error);
+        console.error('Error saving market items to DB (cache updated):', error);
     }
 };
 
 export const getMarketItems = async (): Promise<any[]> => {
+    if (marketItemsCache.length > 0) {
+        return marketItemsCache;
+    }
+
     try {
         const res = await query('SELECT data FROM market_items');
-        return res.rows.map(row => row.data);
+        const items = res.rows.map(row => row.data);
+        if (items.length > 0) {
+            marketItemsCache = items; // Populate cache from DB
+        }
+        return items;
     } catch (error) {
         console.error('Error fetching market items:', error);
-        return [];
+        return marketItemsCache; // Return cache (even if empty) on error
     }
 };
 
