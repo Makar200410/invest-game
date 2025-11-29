@@ -17,47 +17,57 @@ const __dirname = path.dirname(__filename);
 
 export const updateMarketData = async () => {
     console.log('====================================');
-    console.log('Fetching market data...');
+    console.log(`[${new Date().toISOString()}] Fetching fresh market data from Yahoo Finance...`);
 
     let items = [];
 
-    // Try fetching from Yahoo Finance first
+    // ALWAYS fetch fresh data from Yahoo Finance
     try {
         console.log(`Symbols to fetch: ${SYMBOLS.join(', ')}`);
         for (const symbol of SYMBOLS) {
             try {
                 console.log(`Fetching ${symbol}...`);
+                // Always get fresh quote data
                 const quoteResult = await yahooFinance.quote(symbol);
 
-                // ... (existing history logic) ...
-                // ... (existing history logic for 5m) ...
-                let history = await getMarketHistory(symbol, '5m');
-                if (history.length === 0) {
-                    history = await fetchHistory(symbol, '5m');
-                } else {
-                    // Append logic for 5m
-                    const lastPoint = history[history.length - 1];
-                    const newTime = quoteResult.regularMarketTime ? new Date(quoteResult.regularMarketTime).toISOString() : new Date().toISOString();
-                    if (lastPoint && lastPoint.date !== newTime) {
-                        history.push({
-                            date: newTime,
-                            open: quoteResult.regularMarketPrice,
-                            high: quoteResult.regularMarketPrice,
-                            low: quoteResult.regularMarketPrice,
-                            close: quoteResult.regularMarketPrice,
-                            volume: 0,
-                            price: quoteResult.regularMarketPrice
-                        });
-                        // Keep last 90 points for 5m as requested
-                        if (history.length > 90) history = history.slice(-90);
-                        await saveMarketHistory(symbol, '5m', history);
-                    }
+                if (!quoteResult || !quoteResult.regularMarketPrice) {
+                    console.warn(`No price data for ${symbol}, skipping...`);
+                    continue;
                 }
 
-                // Fetch 1d history for Sparkline (Main Page)
+                console.log(`✓ ${symbol}: $${quoteResult.regularMarketPrice}`);
+
+                // Update 5m history with new data point
+                let history5m = await getMarketHistory(symbol, '5m');
+                const currentTime = quoteResult.regularMarketTime ? new Date(quoteResult.regularMarketTime).toISOString() : new Date().toISOString();
+
+                // Always append new data point
+                const newDataPoint = {
+                    date: currentTime,
+                    open: quoteResult.regularMarketPrice,
+                    high: quoteResult.regularMarketDayHigh || quoteResult.regularMarketPrice,
+                    low: quoteResult.regularMarketDayLow || quoteResult.regularMarketPrice,
+                    close: quoteResult.regularMarketPrice,
+                    volume: quoteResult.regularMarketVolume || 0,
+                    price: quoteResult.regularMarketPrice
+                };
+
+                // Check if we need to add a new point (different timestamp)
+                const lastPoint = history5m[history5m.length - 1];
+                if (!lastPoint || lastPoint.date !== currentTime) {
+                    history5m.push(newDataPoint);
+                    // Keep last 90 points for 5m
+                    if (history5m.length > 90) history5m = history5m.slice(-90);
+                    await saveMarketHistory(symbol, '5m', history5m);
+                    console.log(`Updated 5m history for ${symbol}, now has ${history5m.length} points`);
+                }
+
+                // Update or fetch 1d history for Sparkline (Main Page)
                 let history1d = await getMarketHistory(symbol, '1d');
                 if (history1d.length === 0) {
+                    console.log(`Fetching initial 1d history for ${symbol}...`);
                     history1d = await fetchHistory(symbol, '1d');
+                    console.log(`Fetched ${history1d.length} daily points for ${symbol}`);
                 }
 
                 const item = {
@@ -65,12 +75,11 @@ export const updateMarketData = async () => {
                     symbol: symbol.replace('-USD', ''),
                     name: quoteResult.shortName || quoteResult.longName || symbol,
                     price: quoteResult.regularMarketPrice,
-                    change24h: quoteResult.regularMarketChangePercent,
+                    change24h: quoteResult.regularMarketChangePercent || 0,
                     type: symbol.includes('-USD') ? 'crypto' : 'stock',
                     sparkline: history1d // Use 1d data for main page sparklines
                 };
                 items.push(item);
-                console.log(`✓ ${symbol}: $${item.price}`);
             } catch (err) {
                 console.error(`Error fetching ${symbol}:`, err);
             }
@@ -79,7 +88,7 @@ export const updateMarketData = async () => {
         console.error("Yahoo Finance fetch failed:", error);
     }
 
-    // If Yahoo Finance failed or returned partial data, load from repository
+    // If Yahoo Finance failed completely, load from repository as last resort
     if (items.length === 0) {
         console.log("Fetching failed or empty. Loading from local repository...");
         try {
@@ -91,7 +100,6 @@ export const updateMarketData = async () => {
                     // Also save history from repo if needed
                     for (const item of items) {
                         if (item.sparkline) {
-                            // Assume repo sparkline is 1d if we are switching, or just save it as is
                             await saveMarketHistory(item.id, '1d', item.sparkline);
                         }
                     }
@@ -107,12 +115,13 @@ export const updateMarketData = async () => {
 
     if (items.length > 0) {
         await saveMarketItems(items);
-        console.log(`Market data updated. Total items: ${items.length}`);
+        console.log(`✓ Market data updated successfully. Total items: ${items.length}`);
     } else {
         console.error("Failed to update market data from any source.");
     }
     console.log('====================================');
 };
+
 
 export const fetchHistory = async (symbol: string, interval: string = '5m') => {
     try {
