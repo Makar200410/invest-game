@@ -30,9 +30,9 @@ export const checkBackendHealth = async () => {
         const response = await api.get('/health');
         console.log('Backend Health:', response.data);
         return response.data;
-    } catch (error) {
-        console.error('Backend Health Check Failed:', error);
-        return null;
+    } catch (e) {
+        console.error('Error fetching indicators:', e);
+        return [];
     }
 };
 
@@ -50,9 +50,11 @@ export interface MarketItem {
 }
 
 // Use backend API
-export const fetchCryptoMarket = async (): Promise<MarketItem[]> => {
+export const fetchCryptoMarket = async (pricesOnly: boolean = false): Promise<MarketItem[]> => {
     try {
-        const response = await api.get('/market');
+        const response = await api.get('/market', {
+            params: { pricesOnly }
+        });
         return response.data;
     } catch (error) {
         console.error('Error fetching market data:', error);

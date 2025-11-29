@@ -76,19 +76,44 @@ app.get('/api/health', async (req, res) => {
 });
 
 app.get('/api/market', async (req, res) => {
+    const { pricesOnly } = req.query;
     const items = await getMarketItems();
-    // Optimize payload: Only send last 60 points for sparkline and only necessary fields
-    const optimizedItems = items.map(item => ({
-        ...item,
-        sparkline: item.sparkline ? item.sparkline.slice(-90).map((p: any) => ({
-            price: p.price || p.close,
-            date: p.date,
-            open: p.open,
-            high: p.high,
-            low: p.low,
-            close: p.close || p.price
-        })) : []
-    }));
+
+    // Optimize payload
+    const optimizedItems = items.map(item => {
+        const base = {
+            ...item,
+            sparkline: undefined // Clear by default to rebuild or omit
+        };
+
+        if (pricesOnly === 'true') {
+            // Return only price data, no sparklines
+            return {
+                id: item.id,
+                symbol: item.symbol,
+                name: item.name,
+                price: item.price,
+                change24h: item.change24h,
+                type: item.type,
+                high24h: item.high24h,
+                low24h: item.low24h
+            };
+        }
+
+        // Return full data with optimized sparkline
+        return {
+            ...item,
+            sparkline: item.sparkline ? item.sparkline.slice(-90).map((p: any) => ({
+                price: p.price || p.close,
+                date: p.date,
+                open: p.open,
+                high: p.high,
+                low: p.low,
+                close: p.close || p.price
+            })) : []
+        };
+    });
+
     res.json(optimizedItems);
 });
 

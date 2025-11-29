@@ -15,19 +15,20 @@ export const Market: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [marketInterval, setMarketInterval] = useState<string>('1d'); // Default to daily
 
-    const loadData = async () => {
-        setLoading(true);
-        // Fetch ALL data from backend (crypto + stocks)
-        const allAssets = await fetchCryptoMarket();
+    const [prevPrices, setPrevPrices] = useState<Record<string, number>>({});
+    const [priceFlashes, setPriceFlashes] = useState<Record<string, 'up' | 'down' | null>>({});
 
-        // Fetch chart data for the selected interval if not daily (which comes with market data)
+    const loadFullData = async () => {
+        setLoading(true);
+        // Fetch ALL data from backend (crypto + stocks) including charts
+        const allAssets = await fetchCryptoMarket(false); // pricesOnly = false
+
+        // Fetch chart data for the selected interval if not daily
         if (skills.multiTimeframe && marketInterval !== '1d') {
-            // Fetch interval-specific data for each asset
             const assetsWithCharts = await Promise.all(
                 allAssets.map(async (asset) => {
                     try {
                         const chartData = await fetchMarketChartByInterval(asset.id, marketInterval);
-                        // Remove last point to avoid incomplete data
                         const cleanChartData = chartData.length > 1 ? chartData.slice(0, -1) : chartData;
                         return { ...asset, sparkline: cleanChartData };
                     } catch (e) {
@@ -49,11 +50,77 @@ export const Market: React.FC = () => {
         setLoading(false);
     };
 
+    const updatePricesOnly = async () => {
+        // Fetch ONLY prices (lighter payload)
+        const priceUpdates = await fetchCryptoMarket(true); // pricesOnly = true
+
+        setItems(prevItems => {
+            const newFlashes: Record<string, 'up' | 'down' | null> = {};
+            const newPrevPrices: Record<string, number> = { ...prevPrices };
+
+            const updatedItems = prevItems.map(item => {
+                const update = priceUpdates.find(u => u.id === item.id);
+                if (update) {
+                    // Check for price change
+                    if (update.price > item.price) {
+                        newFlashes[item.id] = 'up';
+                    } else if (update.price < item.price) {
+                        newFlashes[item.id] = 'down';
+                    }
+                    newPrevPrices[item.id] = item.price;
+
+                    // Update sparkline locally
+                    let newSparkline = item.sparkline;
+                    if (newSparkline && newSparkline.length > 0) {
+                        const newPoint = { price: update.price, date: new Date().toISOString() };
+                        newSparkline = [...newSparkline, newPoint].slice(-90); // Keep last 90 points
+                    }
+
+                    // Merge new price data and updated sparkline
+                    return {
+                        ...item,
+                        price: update.price,
+                        change24h: update.change24h,
+                        high24h: update.high24h,
+                        low24h: update.low24h,
+                        sparkline: newSparkline
+                    };
+                }
+                return item;
+            });
+
+            setPriceFlashes(newFlashes);
+            setPrevPrices(newPrevPrices);
+
+            // Clear flashes after animation
+            setTimeout(() => {
+                setPriceFlashes({});
+            }, 1000);
+
+            return updatedItems;
+        });
+
+        // Check triggers with new prices
+        priceUpdates.forEach(asset => {
+            checkOrders(asset.id, asset.price);
+        });
+    };
+
+    // Initial Load
     useEffect(() => {
-        loadData();
-        const interval = setInterval(loadData, 60000); // Update every minute
+        loadFullData();
+    }, []);
+
+    // Price Update Interval (60 seconds)
+    useEffect(() => {
+        const interval = setInterval(updatePricesOnly, 60000);
         return () => clearInterval(interval);
-    }, [marketInterval, skills.multiTimeframe]); // Reload when interval or skill changes
+    }, []);
+
+    // Initial Load only
+    useEffect(() => {
+        loadFullData();
+    }, [marketInterval, skills.multiTimeframe]);
 
     // Sync score with backend if logged in
     useEffect(() => {
@@ -140,7 +207,7 @@ export const Market: React.FC = () => {
                                 </div>
                             </div>
                             <button
-                                onClick={loadData}
+                                onClick={loadFullData}
                                 className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors backdrop-blur-sm"
                             >
                                 <RefreshCcw size={18} className="text-white/80" />
@@ -268,12 +335,16 @@ export const Market: React.FC = () => {
                         // Determine layout: even index = chart right, odd index = chart left
                         const chartOnRight = index % 2 === 0;
 
+                        // Flash Effect
+                        const flash = priceFlashes[item.id];
+                        const flashClass = flash === 'up' ? 'bg-green-500/20' : flash === 'down' ? 'bg-red-500/20' : '';
+
                         return (
                             <div
                                 key={item.id}
                                 onClick={() => navigate(`/stock/${item.id}`)}
-                                className="group rounded-2xl p-4 shadow-sm border hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer relative overflow-hidden"
-                                style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--card-border)' }}
+                                className={`group rounded-2xl p-4 shadow-sm border hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer relative overflow-hidden ${flashClass}`}
+                                style={{ backgroundColor: flash ? undefined : 'var(--card-bg)', borderColor: 'var(--card-border)', transition: 'background-color 0.5s ease' }}
                             >
                                 <div className={`flex gap-4 items-center ${chartOnRight ? 'flex-row' : 'flex-row-reverse'}`}>
                                     {/* Left/Right Content: Icon + Info */}

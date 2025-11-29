@@ -25,6 +25,7 @@ export const StockDetail: React.FC = () => {
     const [indicatorInterval, setIndicatorInterval] = useState('1d');
     const [chartType, setChartType] = useState<'candle' | 'line'>('line');
     const [cachedDaily, setCachedDaily] = useState<any[]>([]);
+    const [chartLoaded, setChartLoaded] = useState(false);
 
     // Technical & Fundamental State
     const [indicators, setIndicators] = useState<any[]>([]);
@@ -404,7 +405,7 @@ export const StockDetail: React.FC = () => {
                                     <motion.path
                                         d={`${pathData} L 100 100 L 0 100 Z`}
                                         fill="url(#chartGradient)"
-                                        initial={{ opacity: 0 }}
+                                        initial={!chartLoaded ? { opacity: 0 } : false}
                                         animate={{ opacity: 1 }}
                                         transition={{ duration: 1 }}
                                     />
@@ -413,9 +414,10 @@ export const StockDetail: React.FC = () => {
                                         fill="none"
                                         stroke="#22c55e"
                                         strokeWidth="0.8"
-                                        initial={{ pathLength: 0 }}
+                                        initial={!chartLoaded ? { pathLength: 0 } : false}
                                         animate={{ pathLength: 1 }}
                                         transition={{ duration: 1.5, ease: "easeInOut" }}
+                                        onAnimationComplete={() => setChartLoaded(true)}
                                     />
                                 </>
                             )}

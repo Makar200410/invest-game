@@ -26,6 +26,36 @@ const fetchCryptoPrice = async (symbol: string): Promise<{ price: number, time: 
     }
 };
 
+// Helper to fetch crypto history from Binance
+const fetchCryptoHistory = async (symbol: string, interval: string): Promise<any[]> => {
+    try {
+        const binanceSymbol = symbol.replace('-USD', 'USDT');
+        // Map intervals: 1m, 5m, 15m, 1h, 1d are same. 3h -> 4h (Binance doesn't have 3h)
+        let binanceInterval = interval;
+        if (interval === '3h') binanceInterval = '4h';
+
+        const limit = 500; // Fetch enough candles
+        const response = await fetch(`https://api.binance.com/api/v3/klines?symbol=${binanceSymbol}&interval=${binanceInterval}&limit=${limit}`);
+
+        if (!response.ok) return [];
+
+        const data = await response.json();
+        // Binance response: [ [openTime, open, high, low, close, volume, closeTime, ...], ... ]
+        return data.map((d: any[]) => ({
+            date: new Date(d[0]).toISOString(),
+            open: parseFloat(d[1]),
+            high: parseFloat(d[2]),
+            low: parseFloat(d[3]),
+            close: parseFloat(d[4]),
+            volume: parseFloat(d[5]),
+            price: parseFloat(d[4])
+        }));
+    } catch (error) {
+        console.error(`Binance history fetch failed for ${symbol}:`, error);
+        return [];
+    }
+};
+
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -42,11 +72,15 @@ export const updateMarketData = async () => {
     // ALWAYS fetch fresh data from Yahoo Finance
     try {
         console.log(`Symbols to fetch: ${SYMBOLS.join(', ')}`);
-        for (const symbol of SYMBOLS) {
+        console.log(`Symbols to fetch: ${SYMBOLS.join(', ')}`);
+
+        // Fetch all symbols in parallel
+        const results = await Promise.all(SYMBOLS.map(async (symbol) => {
             try {
-                console.log(`Fetching ${symbol}...`);
+                // console.log(`Fetching ${symbol}...`); // Reduce logging
                 let price = 0;
                 let marketTime = 0;
+                let quoteResult: any = null;
 
                 // Try Binance for Crypto first
                 if (symbol.includes('-USD')) {
@@ -54,24 +88,23 @@ export const updateMarketData = async () => {
                     if (binanceData) {
                         price = binanceData.price;
                         marketTime = binanceData.time;
-                        console.log(`✓ ${symbol} (Binance): $${price}`);
+                        // console.log(`✓ ${symbol} (Binance): $${price}`);
                     }
                 }
 
                 // Fallback to Yahoo or if it's a Stock
-                let quoteResult: any = null;
                 if (price === 0) {
                     quoteResult = await yahooFinance.quote(symbol);
                     if (quoteResult && quoteResult.regularMarketPrice) {
                         price = quoteResult.regularMarketPrice;
                         marketTime = quoteResult.regularMarketTime ? new Date(quoteResult.regularMarketTime).getTime() : Date.now();
-                        console.log(`✓ ${symbol} (Yahoo): $${price}`);
+                        // console.log(`✓ ${symbol} (Yahoo): $${price}`);
                     }
                 }
 
                 if (price === 0) {
                     console.warn(`No price data for ${symbol}, skipping...`);
-                    continue;
+                    return null;
                 }
 
                 // Update 5m history with new data point
@@ -96,14 +129,14 @@ export const updateMarketData = async () => {
                     // Keep last 90 points for 5m
                     if (history5m.length > 90) history5m = history5m.slice(-90);
                     await saveMarketHistory(symbol, '5m', history5m);
-                    console.log(`Updated 5m history for ${symbol}, now has ${history5m.length} points`);
+                    // console.log(`Updated 5m history for ${symbol}`);
                 }
 
                 // Update or fetch 1d history for Sparkline (Main Page)
                 // fetchHistory now handles caching and staleness checks
                 const history1d = await fetchHistory(symbol, '1d');
 
-                const item = {
+                return {
                     id: symbol,
                     symbol: symbol.replace('-USD', ''),
                     name: quoteResult?.shortName || quoteResult?.longName || symbol,
@@ -112,11 +145,13 @@ export const updateMarketData = async () => {
                     type: symbol.includes('-USD') ? 'crypto' : 'stock',
                     sparkline: history1d // Use 1d data for main page sparklines
                 };
-                items.push(item);
             } catch (err) {
                 console.error(`Error fetching ${symbol}:`, err);
+                return null;
             }
-        }
+        }));
+
+        items = results.filter(item => item !== null);
     } catch (error) {
         console.error("Yahoo Finance fetch failed:", error);
     }
@@ -213,27 +248,41 @@ export const fetchHistory = async (symbol: string, interval: string = '5m') => {
         };
 
         console.log(`Fetching ${symbol} with interval ${queryInterval}, period: ${periodDays} days`);
-        let result: any = await yahooFinance.chart(symbol, queryOptions);
 
-        // Fallback logic for empty data (e.g. weekend/closed market)
-        if (!result.quotes || result.quotes.length === 0) {
-            console.log(`No data for ${symbol} with interval ${interval}, extending range...`);
-            // Extend range significantly
-            queryOptions.period1 = new Date(Date.now() - (periodDays * 2) * 24 * 60 * 60 * 1000);
-            result = await yahooFinance.chart(symbol, queryOptions);
+        let historyData: any[] = [];
+
+        // Try Binance for Crypto History
+        if (symbol.includes('-USD')) {
+            historyData = await fetchCryptoHistory(symbol, interval);
+            if (historyData.length > 0) {
+                console.log(`✓ Fetched ${historyData.length} candles from Binance for ${symbol}`);
+            }
         }
 
-        const historyData = result.quotes
-            .filter((q: any) => q.close !== null && q.close !== undefined)
-            .map((q: any) => ({
-                date: q.date.toISOString(),
-                open: q.open,
-                high: q.high,
-                low: q.low,
-                close: q.close,
-                volume: q.volume,
-                price: q.close // Keep price for backward compatibility
-            }));
+        // Fallback to Yahoo if Binance failed or it's not crypto
+        if (historyData.length === 0) {
+            let result: any = await yahooFinance.chart(symbol, queryOptions);
+
+            // Fallback logic for empty data (e.g. weekend/closed market)
+            if (!result.quotes || result.quotes.length === 0) {
+                console.log(`No data for ${symbol} with interval ${interval}, extending range...`);
+                // Extend range significantly
+                queryOptions.period1 = new Date(Date.now() - (periodDays * 2) * 24 * 60 * 60 * 1000);
+                result = await yahooFinance.chart(symbol, queryOptions);
+            }
+
+            historyData = result.quotes
+                .filter((q: any) => q.close !== null && q.close !== undefined)
+                .map((q: any) => ({
+                    date: q.date.toISOString(),
+                    open: q.open,
+                    high: q.high,
+                    low: q.low,
+                    close: q.close,
+                    volume: q.volume,
+                    price: q.close // Keep price for backward compatibility
+                }));
+        }
 
         // If we got no data, return empty
         if (historyData.length === 0) {
