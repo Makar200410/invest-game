@@ -80,7 +80,7 @@ app.get('/api/market', async (req, res) => {
     // Optimize payload: Only send last 60 points for sparkline and only necessary fields
     const optimizedItems = items.map(item => ({
         ...item,
-        sparkline: item.sparkline ? item.sparkline.slice(-60).map((p: any) => ({
+        sparkline: item.sparkline ? item.sparkline.slice(-90).map((p: any) => ({
             price: p.price || p.close,
             date: p.date,
             open: p.open,

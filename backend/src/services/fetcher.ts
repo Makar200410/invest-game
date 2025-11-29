@@ -30,11 +30,12 @@ export const updateMarketData = async () => {
                 const quoteResult = await yahooFinance.quote(symbol);
 
                 // ... (existing history logic) ...
+                // ... (existing history logic for 5m) ...
                 let history = await getMarketHistory(symbol, '5m');
                 if (history.length === 0) {
-                    history = await fetchHistory(symbol);
+                    history = await fetchHistory(symbol, '5m');
                 } else {
-                    // Append logic
+                    // Append logic for 5m
                     const lastPoint = history[history.length - 1];
                     const newTime = quoteResult.regularMarketTime ? new Date(quoteResult.regularMarketTime).toISOString() : new Date().toISOString();
                     if (lastPoint && lastPoint.date !== newTime) {
@@ -47,9 +48,16 @@ export const updateMarketData = async () => {
                             volume: 0,
                             price: quoteResult.regularMarketPrice
                         });
-                        if (history.length > 300) history = history.slice(-300);
+                        // Keep last 90 points for 5m as requested
+                        if (history.length > 90) history = history.slice(-90);
                         await saveMarketHistory(symbol, '5m', history);
                     }
+                }
+
+                // Fetch 1d history for Sparkline (Main Page)
+                let history1d = await getMarketHistory(symbol, '1d');
+                if (history1d.length === 0) {
+                    history1d = await fetchHistory(symbol, '1d');
                 }
 
                 const item = {
@@ -59,7 +67,7 @@ export const updateMarketData = async () => {
                     price: quoteResult.regularMarketPrice,
                     change24h: quoteResult.regularMarketChangePercent,
                     type: symbol.includes('-USD') ? 'crypto' : 'stock',
-                    sparkline: history
+                    sparkline: history1d // Use 1d data for main page sparklines
                 };
                 items.push(item);
                 console.log(`✓ ${symbol}: $${item.price}`);
@@ -83,7 +91,8 @@ export const updateMarketData = async () => {
                     // Also save history from repo if needed
                     for (const item of items) {
                         if (item.sparkline) {
-                            await saveMarketHistory(item.id, '5m', item.sparkline);
+                            // Assume repo sparkline is 1d if we are switching, or just save it as is
+                            await saveMarketHistory(item.id, '1d', item.sparkline);
                         }
                     }
                     console.log(`Loaded ${items.length} items from repository.`);
@@ -116,33 +125,47 @@ export const fetchHistory = async (symbol: string, interval: string = '5m') => {
             if (cached.length > 0) return cached;
         }
 
-        // Map interval to appropriate range/period
+        // Map interval to appropriate range/period with correct Yahoo Finance limits
         let periodDays = 1;
-        switch (interval) {
-            case '1m': periodDays = 2; break; // 1m needs short range (max 7 days)
-            case '5m': periodDays = 1; break;
-            case '15m': periodDays = 5; break;
-            case '1h': periodDays = 30; break;
-            case '3h': periodDays = 60; break;
-            case '1d': periodDays = 1825; break; // 5 years for monthly charts
-            default: periodDays = 1;
-        }
-
         let queryInterval: any = interval;
-        if (interval === '3h') queryInterval = '1h';
+
+        switch (interval) {
+            case '1m':
+                periodDays = 7; // 1m data is only available for last 7 days
+                break;
+            case '5m':
+                periodDays = 5; // Get 5 days to have enough data
+                break;
+            case '15m':
+                periodDays = 10;
+                break;
+            case '1h':
+                periodDays = 60; // Get 60 days for hourly to ensure enough candles
+                break;
+            case '3h':
+                periodDays = 90;
+                queryInterval = '1h'; // Yahoo doesn't have 3h, use 1h and aggregate later
+                break;
+            case '1d':
+                periodDays = 730; // 2 years for daily charts
+                break;
+            default:
+                periodDays = 1;
+        }
 
         let queryOptions: any = {
             period1: new Date(Date.now() - periodDays * 24 * 60 * 60 * 1000),
             interval: queryInterval
         };
 
+        console.log(`Fetching ${symbol} with interval ${queryInterval}, period: ${periodDays} days`);
         let result: any = await yahooFinance.chart(symbol, queryOptions);
 
         // Fallback logic for empty data (e.g. weekend/closed market)
         if (!result.quotes || result.quotes.length === 0) {
             console.log(`No data for ${symbol} with interval ${interval}, extending range...`);
             // Extend range significantly
-            queryOptions.period1 = new Date(Date.now() - (periodDays * 3) * 24 * 60 * 60 * 1000);
+            queryOptions.period1 = new Date(Date.now() - (periodDays * 2) * 24 * 60 * 60 * 1000);
             result = await yahooFinance.chart(symbol, queryOptions);
         }
 
@@ -164,10 +187,11 @@ export const fetchHistory = async (symbol: string, interval: string = '5m') => {
             return [];
         }
 
-        // For default 5m, update cache
+        console.log(`Successfully fetched ${historyData.length} data points for ${symbol} (${interval})`);
+
         // For default 5m and 1d (used for weekly/monthly), update cache
         if (interval === '5m') {
-            await saveMarketHistory(symbol, '5m', historyData.slice(-100));
+            await saveMarketHistory(symbol, '5m', historyData.slice(-90));
         } else if (interval === '1d') {
             await saveMarketHistory(symbol, '1d', historyData);
         }

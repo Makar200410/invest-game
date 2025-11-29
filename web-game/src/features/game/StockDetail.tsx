@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, TrendingUp } from 'lucide-react';
+import { ArrowLeft, TrendingUp, Lock, Target } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Card } from '../../components/ui/Card';
 import { useGameStore } from '../../store/gameStore';
@@ -137,14 +137,13 @@ export const StockDetail: React.FC = () => {
                 }
 
                 if (chartHistory.length > 0) {
-                    // For All/1w/1M we might want more than 90 points, but let's stick to slice for consistency or show all?
-                    // User asked for "view of weekly and monthly charts and for all time".
-                    // If we slice -90, we show last 90 weeks/months. That's plenty.
-                    // For 'All' (1d data), 90 days might be too short.
+                    // Remove the last point to avoid incomplete/incorrect data
+                    const cleanHistory = chartHistory.length > 1 ? chartHistory.slice(0, -1) : chartHistory;
+
                     if (interval === 'All') {
-                        setHistory(chartHistory); // Show full history for All
+                        setHistory(cleanHistory); // Show full history for All (minus last point)
                     } else {
-                        setHistory(chartHistory.slice(-60));
+                        setHistory(cleanHistory.slice(-90)); // Last 90 points for consistent display
                     }
                 }
 
@@ -453,8 +452,8 @@ export const StockDetail: React.FC = () => {
             {/* Timeframe Selector */}
             <div className="flex justify-between items-center px-2">
                 <div className="flex gap-4">
-                    {['5m', '1h', '1d', '1w', '1M', 'All'].map((t) => {
-                        const isLocked = !skills.multiTimeframe && ['5m', '1h', '1w', '1M'].includes(t);
+                    {['1m', '5m', '1h', '1d', '1w', '1M', 'All'].map((t) => {
+                        const isLocked = !skills.multiTimeframe && ['1m', '5m', '1h', '1w', '1M'].includes(t);
                         return (
                             <button
                                 key={t}
@@ -490,203 +489,257 @@ export const StockDetail: React.FC = () => {
             </div>
 
             {/* Technical Analysis Section */}
-            {
-                skills.technicalAnalyst && (
-                    <Card className="p-5 space-y-6 mb-6" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
-                        <div className="flex justify-between items-center">
-                            <h3 className="font-bold text-lg">{t('technical_analysis')}</h3>
-
-                            {/* Indicator Interval Selector */}
-                            <div className="flex gap-1 p-1 rounded-lg" style={{ backgroundColor: 'var(--bg-primary)' }}>
-                                {['5m', '15m', '1h', '3h', '1d'].map((t) => (
-                                    <button
-                                        key={t}
-                                        onClick={() => setIndicatorInterval(t)}
-                                        className={`px-2 py-1 rounded text-xs font-bold transition-all ${indicatorInterval === t ? 'bg-white/20 text-white' : 'text-white/40 hover:text-white/70'}`}
-                                    >
-                                        {t}
-                                    </button>
-                                ))}
-                            </div>
+            <Card className="p-5 space-y-6 mb-6 relative" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
+                {/* Lock Overlay */}
+                {!skills.technicalAnalyst && (
+                    <div className="absolute inset-0 backdrop-blur-sm bg-black/40 rounded-2xl z-10 flex flex-col items-center justify-center gap-3">
+                        <Lock size={48} className="text-white/90" />
+                        <div className="text-center">
+                            <p className="text-white font-bold text-lg">{t('skill_locked')}</p>
+                            <p className="text-white/70 text-sm mt-1">{t('unlock_technical_analyst')}</p>
                         </div>
+                    </div>
+                )}
 
-                        {/* Controls */}
-                        <div className="flex flex-col gap-4">
-                            {/* Bollinger Bands Toggle (Overlay) */}
-                            <div className="flex items-center justify-between p-3 rounded-lg" style={{ backgroundColor: 'var(--bg-primary)' }}>
-                                <span className="text-sm font-bold opacity-80">Overlays</span>
-                                <button
-                                    onClick={() => setShowBB(!showBB)}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${showBB ? 'bg-blue-500 text-white border-blue-500' : 'bg-transparent text-blue-400 border-blue-500/50'}`}
-                                >
-                                    Bollinger Bands
-                                </button>
-                            </div>
+                <div className="flex justify-between items-center">
+                    <h3 className="font-bold text-lg">{t('technical_analysis')}</h3>
 
-                            {/* Oscillators */}
-                            <div className="flex gap-2 overflow-x-auto pb-2">
-                                <button
-                                    onClick={() => setShowRSI(!showRSI)}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${showRSI ? 'bg-purple-500 text-white border-purple-500' : 'bg-transparent text-purple-400 border-purple-500/50'}`}
-                                >
-                                    RSI
-                                </button>
-                                <button
-                                    onClick={() => setShowMACD(!showMACD)}
-                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${showMACD ? 'bg-orange-500 text-white border-orange-500' : 'bg-transparent text-orange-400 border-orange-500/50'}`}
-                                >
-                                    MACD
-                                </button>
-                            </div>
+                    {/* Indicator Interval Selector */}
+                    <div className="flex gap-1 p-1 rounded-lg" style={{ backgroundColor: 'var(--bg-primary)' }}>
+                        {['5m', '15m', '1h', '3h', '1d'].map((t) => (
+                            <button
+                                key={t}
+                                onClick={() => skills.technicalAnalyst && setIndicatorInterval(t)}
+                                disabled={!skills.technicalAnalyst}
+                                className={`px-2 py-1 rounded text-xs font-bold transition-all ${indicatorInterval === t ? 'bg-white/20 text-white' : 'text-white/40 hover:text-white/70'} disabled:cursor-not-allowed`}
+                            >
+                                {t}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Controls */}
+                <div className="flex flex-col gap-4">
+                    {/* Bollinger Bands Toggle (Overlay) */}
+                    <div className="flex items-center justify-between p-3 rounded-lg" style={{ backgroundColor: 'var(--bg-primary)' }}>
+                        <span className="text-sm font-bold opacity-80">Overlays</span>
+                        <button
+                            onClick={() => skills.technicalAnalyst && setShowBB(!showBB)}
+                            disabled={!skills.technicalAnalyst}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${showBB ? 'bg-blue-500 text-white border-blue-500' : 'bg-transparent text-blue-400 border-blue-500/50'} disabled:cursor-not-allowed disabled:opacity-50`}
+                        >
+                            Bollinger Bands
+                        </button>
+                    </div>
+
+                    {/* Oscillators */}
+                    <div className="flex gap-2 overflow-x-auto pb-2">
+                        <button
+                            onClick={() => setShowRSI(!showRSI)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${showRSI ? 'bg-purple-500 text-white border-purple-500' : 'bg-transparent text-purple-400 border-purple-500/50'}`}
+                        >
+                            RSI
+                        </button>
+                        <button
+                            onClick={() => setShowMACD(!showMACD)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${showMACD ? 'bg-orange-500 text-white border-orange-500' : 'bg-transparent text-orange-400 border-orange-500/50'}`}
+                        >
+                            MACD
+                        </button>
+                    </div>
+                </div>
+
+                {/* RSI Chart */}
+                {showRSI && indicators.length > 0 && (
+                    <div className="h-40 w-full">
+                        <p className="text-xs font-bold text-purple-400 mb-2">Relative Strength Index (14)</p>
+                        <div className="h-full w-full relative border-t border-b border-white/5 rounded-lg overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
+                            <svg viewBox="0 0 100 100" className="w-full h-full" preserveAspectRatio="none">
+                                {/* Guidelines - Center line at 50 */}
+                                <line x1="0" y1="50" x2="100" y2="50" stroke="black" strokeOpacity="0.2" strokeDasharray="2 2" strokeWidth="0.5" />
+
+                                {/* RSI Line */}
+                                <path
+                                    d={`M ${indicators.map((p, i) => {
+                                        if (p.rsi === null) return null;
+                                        const x = (i / (indicators.length - 1)) * 100;
+                                        const y = 100 - p.rsi;
+                                        return `${x} ${y}`;
+                                    }).filter(Boolean).join(' L ')}`}
+                                    fill="none"
+                                    stroke="#a855f7"
+                                    strokeWidth="1"
+                                />
+
+                                {/* Scale Labels */}
+                                <text x="98" y="8" fill="black" fontSize="6" textAnchor="end" opacity="0.9" fontWeight="bold">100</text>
+                                <text x="98" y="52" fill="black" fontSize="6" textAnchor="end" opacity="0.9" fontWeight="bold">50</text>
+                                <text x="98" y="95" fill="black" fontSize="6" textAnchor="end" opacity="0.9" fontWeight="bold">0</text>
+                            </svg>
                         </div>
+                    </div>
+                )}
 
-                        {/* RSI Chart */}
-                        {showRSI && indicators.length > 0 && (
-                            <div className="h-40 w-full">
-                                <p className="text-xs font-bold text-purple-400 mb-2">Relative Strength Index (14)</p>
-                                <div className="h-full w-full relative border-t border-b border-white/5 rounded-lg overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
-                                    <svg viewBox="0 0 100 100" className="w-full h-full" preserveAspectRatio="none">
-                                        {/* Guidelines - Center line at 50 */}
-                                        <line x1="0" y1="50" x2="100" y2="50" stroke="black" strokeOpacity="0.2" strokeDasharray="2 2" strokeWidth="0.5" />
+                {/* MACD Chart */}
+                {showMACD && indicators.length > 0 && (
+                    <div className="h-40 w-full">
+                        <p className="text-xs font-bold text-orange-400 mb-2">MACD (12, 26, 9)</p>
+                        <div className="h-full w-full relative border-t border-b border-white/5 rounded-lg overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
+                            <svg viewBox="0 0 100 100" className="w-full h-full" preserveAspectRatio="none">
+                                {(() => {
+                                    const macdValues = indicators.map(i => i.macd).filter(v => v !== null);
+                                    const minVal = Math.min(...macdValues, -1);
+                                    const maxVal = Math.max(...macdValues, 1);
+                                    const range = maxVal - minVal;
+                                    const zeroY = 100 - ((0 - minVal) / range) * 100;
 
-                                        {/* RSI Line */}
-                                        <path
-                                            d={`M ${indicators.map((p, i) => {
-                                                if (p.rsi === null) return null;
+                                    return (
+                                        <>
+                                            <line x1="0" y1={zeroY} x2="100" y2={zeroY} stroke="black" strokeOpacity="0.2" strokeWidth="0.5" />
+
+                                            {/* Histogram */}
+                                            {indicators.map((p, i) => {
+                                                if (p.macdHistogram === null) return null;
                                                 const x = (i / (indicators.length - 1)) * 100;
-                                                const y = 100 - p.rsi;
-                                                return `${x} ${y}`;
-                                            }).filter(Boolean).join(' L ')}`}
-                                            fill="none"
-                                            stroke="#a855f7"
-                                            strokeWidth="1"
-                                        />
+                                                const width = (100 / indicators.length) * 0.8;
+                                                const y = 100 - ((p.macdHistogram - minVal) / range) * 100;
+                                                const height = Math.abs(y - zeroY);
+                                                const color = p.macdHistogram >= 0 ? '#10B981' : '#EF4444';
 
-                                        {/* Scale Labels */}
-                                        <text x="98" y="8" fill="black" fontSize="6" textAnchor="end" opacity="0.9" fontWeight="bold">100</text>
-                                        <text x="98" y="52" fill="black" fontSize="6" textAnchor="end" opacity="0.9" fontWeight="bold">50</text>
-                                        <text x="98" y="95" fill="black" fontSize="6" textAnchor="end" opacity="0.9" fontWeight="bold">0</text>
-                                    </svg>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* MACD Chart */}
-                        {showMACD && indicators.length > 0 && (
-                            <div className="h-40 w-full">
-                                <p className="text-xs font-bold text-orange-400 mb-2">MACD (12, 26, 9)</p>
-                                <div className="h-full w-full relative border-t border-b border-white/5 rounded-lg overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
-                                    <svg viewBox="0 0 100 100" className="w-full h-full" preserveAspectRatio="none">
-                                        {(() => {
-                                            const macdValues = indicators.map(i => i.macd).filter(v => v !== null);
-                                            const minVal = Math.min(...macdValues, -1);
-                                            const maxVal = Math.max(...macdValues, 1);
-                                            const range = maxVal - minVal;
-                                            const zeroY = 100 - ((0 - minVal) / range) * 100;
-
-                                            return (
-                                                <>
-                                                    <line x1="0" y1={zeroY} x2="100" y2={zeroY} stroke="black" strokeOpacity="0.2" strokeWidth="0.5" />
-
-                                                    {/* Histogram */}
-                                                    {indicators.map((p, i) => {
-                                                        if (p.macdHistogram === null) return null;
-                                                        const x = (i / (indicators.length - 1)) * 100;
-                                                        const width = (100 / indicators.length) * 0.8;
-                                                        const y = 100 - ((p.macdHistogram - minVal) / range) * 100;
-                                                        const height = Math.abs(y - zeroY);
-                                                        const color = p.macdHistogram >= 0 ? '#10B981' : '#EF4444';
-
-                                                        return (
-                                                            <rect
-                                                                key={i}
-                                                                x={x}
-                                                                y={Math.min(y, zeroY)}
-                                                                width={width}
-                                                                height={height}
-                                                                fill={color}
-                                                                opacity="0.5"
-                                                            />
-                                                        );
-                                                    })}
-
-                                                    {/* MACD Line */}
-                                                    <path
-                                                        d={`M ${indicators.map((p, i) => {
-                                                            if (p.macd === null) return null;
-                                                            const x = (i / (indicators.length - 1)) * 100;
-                                                            const y = 100 - ((p.macd - minVal) / range) * 100;
-                                                            return `${x} ${y}`;
-                                                        }).filter(Boolean).join(' L ')}`}
-                                                        fill="none"
-                                                        stroke="#f97316"
-                                                        strokeWidth="1"
+                                                return (
+                                                    <rect
+                                                        key={i}
+                                                        x={x}
+                                                        y={Math.min(y, zeroY)}
+                                                        width={width}
+                                                        height={height}
+                                                        fill={color}
+                                                        opacity="0.5"
                                                     />
+                                                );
+                                            })}
 
-                                                    {/* Signal Line */}
-                                                    <path
-                                                        d={`M ${indicators.map((p, i) => {
-                                                            if (p.macdSignal === null) return null;
-                                                            const x = (i / (indicators.length - 1)) * 100;
-                                                            const y = 100 - ((p.macdSignal - minVal) / range) * 100;
-                                                            return `${x} ${y}`;
-                                                        }).filter(Boolean).join(' L ')}`}
-                                                        fill="none"
-                                                        stroke="#3b82f6"
-                                                        strokeWidth="0.8"
-                                                    />
+                                            {/* MACD Line */}
+                                            <path
+                                                d={`M ${indicators.map((p, i) => {
+                                                    if (p.macd === null) return null;
+                                                    const x = (i / (indicators.length - 1)) * 100;
+                                                    const y = 100 - ((p.macd - minVal) / range) * 100;
+                                                    return `${x} ${y}`;
+                                                }).filter(Boolean).join(' L ')}`}
+                                                fill="none"
+                                                stroke="#f97316"
+                                                strokeWidth="1"
+                                            />
 
-                                                    {/* Scale Labels */}
-                                                    <text x="98" y="10" fill="black" fontSize="6" textAnchor="end" opacity="0.9" fontWeight="bold">{maxVal.toFixed(2)}</text>
-                                                    <text x="98" y={zeroY - 2} fill="black" fontSize="6" textAnchor="end" opacity="0.9" fontWeight="bold">0.00</text>
-                                                    <text x="98" y="95" fill="black" fontSize="6" textAnchor="end" opacity="0.9" fontWeight="bold">{minVal.toFixed(2)}</text>
-                                                </>
-                                            );
-                                        })()}
-                                    </svg>
-                                </div>
-                            </div>
-                        )}
-                    </Card>
-                )
-            }
+                                            {/* Signal Line */}
+                                            <path
+                                                d={`M ${indicators.map((p, i) => {
+                                                    if (p.macdSignal === null) return null;
+                                                    const x = (i / (indicators.length - 1)) * 100;
+                                                    const y = 100 - ((p.macdSignal - minVal) / range) * 100;
+                                                    return `${x} ${y}`;
+                                                }).filter(Boolean).join(' L ')}`}
+                                                fill="none"
+                                                stroke="#3b82f6"
+                                                strokeWidth="0.8"
+                                            />
+
+                                            {/* Scale Labels */}
+                                            <text x="98" y="10" fill="black" fontSize="6" textAnchor="end" opacity="0.9" fontWeight="bold">{maxVal.toFixed(2)}</text>
+                                            <text x="98" y={zeroY - 2} fill="black" fontSize="6" textAnchor="end" opacity="0.9" fontWeight="bold">0.00</text>
+                                            <text x="98" y="95" fill="black" fontSize="6" textAnchor="end" opacity="0.9" fontWeight="bold">{minVal.toFixed(2)}</text>
+                                        </>
+                                    );
+                                })()}
+                            </svg>
+                        </div>
+                    </div>
+                )}
+            </Card>
 
 
+
+            {/* Market Timer */}
+            <Card className="p-5 relative mb-6" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
+                {/* Lock Overlay */}
+                {!skills.marketTimer && (
+                    <div className="absolute inset-0 backdrop-blur-sm bg-black/40 rounded-2xl z-10 flex flex-col items-center justify-center gap-3">
+                        <Lock size={48} className="text-white/90" />
+                        <div className="text-center">
+                            <p className="text-white font-bold text-lg">{t('skill_locked')}</p>
+                            <p className="text-white/70 text-sm mt-1">Unlock Market Timer</p>
+                        </div>
+                    </div>
+                )}
+
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="font-bold text-lg flex items-center gap-2">
+                        <Target size={20} className="text-blue-500" />
+                        {t('market_timer')}
+                    </h3>
+                    {skills.marketTimer && (
+                        <span className="px-2 py-1 rounded bg-green-500/20 text-green-500 text-xs font-bold">Active</span>
+                    )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="p-3 rounded-xl bg-black/20 border border-white/5 text-center">
+                        <p className="text-xs opacity-50 uppercase mb-1">Signal</p>
+                        <p className="font-bold text-lg text-green-400">STRONG BUY</p>
+                    </div>
+                    <div className="p-3 rounded-xl bg-black/20 border border-white/5 text-center">
+                        <p className="text-xs opacity-50 uppercase mb-1">Confidence</p>
+                        <p className="font-bold text-lg">87%</p>
+                    </div>
+                </div>
+                <p className="text-xs opacity-50 mt-3 text-center">
+                    Based on technical patterns and market sentiment analysis.
+                </p>
+            </Card>
 
             {/* Fundamentals */}
-            {
-                skills.fundamentalAnalyst && fundamentals && (
-                    <Card className="p-5" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
-                        <h3 className="font-bold text-lg mb-4">{t('fundamentals')}</h3>
-                        <div className="grid grid-cols-2 gap-y-4 gap-x-8">
-                            <div>
-                                <p className="text-xs opacity-50 uppercase">{t('market_cap')}</p>
-                                <p className="font-bold">{fundamentals.summaryDetail?.marketCap ? `$${(fundamentals.summaryDetail.marketCap / 1e9).toFixed(2)}B` : 'N/A'}</p>
-                            </div>
-                            <div>
-                                <p className="text-xs opacity-50 uppercase">{t('pe_ratio')}</p>
-                                <p className="font-bold">{fundamentals.summaryDetail?.trailingPE?.toFixed(2) || 'N/A'}</p>
-                            </div>
-                            <div>
-                                <p className="text-xs opacity-50 uppercase">{t('eps')}</p>
-                                <p className="font-bold">{fundamentals.defaultKeyStatistics?.trailingEps?.toFixed(2) || 'N/A'}</p>
-                            </div>
-                            <div>
-                                <p className="text-xs opacity-50 uppercase">{t('week_high')}</p>
-                                <p className="font-bold">${fundamentals.summaryDetail?.fiftyTwoWeekHigh?.toFixed(2) || 'N/A'}</p>
-                            </div>
-                            <div>
-                                <p className="text-xs opacity-50 uppercase">{t('week_low')}</p>
-                                <p className="font-bold">${fundamentals.summaryDetail?.fiftyTwoWeekLow?.toFixed(2) || 'N/A'}</p>
-                            </div>
-                            <div>
-                                <p className="text-xs opacity-50 uppercase">{t('volume')}</p>
-                                <p className="font-bold">{fundamentals.summaryDetail?.volume ? (fundamentals.summaryDetail.volume / 1e6).toFixed(2) + 'M' : 'N/A'}</p>
-                            </div>
+            <Card className="p-5 relative" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
+                {/* Lock Overlay */}
+                {!skills.fundamentalAnalyst && (
+                    <div className="absolute inset-0 backdrop-blur-sm bg-black/40 rounded-2xl z-10 flex flex-col items-center justify-center gap-3">
+                        <Lock size={48} className="text-white/90" />
+                        <div className="text-center">
+                            <p className="text-white font-bold text-lg">{t('skill_locked')}</p>
+                            <p className="text-white/70 text-sm mt-1">{t('unlock_fundamental_analyst')}</p>
                         </div>
-                    </Card>
-                )
-            }
+                    </div>
+                )}
+
+                <h3 className="font-bold text-lg mb-4">{t('fundamentals')}</h3>
+                <div className="grid grid-cols-2 gap-y-4 gap-x-8">
+                    <div>
+                        <p className="text-xs opacity-50 uppercase">{t('market_cap')}</p>
+                        <p className="font-bold">{fundamentals?.summaryDetail?.marketCap ? `$${(fundamentals.summaryDetail.marketCap / 1e9).toFixed(2)}B` : 'N/A'}</p>
+                    </div>
+                    <div>
+                        <p className="text-xs opacity-50 uppercase">{t('pe_ratio')}</p>
+                        <p className="font-bold">{fundamentals?.summaryDetail?.trailingPE?.toFixed(2) || 'N/A'}</p>
+                    </div>
+                    <div>
+                        <p className="text-xs opacity-50 uppercase">{t('eps')}</p>
+                        <p className="font-bold">{fundamentals?.defaultKeyStatistics?.trailingEps?.toFixed(2) || 'N/A'}</p>
+                    </div>
+                    <div>
+                        <p className="text-xs opacity-50 uppercase">{t('week_high')}</p>
+                        <p className="font-bold">${fundamentals?.summaryDetail?.fiftyTwoWeekHigh?.toFixed(2) || 'N/A'}</p>
+                    </div>
+                    <div>
+                        <p className="text-xs opacity-50 uppercase">{t('week_low')}</p>
+                        <p className="font-bold">${fundamentals?.summaryDetail?.fiftyTwoWeekLow?.toFixed(2) || 'N/A'}</p>
+                    </div>
+                    <div>
+                        <p className="text-xs opacity-50 uppercase">{t('volume')}</p>
+                        <p className="font-bold">{fundamentals?.summaryDetail?.volume ? (fundamentals.summaryDetail.volume / 1e6).toFixed(2) + 'M' : 'N/A'}</p>
+                    </div>
+                </div>
+            </Card>
 
             {/* About */}
             <Card className="p-5" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
@@ -721,9 +774,9 @@ export const StockDetail: React.FC = () => {
                                 ) : (
                                     <button
                                         disabled
-                                        className="py-4 rounded-2xl bg-white/5 text-white/20 font-bold cursor-not-allowed border border-white/5"
+                                        className="py-4 rounded-2xl bg-white/5 text-white/20 font-bold cursor-not-allowed border border-white/5 flex items-center justify-center gap-2"
                                     >
-                                        {t('sell')}
+                                        {t('short_sell')} <Lock size={14} />
                                     </button>
                                 )
                             )}

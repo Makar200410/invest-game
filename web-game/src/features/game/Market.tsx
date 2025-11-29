@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { RefreshCcw } from 'lucide-react';
+import { RefreshCcw, Lock } from 'lucide-react';
 import { useGameStore } from '../../store/gameStore';
-import { fetchCryptoMarket, type MarketItem, updateScore } from '../../services/api';
+import { fetchCryptoMarket, fetchMarketChartByInterval, type MarketItem, updateScore } from '../../services/api';
 import { formatPrice } from '../../utils/format';
 
 
@@ -13,12 +13,33 @@ export const Market: React.FC = () => {
     const { balance, loan, portfolio, leveragedPositions, shortPositions, user, skills, tradesToday, getDiversificationBonus, checkOrders } = useGameStore();
     const [items, setItems] = useState<MarketItem[]>([]);
     const [loading, setLoading] = useState(true);
+    const [marketInterval, setMarketInterval] = useState<string>('1d'); // Default to daily
 
     const loadData = async () => {
         setLoading(true);
         // Fetch ALL data from backend (crypto + stocks)
         const allAssets = await fetchCryptoMarket();
-        setItems(allAssets);
+
+        // Fetch chart data for the selected interval if not daily (which comes with market data)
+        if (skills.multiTimeframe && marketInterval !== '1d') {
+            // Fetch interval-specific data for each asset
+            const assetsWithCharts = await Promise.all(
+                allAssets.map(async (asset) => {
+                    try {
+                        const chartData = await fetchMarketChartByInterval(asset.id, marketInterval);
+                        // Remove last point to avoid incomplete data
+                        const cleanChartData = chartData.length > 1 ? chartData.slice(0, -1) : chartData;
+                        return { ...asset, sparkline: cleanChartData };
+                    } catch (e) {
+                        console.error(`Failed to fetch ${marketInterval} data for ${asset.id}`);
+                        return asset;
+                    }
+                })
+            );
+            setItems(assetsWithCharts);
+        } else {
+            setItems(allAssets);
+        }
 
         // Check for stop-loss/take-profit triggers
         allAssets.forEach(asset => {
@@ -32,7 +53,7 @@ export const Market: React.FC = () => {
         loadData();
         const interval = setInterval(loadData, 60000); // Update every minute
         return () => clearInterval(interval);
-    }, []);
+    }, [marketInterval, skills.multiTimeframe]); // Reload when interval or skill changes
 
     // Sync score with backend if logged in
     useEffect(() => {
@@ -127,24 +148,85 @@ export const Market: React.FC = () => {
                         </div>
 
                         <div className="flex flex-wrap gap-2">
-                            {skills.portfolioManager && getDiversificationBonus() > 1 && (
-                                <div className="px-3 py-1.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/10 text-xs font-bold text-green-100 flex items-center gap-1.5">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-green-400"></div>
-                                    +5% Diversity
-                                </div>
+                            {/* Portfolio Manager Badge */}
+                            <div className={`px-3 py-1.5 rounded-xl backdrop-blur-md border text-xs font-bold flex items-center gap-1.5 ${skills.portfolioManager ? 'bg-white/10 border-white/10 text-green-100' : 'bg-black/20 border-white/5 text-white/40'}`}>
+                                {skills.portfolioManager ? (
+                                    <>
+                                        <div className="w-1.5 h-1.5 rounded-full bg-green-400"></div>
+                                        {getDiversificationBonus() > 1 ? '+5% Diversity' : 'Diversity Active'}
+                                    </>
+                                ) : (
+                                    <>
+                                        <Lock size={10} />
+                                        Portfolio Mgr
+                                    </>
+                                )}
+                            </div>
+
+                            {/* Day Trader Badge */}
+                            <div className={`px-3 py-1.5 rounded-xl backdrop-blur-md border text-xs font-bold flex items-center gap-1.5 ${skills.dayTrader ? 'bg-white/10 border-white/10 text-blue-100' : 'bg-black/20 border-white/5 text-white/40'}`}>
+                                {skills.dayTrader ? (
+                                    <>
+                                        <div className="w-1.5 h-1.5 rounded-full bg-blue-400"></div>
+                                        {tradesToday} Trades
+                                    </>
+                                ) : (
+                                    <>
+                                        <Lock size={10} />
+                                        Day Trader ({tradesToday}/50)
+                                    </>
+                                )}
+                            </div>
+
+                            {/* Risk Manager Badge */}
+                            <div className={`px-3 py-1.5 rounded-xl backdrop-blur-md border text-xs font-bold flex items-center gap-1.5 ${skills.riskManager ? 'bg-white/10 border-white/10 text-purple-100' : 'bg-black/20 border-white/5 text-white/40'}`}>
+                                {skills.riskManager ? (
+                                    <>
+                                        <div className="w-1.5 h-1.5 rounded-full bg-purple-400"></div>
+                                        Risk Protected
+                                    </>
+                                ) : (
+                                    <>
+                                        <Lock size={10} />
+                                        Risk Mgr
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Timeframe Selector */}
+            <div className="px-4 pb-2">
+                <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
+                    <div className="p-4">
+                        <div className="flex items-center justify-between mb-3">
+                            <h3 className="text-sm font-bold opacity-70" style={{ color: 'var(--text-primary)' }}>Chart Timeframe</h3>
+                            {!skills.multiTimeframe && (
+                                <span className="text-xs px-2 py-1 rounded-full bg-white/5 text-white/40 flex items-center gap-1">
+                                    <Lock size={10} /> Locked
+                                </span>
                             )}
-                            {skills.dayTrader && (
-                                <div className="px-3 py-1.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/10 text-xs font-bold text-blue-100 flex items-center gap-1.5">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-blue-400"></div>
-                                    {tradesToday} Trades
-                                </div>
-                            )}
-                            {skills.riskManager && (
-                                <div className="px-3 py-1.5 rounded-xl bg-white/10 backdrop-blur-md border border-white/10 text-xs font-bold text-purple-100 flex items-center gap-1.5">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-purple-400"></div>
-                                    Risk Protected
-                                </div>
-                            )}
+                        </div>
+                        <div className="flex gap-2 overflow-x-auto pb-1">
+                            {['1m', '5m', '1h', '1d'].map((interval) => {
+                                const isLocked = !skills.multiTimeframe && interval !== '1d';
+                                return (
+                                    <button
+                                        key={interval}
+                                        onClick={() => !isLocked && setMarketInterval(interval)}
+                                        disabled={isLocked}
+                                        className={`px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${marketInterval === interval
+                                            ? 'bg-blue-500 text-white'
+                                            : 'bg-white/5 text-white/60 hover:bg-white/10'
+                                            } ${isLocked ? 'opacity-30 cursor-not-allowed' : ''}`}
+                                    >
+                                        {interval}
+                                        {isLocked && <span className="ml-1">🔒</span>}
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
                 </div>
@@ -163,8 +245,12 @@ export const Market: React.FC = () => {
                             .reduce((sum, p) => sum + p.amount, 0);
                         const owned = (portfolioItem?.amount || 0) + leveragedAmount;
 
-                        // Create sparkline data with 12 points for hourly chart (assuming 5m interval)
-                        const chartHistory = item.sparkline?.slice(-12) || [];
+                        // Create sparkline data with full history (approx 24h) - exclude last point
+                        const fullHistory = item.sparkline || [];
+                        // Remove the last point if it exists to avoid incomplete/incorrect data
+                        // Then limit to last 90 points for consistent display
+                        let chartHistory = fullHistory.length > 1 ? fullHistory.slice(0, -1) : fullHistory;
+                        chartHistory = chartHistory.slice(-90); // Show last 90 points maximum
                         const prices = chartHistory.map(p => p.price);
                         const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
                         const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
@@ -208,10 +294,15 @@ export const Market: React.FC = () => {
                                         {/* Larger Chart */}
                                         {chartHistory.length > 1 && (
                                             <svg width="100" height="60" className="overflow-visible opacity-70 shrink-0">
+                                                <defs>
+                                                    <linearGradient id={`gradient-${item.id}`} x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="0%" stopColor={chartColor} stopOpacity="0.3" />
+                                                        <stop offset="100%" stopColor={chartColor} stopOpacity="0" />
+                                                    </linearGradient>
+                                                </defs>
                                                 <polygon
                                                     points={fillPoints}
-                                                    fill={chartColor}
-                                                    fillOpacity="0.2"
+                                                    fill={`url(#gradient-${item.id})`}
                                                 />
                                                 <polyline
                                                     points={sparklinePoints}
