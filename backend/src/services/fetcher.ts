@@ -424,3 +424,47 @@ export const fetchHistory = async (symbol: string, interval: string = '5m') => {
         return [];
     }
 };
+
+// Cache for Yahoo Analysis to respect 30 min update rule
+const analysisCache: Record<string, { data: any; timestamp: number }> = {};
+
+export const fetchYahooAnalysis = async (symbol: string) => {
+    const now = Date.now();
+    const cacheKey = symbol;
+
+    // Check cache (30 minutes = 30 * 60 * 1000 ms)
+    if (analysisCache[cacheKey] && (now - analysisCache[cacheKey].timestamp < 30 * 60 * 1000)) {
+        console.log(`Using cached Yahoo analysis for ${symbol}`);
+        return analysisCache[cacheKey].data;
+    }
+
+    try {
+        console.log(`Fetching fresh Yahoo analysis for ${symbol}...`);
+        const result = await yahooFinance.quoteSummary(symbol, {
+            modules: [
+                'financialData',
+                'defaultKeyStatistics',
+                'summaryDetail',
+                'recommendationTrend'
+            ]
+        });
+
+        const data = {
+            financialData: result.financialData,
+            defaultKeyStatistics: result.defaultKeyStatistics,
+            summaryDetail: result.summaryDetail,
+            recommendationTrend: result.recommendationTrend
+        };
+
+        // Update cache
+        analysisCache[cacheKey] = {
+            data,
+            timestamp: now
+        };
+
+        return data;
+    } catch (error) {
+        console.error(`Failed to fetch Yahoo analysis for ${symbol}:`, error);
+        return null;
+    }
+};

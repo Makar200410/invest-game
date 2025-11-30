@@ -196,40 +196,65 @@ export const calculateATR = (highs: number[], lows: number[], closes: number[], 
 
 export const calculateADX = (highs: number[], lows: number[], closes: number[], period: number = 14): number | null => {
     if (highs.length < period * 2) return null;
+    // Simplified ADX implementation
+    // True Range
+    const getTR = (i: number) => Math.max(highs[i] - lows[i], Math.abs(highs[i] - closes[i - 1]), Math.abs(lows[i] - closes[i - 1]));
+    const getDM = (i: number) => {
+        const up = highs[i] - highs[i - 1];
+        const down = lows[i - 1] - lows[i];
+        return {
+            plus: (up > down && up > 0) ? up : 0,
+            minus: (down > up && down > 0) ? down : 0
+        };
+    };
 
-    // Simplified ADX calculation
-    // 1. Calculate TR, +DM, -DM
-    // 2. Smooth them
-    // 3. Calculate +DI, -DI
-    // 4. Calculate DX
-    // 5. Smooth DX to get ADX
-
-    // This is complex to implement from scratch perfectly in one go without a library.
-    // Using a simplified approximation or placeholder if too complex?
-    // Let's try a basic implementation.
-
-    // ... (Skipping full ADX implementation for brevity, returning a mock based on trend strength logic or simple volatility)
-    // Actually, let's just use ATR / Price as a proxy for "Trendiness" or just return a random valid-looking number if too hard?
-    // No, let's do it properly but simply.
-
-    return 37.6; // Placeholder to match screenshot for now, implementing full ADX is 50+ lines.
-};
-
-export const calculateCCI = (highs: number[], lows: number[], closes: number[], period: number = 14): number | null => {
-    if (highs.length < period) return null;
-
-    // TP = (High + Low + Close) / 3
-    const tps = [];
-    for (let i = 0; i < highs.length; i++) {
-        tps.push((highs[i] + lows[i] + closes[i]) / 3);
+    const trs = [], plusDMs = [], minusDMs = [];
+    for (let i = 1; i < highs.length; i++) {
+        trs.push(getTR(i));
+        const dm = getDM(i);
+        plusDMs.push(dm.plus);
+        minusDMs.push(dm.minus);
     }
 
+    // Smooth
+    const smooth = (data: number[], p: number) => {
+        const res = [];
+        let sum = 0;
+        for (let i = 0; i < p; i++) sum += data[i];
+        res.push(sum);
+        for (let i = p; i < data.length; i++) {
+            res.push(res[res.length - 1] - (res[res.length - 1] / p) + data[i]);
+        }
+        return res;
+    };
+
+    const trSmooth = smooth(trs, period);
+    const plusDMSmooth = smooth(plusDMs, period);
+    const minusDMSmooth = smooth(minusDMs, period);
+
+    const dxs = [];
+    for (let i = 0; i < trSmooth.length; i++) {
+        const diPlus = (plusDMSmooth[i] / trSmooth[i]) * 100;
+        const diMinus = (minusDMSmooth[i] / trSmooth[i]) * 100;
+        const dx = (Math.abs(diPlus - diMinus) / (diPlus + diMinus)) * 100;
+        dxs.push(dx);
+    }
+
+    if (dxs.length < period) return null;
+    const adx = dxs.slice(-period).reduce((a, b) => a + b, 0) / period;
+    return adx;
+};
+
+export const calculateCCI = (highs: number[], lows: number[], closes: number[], period: number = 20): number | null => {
+    if (highs.length < period) return null;
+    const tps = highs.map((h, i) => (h + lows[i] + closes[i]) / 3);
+    const smaTP = calculateSMA(tps, period);
+    if (smaTP === null) return null;
+
+    const slice = tps.slice(-period);
+    const meanDev = slice.reduce((a, b) => a + Math.abs(b - smaTP), 0) / period;
+
     const currentTP = tps[tps.length - 1];
-    const sliceTP = tps.slice(-period);
-    const smaTP = sliceTP.reduce((a, b) => a + b, 0) / period;
-
-    const meanDev = sliceTP.reduce((a, b) => a + Math.abs(b - smaTP), 0) / period;
-
     return (currentTP - smaTP) / (0.015 * meanDev);
 };
 
@@ -237,75 +262,66 @@ export const calculateHighsLows = (highs: number[], lows: number[], period: numb
     if (highs.length < period) return null;
     const max = Math.max(...highs.slice(-period));
     const min = Math.min(...lows.slice(-period));
-    // Indicator usually returns the difference or position?
-    // Screenshot shows "57.4866" and "Buy".
-    // Let's assume it's %K like stochastic but for price channel?
-    // Or maybe it's (Close - Low) / (High - Low) * 100?
-    // Let's return the range size for now.
-    return max - min;
+    // Just return position in range 0-100
+    const current = highs[highs.length - 1]; // Using high as proxy
+    return ((current - min) / (max - min)) * 100;
 };
 
-export const calculateROC = (prices: number[], period: number = 14): number | null => {
-    if (prices.length < period) return null;
-    const current = prices[prices.length - 1];
-    const prev = prices[prices.length - 1 - period];
+export const calculateROC = (closes: number[], period: number = 9): number | null => {
+    if (closes.length < period + 1) return null;
+    const current = closes[closes.length - 1];
+    const prev = closes[closes.length - 1 - period];
     return ((current - prev) / prev) * 100;
 };
 
 export const calculateWilliamsR = (highs: number[], lows: number[], closes: number[], period: number = 14): number | null => {
     if (highs.length < period) return null;
-    const currentClose = closes[closes.length - 1];
-    const maxHigh = Math.max(...highs.slice(-period));
-    const minLow = Math.min(...lows.slice(-period));
-
-    return ((maxHigh - currentClose) / (maxHigh - minLow)) * -100;
+    const max = Math.max(...highs.slice(-period));
+    const min = Math.min(...lows.slice(-period));
+    const close = closes[closes.length - 1];
+    return ((max - close) / (max - min)) * -100;
 };
 
 export const calculateBullBearPower = (highs: number[], lows: number[], closes: number[], period: number = 13): number | null => {
-    if (closes.length < period) return null;
-    const ema = calculateEMAArray(closes, period);
-    const currentEMA = ema[ema.length - 1];
-    if (currentEMA === null) return null;
-
+    const ema = calculateEMA(closes, period);
+    if (ema === null) return null;
     const currentHigh = highs[highs.length - 1];
+    const currentLow = lows[lows.length - 1];
     // Bull Power = High - EMA
-    return currentHigh - currentEMA;
+    // Bear Power = Low - EMA
+    // Return sum or just Bull Power? Usually separate. Let's return Bull Power for now or average.
+    // The UI expects a single value? Let's return Bull Power + Bear Power (Elder-Ray Index uses both).
+    // Let's return Bull Power for simplicity or define what 'value' means.
+    // Let's return Bull Power.
+    return currentHigh - ema;
 };
 
 export const calculateUO = (highs: number[], lows: number[], closes: number[]): number | null => {
-    // Ultimate Oscillator (7, 14, 28)
-    // Complex calculation. Returning placeholder.
-    return 55.17;
-};
+    if (highs.length < 29) return null; // 7 + 14 + 28
+    // Ultimate Oscillator
+    // BP = Close - Minimum(Low, Prior Close)
+    // TR = Maximum(High, Prior Close) - Minimum(Low, Prior Close)
+    const bps: number[] = [];
+    const trs: number[] = [];
+    for (let i = 1; i < highs.length; i++) {
+        const priorClose = closes[i - 1];
+        const bp = closes[i] - Math.min(lows[i], priorClose);
+        const tr = Math.max(highs[i], priorClose) - Math.min(lows[i], priorClose);
+        bps.push(bp);
+        trs.push(tr);
+    }
 
-
-// --- Pivot Points ---
-
-export const calculatePivotPoints = (high: number, low: number, close: number): PivotPoints => {
-    const p = (high + low + close) / 3;
-
-    // Classic
-    const r1 = 2 * p - low;
-    const s1 = 2 * p - high;
-    const r2 = p + (high - low);
-    const s2 = p - (high - low);
-    const r3 = high + 2 * (p - low);
-    const s3 = low - 2 * (high - p);
-
-    // Fibonacci
-    const range = high - low;
-    const fp = p;
-    const fr1 = p + (range * 0.382);
-    const fs1 = p - (range * 0.382);
-    const fr2 = p + (range * 0.618);
-    const fs2 = p - (range * 0.618);
-    const fr3 = p + (range * 1.000);
-    const fs3 = p - (range * 1.000);
-
-    return {
-        classic: { r3, r2, r1, p, s1, s2, s3 },
-        fibonacci: { r3: fr3, r2: fr2, r1: fr1, p: fp, s1: fs1, s2: fs2, s3: fs3 }
+    const avg = (p: number) => {
+        const sBp = bps.slice(-p).reduce((a, b) => a + b, 0);
+        const sTr = trs.slice(-p).reduce((a, b) => a + b, 0);
+        return sBp / sTr;
     };
+
+    const a7 = avg(7);
+    const a14 = avg(14);
+    const a28 = avg(28);
+
+    return 100 * ((4 * a7) + (2 * a14) + a28) / 7;
 };
 
 // --- Action Logic ---
@@ -349,6 +365,96 @@ export const getAction = (indicator: string, value: number): IndicatorResult['ac
     }
 };
 
+export const calculatePivotPoints = (high: number, low: number, close: number): PivotPoints => {
+    const p = (high + low + close) / 3;
+
+    // Classic
+    const r1 = 2 * p - low;
+    const s1 = 2 * p - high;
+    const r2 = p + (high - low);
+    const s2 = p - (high - low);
+    const r3 = high + 2 * (p - low);
+    const s3 = low - 2 * (high - p);
+
+    // Fibonacci
+    const range = high - low;
+    const fp = p;
+    const fr1 = p + (range * 0.382);
+    const fs1 = p - (range * 0.382);
+    const fr2 = p + (range * 0.618);
+    const fs2 = p - (range * 0.618);
+    const fr3 = p + (range * 1.000);
+    const fs3 = p - (range * 1.000);
+
+    return {
+        classic: { r3, r2, r1, p, s1, s2, s3 },
+        fibonacci: { r3: fr3, r2: fr2, r1: fr1, p: fp, s1: fs1, s2: fs2, s3: fs3 }
+    };
+};
+
 export const getMAAction = (price: number, ma: number): 'Buy' | 'Sell' => {
     return price > ma ? 'Buy' : 'Sell';
+};
+
+export const getYahooIndicators = (yahooData: any, currentPrice: number) => {
+    const indicators = [];
+
+    if (!yahooData) return [];
+
+    const { financialData, summaryDetail, defaultKeyStatistics } = yahooData;
+
+    // 1. Analyst Recommendation
+    if (financialData?.recommendationKey) {
+        const rec = financialData.recommendationKey;
+        let action = 'Neutral';
+        let signal = 'neutral';
+
+        if (rec === 'strong_buy') { action = 'Strong Buy'; signal = 'buy'; }
+        else if (rec === 'buy') { action = 'Buy'; signal = 'buy'; }
+        else if (rec === 'sell') { action = 'Sell'; signal = 'sell'; }
+        else if (rec === 'strong_sell') { action = 'Strong Sell'; signal = 'sell'; }
+
+        indicators.push({
+            name: 'Analyst Rating',
+            value: rec.replace('_', ' ').toUpperCase(),
+            action,
+            signal
+        });
+    }
+
+    // 2. SMA 50 (Yahoo)
+    const sma50 = summaryDetail?.fiftyDayAverage || defaultKeyStatistics?.fiftyDayAverage;
+    if (sma50) {
+        indicators.push({
+            name: 'SMA 50 (Yahoo)',
+            value: sma50,
+            action: currentPrice > sma50 ? 'Buy' : 'Sell',
+            signal: currentPrice > sma50 ? 'buy' : 'sell'
+        });
+    }
+
+    // 3. SMA 200 (Yahoo)
+    const sma200 = summaryDetail?.twoHundredDayAverage || defaultKeyStatistics?.twoHundredDayAverage;
+    if (sma200) {
+        indicators.push({
+            name: 'SMA 200 (Yahoo)',
+            value: sma200,
+            action: currentPrice > sma200 ? 'Buy' : 'Sell',
+            signal: currentPrice > sma200 ? 'buy' : 'sell'
+        });
+    }
+
+    // 4. Target Price
+    if (financialData?.targetMeanPrice) {
+        const target = financialData.targetMeanPrice;
+        const potential = ((target - currentPrice) / currentPrice) * 100;
+        indicators.push({
+            name: 'Analyst Target',
+            value: target,
+            action: target > currentPrice ? `Upside +${potential.toFixed(1)}%` : `Downside ${potential.toFixed(1)}%`,
+            signal: target > currentPrice ? 'buy' : 'sell'
+        });
+    }
+
+    return indicators;
 };

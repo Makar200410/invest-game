@@ -12,16 +12,21 @@ import {
     getUsersByIp,
     createUser,
     updateUser,
-    addInsiderTip,
-    getInsiderTips,
     addAssetComment,
     getAssetComments,
     toggleLikeComment,
     getMarketItems,
-    getMarketHistory
+    getMarketHistory,
+    getInsiderTips,
+    addInsiderTip
 } from './services/storage.js';
-import { updateMarketData, fetchHistory } from './services/fetcher.js';
-
+import { updateMarketData, fetchHistory, fetchYahooAnalysis } from './services/fetcher.js';
+import {
+    calculateRSI, calculateStoch, calculateStochRSI, calculateMACDValue, calculateATR,
+    calculateADX, calculateCCI, calculateHighsLows, calculateROC, calculateWilliamsR,
+    calculateBullBearPower, calculateUO, calculatePivotPoints, calculateSMA, calculateEMA,
+    getAction, getMAAction, getYahooIndicators, type PivotPoints
+} from './services/indicators.js';
 
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
@@ -198,12 +203,7 @@ app.get('/api/history/:symbol/:interval', async (req, res) => {
     }
 });
 
-import {
-    calculateRSI, calculateStoch, calculateStochRSI, calculateMACDValue, calculateATR,
-    calculateADX, calculateCCI, calculateHighsLows, calculateROC, calculateWilliamsR,
-    calculateBullBearPower, calculateUO, calculatePivotPoints, calculateSMA, calculateEMA,
-    getAction, getMAAction, type PivotPoints
-} from './services/indicators.js';
+
 
 // ...
 
@@ -248,6 +248,10 @@ app.get('/api/indicators/:symbol', async (req, res) => {
             };
         });
 
+        // --- Yahoo Analysis ---
+        const yahooData = await fetchYahooAnalysis(yahooSymbol);
+        const yahooIndicators = getYahooIndicators(yahooData, currentPrice);
+
         // --- Technical Indicators ---
         const rsi = calculateRSI(closes, 14);
         const stoch = calculateStoch(highs, lows, closes, 9, 6);
@@ -257,18 +261,18 @@ app.get('/api/indicators/:symbol', async (req, res) => {
         const adx = calculateADX(highs, lows, closes, 14);
         const cci = calculateCCI(highs, lows, closes, 14);
         const highsLows = calculateHighsLows(highs, lows, 14);
-        const roc = calculateROC(closes, 14); // Using ROC as proxy for "ROC" in screenshot
+        const roc = calculateROC(closes, 14);
         const williams = calculateWilliamsR(highs, lows, closes, 14);
         const bullBear = calculateBullBearPower(highs, lows, closes, 13);
         const uo = calculateUO(highs, lows, closes);
 
-        const indicators = [
+        const calculatedIndicators = [
             { name: 'RSI(14)', value: rsi, action: rsi ? getAction('RSI', rsi) : 'Neutral' },
             { name: 'STOCH(9,6)', value: stoch?.k, action: stoch ? getAction('STOCH', stoch.k) : 'Neutral' },
             { name: 'STOCHRSI(14)', value: stochRsi, action: stochRsi ? getAction('STOCHRSI', stochRsi) : 'Neutral' },
             { name: 'MACD(12,26)', value: macd, action: macd ? getAction('MACD', macd) : 'Neutral' },
             { name: 'ATR(14)', value: atr, action: atr ? getAction('ATR', atr) : 'Neutral' },
-            { name: 'ADX(14)', value: adx, action: 'Buy' }, // Placeholder action
+            { name: 'ADX(14)', value: adx, action: 'Buy' }, // Placeholder
             { name: 'CCI(14)', value: cci, action: cci ? getAction('CCI', cci) : 'Neutral' },
             { name: 'Highs/Lows(14)', value: highsLows, action: 'Buy' }, // Placeholder
             { name: 'UO', value: uo, action: 'Buy' }, // Placeholder
@@ -276,6 +280,9 @@ app.get('/api/indicators/:symbol', async (req, res) => {
             { name: 'WilliamsR', value: williams, action: williams ? getAction('WilliamsR', williams) : 'Neutral' },
             { name: 'BullBear(13)', value: bullBear, action: bullBear ? getAction('BullBear', bullBear) : 'Neutral' }
         ];
+
+        // Combine Calculated and Yahoo Indicators
+        const indicators = [...calculatedIndicators, ...yahooIndicators];
 
         // --- Summary ---
         let buyCount = 0;
@@ -288,10 +295,10 @@ app.get('/api/indicators/:symbol', async (req, res) => {
             if (ma.exponentialAction === 'Buy') buyCount++; else if (ma.exponentialAction === 'Sell') sellCount++; else neutralCount++;
         });
 
-        // Count from Indicators
+        // Count from Indicators (including Yahoo ones)
         indicators.forEach(ind => {
-            if (ind.action === 'Buy' || ind.action === 'Strong Buy') buyCount++;
-            else if (ind.action === 'Sell' || ind.action === 'Strong Sell') sellCount++;
+            if (ind.action === 'Buy' || ind.action === 'Strong Buy' || ind.action.includes('Upside')) buyCount++;
+            else if (ind.action === 'Sell' || ind.action === 'Strong Sell' || ind.action.includes('Downside')) sellCount++;
             else neutralCount++;
         });
 

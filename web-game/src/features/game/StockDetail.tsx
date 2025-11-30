@@ -29,26 +29,30 @@ export const StockDetail: React.FC = () => {
 
     // State
     const [asset, setAsset] = useState<MarketItem | null>(null);
-    const [history, setHistory] = useState<{ price: number; date: string; open?: number; high?: number; low?: number; close?: number; volume?: number }[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [hoverData, setHoverData] = useState<{ price: number; date: string; index: number; open?: number; high?: number; low?: number; close?: number } | null>(null);
-    const [interval, setIntervalState] = useState(skills.multiTimeframe ? '5m' : '1d');
-    const [indicatorInterval, setIndicatorInterval] = useState('1d');
-    const [chartType, setChartType] = useState<'candle' | 'line'>('line');
-    const [activeTab, setActiveTab] = useState('overview');
-    const [showBB, setShowBB] = useState(false);
-    const [showRSI, setShowRSI] = useState(false);
-    const [showMACD, setShowMACD] = useState(false);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const [indicators, setIndicators] = useState<any[]>([]);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const [fundamentals, setFundamentals] = useState<any>(null);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const [companyNews, setCompanyNews] = useState<any[]>([]);
     const [newsLoading, setNewsLoading] = useState(false);
     const [comments, setComments] = useState<Comment[]>([]);
     const [commentInput, setCommentInput] = useState('');
     const commentsEndRef = useRef<HTMLDivElement>(null);
+    const [history, setHistory] = useState<{ price: number; date: string; open?: number; high?: number; low?: number; close?: number; volume?: number }[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [hoverData, setHoverData] = useState<{ price: number; date: string; index: number; open?: number; high?: number; low?: number; close?: number } | null>(null);
+    const [interval, setIntervalState] = useState(skills.multiTimeframe ? '5m' : '1d');
+
+    interface TechnicalAnalysisData {
+        pivotPoints: any;
+        movingAverages: any[];
+        indicators: any[];
+        summary: any;
+    }
+    const [indicators, setIndicators] = useState<TechnicalAnalysisData | null>(null);
+    const [indicatorInterval, setIndicatorInterval] = useState('1d');
+
+    const [chartType, setChartType] = useState<'candle' | 'line'>('line');
+    const [activeTab, setActiveTab] = useState('overview');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const [fundamentals, setFundamentals] = useState<any>(null);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const [companyNews, setCompanyNews] = useState<any[]>([]);
     const [chartLoaded, setChartLoaded] = useState(false);
 
     // Derived State
@@ -277,7 +281,7 @@ export const StockDetail: React.FC = () => {
                 </div>
             </div>
 
-            {(activeTab === 'overview' || activeTab === 'indicators') && (
+            {(activeTab === 'overview') && (
                 <>
                     {/* Chart Area */}
                     <div id="tutorial-chart-area" className="relative w-full" onMouseLeave={() => setHoverData(null)}>
@@ -314,66 +318,7 @@ export const StockDetail: React.FC = () => {
                                     ))}
 
                                     {/* Bollinger Bands */}
-                                    {showBB && indicators.length > 0 && (
-                                        <>
-                                            {/* Area Fill */}
-                                            <path
-                                                d={`M ${indicators.map((p, i) => {
-                                                    if (p.bbUpper === null || p.bbLower === null) return null;
-                                                    const x = history.length > 1 ? (i / (history.length - 1)) * 100 : 50;
-                                                    const yUpper = 100 - padding - ((p.bbUpper - minPrice) / priceRange) * availableHeight;
-                                                    return `${x} ${yUpper}`;
-                                                }).filter(Boolean).join(' L ')} L ${indicators.slice().reverse().map((p, i) => {
-                                                    const originalIndex = indicators.length - 1 - i;
-                                                    if (p.bbUpper === null || p.bbLower === null) return null;
-                                                    const x = history.length > 1 ? (originalIndex / (history.length - 1)) * 100 : 50;
-                                                    const yLower = 100 - padding - ((p.bbLower - minPrice) / priceRange) * availableHeight;
-                                                    return `${x} ${yLower}`;
-                                                }).filter(Boolean).join(' L ')} Z`}
-                                                fill="rgba(59, 130, 246, 0.1)"
-                                                stroke="none"
-                                            />
-                                            {/* Upper Band */}
-                                            <path
-                                                d={`M ${indicators.map((p, i) => {
-                                                    if (p.bbUpper === null) return null;
-                                                    const x = history.length > 1 ? (i / (history.length - 1)) * 100 : 50;
-                                                    const y = 100 - padding - ((p.bbUpper - minPrice) / priceRange) * availableHeight;
-                                                    return `${x} ${y}`;
-                                                }).filter(Boolean).join(' L ')}`}
-                                                fill="none"
-                                                stroke="#3b82f6"
-                                                strokeWidth="0.5"
-                                                strokeOpacity="0.5"
-                                            />
-                                            {/* Lower Band */}
-                                            <path
-                                                d={`M ${indicators.map((p, i) => {
-                                                    if (p.bbLower === null) return null;
-                                                    const x = history.length > 1 ? (i / (history.length - 1)) * 100 : 50;
-                                                    const y = 100 - padding - ((p.bbLower - minPrice) / priceRange) * availableHeight;
-                                                    return `${x} ${y}`;
-                                                }).filter(Boolean).join(' L ')}`}
-                                                fill="none"
-                                                stroke="#3b82f6"
-                                                strokeWidth="0.5"
-                                                strokeOpacity="0.5"
-                                            />
-                                            {/* Middle Band */}
-                                            <path
-                                                d={`M ${indicators.map((p, i) => {
-                                                    if (p.bbMiddle === null) return null;
-                                                    const x = history.length > 1 ? (i / (history.length - 1)) * 100 : 50;
-                                                    const y = 100 - padding - ((p.bbMiddle - minPrice) / priceRange) * availableHeight;
-                                                    return `${x} ${y}`;
-                                                }).filter(Boolean).join(' L ')}`}
-                                                fill="none"
-                                                stroke="#3b82f6"
-                                                strokeWidth="0.5"
-                                                strokeDasharray="2 2"
-                                            />
-                                        </>
-                                    )}
+
 
                                     {/* Current Price Line */}
                                     {(chartType === 'line' || (chartType === 'candle' && !history[0].open)) && (() => {
@@ -570,12 +515,13 @@ export const StockDetail: React.FC = () => {
             )}
 
             {activeTab === 'indicators' && (
-                <Card id="technical-analysis" className="p-5 space-y-6 mb-6 relative" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
+                <div className="space-y-6 mb-6 relative">
                     {/* Lock Overlay */}
                     {!skills.technicalAnalyst && (
                         <div
                             onClick={() => navigate('/skills')}
                             className="absolute inset-0 backdrop-blur-sm bg-black/40 rounded-2xl z-10 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-black/50 transition-colors"
+                            style={{ height: '100%' }}
                         >
                             <Lock size={48} className="text-white/90" />
                             <div className="text-center">
@@ -585,17 +531,16 @@ export const StockDetail: React.FC = () => {
                         </div>
                     )}
 
-                    <div className="flex justify-between items-center">
-                        <h3 className="font-bold text-lg">{t('technical_analysis')}</h3>
-
-                        {/* Indicator Interval Selector */}
+                    {/* Indicator Interval Selector */}
+                    <div className="flex justify-between items-center px-1">
+                        <h3 className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>{t('technical_analysis')}</h3>
                         <div className="flex gap-1 p-1 rounded-lg" style={{ backgroundColor: 'var(--bg-primary)' }}>
                             {['5m', '15m', '1h', '3h', '1d'].map((t) => (
                                 <button
                                     key={t}
                                     onClick={() => skills.technicalAnalyst && setIndicatorInterval(t)}
                                     disabled={!skills.technicalAnalyst}
-                                    className={`px-2 py-1 rounded text-xs font-bold transition-all ${indicatorInterval === t ? 'bg-white/20 text-white' : 'text-white/40 hover:text-white/70'} disabled:cursor-not-allowed`}
+                                    className={`px-3 py-1 rounded text-xs font-bold transition-all ${indicatorInterval === t ? 'bg-white/20 text-white' : 'text-white/40 hover:text-white/70'} disabled:cursor-not-allowed`}
                                 >
                                     {t}
                                 </button>
@@ -603,145 +548,140 @@ export const StockDetail: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Controls */}
-                    <div className="flex flex-col gap-4">
-                        {/* Bollinger Bands Toggle (Overlay) */}
-                        <div className="flex items-center justify-between p-3 rounded-lg" style={{ backgroundColor: 'var(--bg-primary)' }}>
-                            <span className="text-sm font-bold opacity-80">{t('overlays')}</span>
-                            <button
-                                onClick={() => skills.technicalAnalyst && setShowBB(!showBB)}
-                                disabled={!skills.technicalAnalyst}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${showBB ? 'bg-blue-500 text-white border-blue-500' : 'bg-transparent text-blue-400 border-blue-500/50'} disabled:cursor-not-allowed disabled:opacity-50`}
-                            >
-                                {t('bollinger_bands')}
-                            </button>
-                        </div>
+                    {indicators && (
+                        <>
+                            {/* Summary */}
+                            <Card className="p-4" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
+                                <div className="flex justify-between items-center mb-4">
+                                    <h4 className="font-bold">{t('summary')}</h4>
+                                    <div className={`px-4 py-1.5 rounded text-sm font-bold ${indicators.summary?.recommendation.includes('Buy') ? 'bg-green-500 text-white' :
+                                        indicators.summary?.recommendation.includes('Sell') ? 'bg-red-500 text-white' :
+                                            'bg-gray-500 text-white'
+                                        }`}>
+                                        {t(indicators.summary?.recommendation?.toLowerCase().replace(' ', '_') || 'neutral')}
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-3 gap-2 text-center text-xs font-bold">
+                                    <div className="p-2 rounded bg-white/5">
+                                        <div className="opacity-50 mb-1">{t('buy')}</div>
+                                        <div className="text-green-400 text-lg">{indicators.summary?.buy || 0}</div>
+                                    </div>
+                                    <div className="p-2 rounded bg-white/5">
+                                        <div className="opacity-50 mb-1">{t('sell')}</div>
+                                        <div className="text-red-400 text-lg">{indicators.summary?.sell || 0}</div>
+                                    </div>
+                                    <div className="p-2 rounded bg-white/5">
+                                        <div className="opacity-50 mb-1">{t('neutral')}</div>
+                                        <div className="text-gray-400 text-lg">{indicators.summary?.neutral || 0}</div>
+                                    </div>
+                                </div>
+                            </Card>
 
-                        {/* Oscillators */}
-                        <div className="flex gap-2 overflow-x-auto pb-2">
-                            <button
-                                onClick={() => setShowRSI(!showRSI)}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${showRSI ? 'bg-purple-500 text-white border-purple-500' : 'bg-transparent text-purple-400 border-purple-500/50'}`}
-                            >
-                                RSI
-                            </button>
-                            <button
-                                onClick={() => setShowMACD(!showMACD)}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${showMACD ? 'bg-orange-500 text-white border-orange-500' : 'bg-transparent text-orange-400 border-orange-500/50'}`}
-                            >
-                                MACD
-                            </button>
-                        </div>
-                    </div>
+                            {/* Pivot Points */}
+                            <Card className="p-4" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
+                                <h4 className="font-bold mb-4">{t('pivot_points')}</h4>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-xs">
+                                        <thead>
+                                            <tr className="opacity-50 border-b border-white/10">
+                                                <th className="text-left py-2">{t('level')}</th>
+                                                <th className="text-right py-2">{t('classic')}</th>
+                                                <th className="text-right py-2">{t('fibonacci')}</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="font-mono">
+                                            {['r3', 'r2', 'r1', 'p', 's1', 's2', 's3'].map((level) => (
+                                                <tr key={level} className="border-b border-white/5 last:border-0">
+                                                    <td className="py-2 font-bold uppercase">{level}</td>
+                                                    <td className="py-2 text-right">{formatPrice(indicators.pivotPoints?.classic[level] || 0)}</td>
+                                                    <td className="py-2 text-right">{formatPrice(indicators.pivotPoints?.fibonacci[level] || 0)}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </Card>
 
-                    {/* RSI Chart */}
-                    {showRSI && indicators.length > 0 && (
-                        <div className="h-40 w-full">
-                            <p className="text-xs font-bold text-purple-400 mb-2">{t('rsi')}</p>
-                            <div className="h-full w-full relative border-t border-b border-white/5 rounded-lg overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
-                                <svg viewBox="0 0 100 100" className="w-full h-full" preserveAspectRatio="none">
-                                    {/* Guidelines - Center line at 50 */}
-                                    <line x1="0" y1="50" x2="100" y2="50" stroke="black" strokeOpacity="0.2" strokeDasharray="2 2" strokeWidth="0.5" />
+                            {/* Moving Averages */}
+                            <Card className="p-4" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
+                                <h4 className="font-bold mb-4">{t('moving_averages')}</h4>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-xs">
+                                        <thead>
+                                            <tr className="opacity-50 border-b border-white/10">
+                                                <th className="text-left py-2">MA</th>
+                                                <th className="text-right py-2">{t('simple')}</th>
+                                                <th className="text-right py-2">{t('exponential')}</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {indicators.movingAverages?.map((ma: any) => (
+                                                <tr key={ma.period} className="border-b border-white/5 last:border-0">
+                                                    <td className="py-2 font-bold">MA{ma.period}</td>
+                                                    <td className="py-2 text-right">
+                                                        <div className="flex justify-end items-center gap-2">
+                                                            <span className="font-mono">{formatPrice(ma.simple || 0)}</span>
+                                                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${ma.simpleAction === 'Buy' ? 'bg-green-500/20 text-green-500' :
+                                                                ma.simpleAction === 'Sell' ? 'bg-red-500/20 text-red-500' :
+                                                                    'bg-gray-500/20 text-gray-500'
+                                                                }`}>
+                                                                {t(ma.simpleAction?.toLowerCase() || 'neutral')}
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-2 text-right">
+                                                        <div className="flex justify-end items-center gap-2">
+                                                            <span className="font-mono">{formatPrice(ma.exponential || 0)}</span>
+                                                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${ma.exponentialAction === 'Buy' ? 'bg-green-500/20 text-green-500' :
+                                                                ma.exponentialAction === 'Sell' ? 'bg-red-500/20 text-red-500' :
+                                                                    'bg-gray-500/20 text-gray-500'
+                                                                }`}>
+                                                                {t(ma.exponentialAction?.toLowerCase() || 'neutral')}
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </Card>
 
-                                    {/* RSI Line */}
-                                    <path
-                                        d={`M ${indicators.map((p, i) => {
-                                            if (p.rsi === null) return null;
-                                            const x = (i / (indicators.length - 1)) * 100;
-                                            const y = 100 - p.rsi;
-                                            return `${x} ${y}`;
-                                        }).filter(Boolean).join(' L ')}`}
-                                        fill="none"
-                                        stroke="#a855f7"
-                                        strokeWidth="1"
-                                    />
-
-                                    {/* Scale Labels */}
-                                    <text x="98" y="8" fill="black" fontSize="6" textAnchor="end" opacity="0.9" fontWeight="bold">100</text>
-                                    <text x="98" y="52" fill="black" fontSize="6" textAnchor="end" opacity="0.9" fontWeight="bold">50</text>
-                                    <text x="98" y="95" fill="black" fontSize="6" textAnchor="end" opacity="0.9" fontWeight="bold">0</text>
-                                </svg>
-                            </div>
-                        </div>
+                            {/* Technical Indicators */}
+                            <Card className="p-4" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
+                                <h4 className="font-bold mb-4">{t('technical_indicators')}</h4>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-xs">
+                                        <thead>
+                                            <tr className="opacity-50 border-b border-white/10">
+                                                <th className="text-left py-2">{t('indicator')}</th>
+                                                <th className="text-right py-2">{t('value')}</th>
+                                                <th className="text-right py-2">{t('action')}</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {indicators.indicators?.map((ind: any) => (
+                                                <tr key={ind.name} className="border-b border-white/5 last:border-0">
+                                                    <td className="py-2 font-bold">{ind.name}</td>
+                                                    <td className="py-2 text-right font-mono">{ind.value?.toFixed(4) || '-'}</td>
+                                                    <td className="py-2 text-right">
+                                                        <span className={`px-2 py-1 rounded text-[10px] font-bold ${['Buy', 'Strong Buy'].includes(ind.action) ? 'bg-green-500 text-white' :
+                                                            ['Sell', 'Strong Sell'].includes(ind.action) ? 'bg-red-500 text-white' :
+                                                                ['Overbought', 'High Volatility'].includes(ind.action) ? 'bg-gray-500 text-white' : // Using gray for neutral/special states as per screenshot style
+                                                                    'bg-gray-500 text-white'
+                                                            }`}>
+                                                            {t(ind.action?.toLowerCase().replace(' ', '_') || 'neutral')}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </Card>
+                        </>
                     )}
-
-                    {/* MACD Chart */}
-                    {showMACD && indicators.length > 0 && (
-                        <div className="h-40 w-full">
-                            <p className="text-xs font-bold text-orange-400 mb-2">{t('macd')}</p>
-                            <div className="h-full w-full relative border-t border-b border-white/5 rounded-lg overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)' }}>
-                                <svg viewBox="0 0 100 100" className="w-full h-full" preserveAspectRatio="none">
-                                    {(() => {
-                                        const macdValues = indicators.map(i => i.macd).filter(v => v !== null);
-                                        const minVal = Math.min(...macdValues, -1);
-                                        const maxVal = Math.max(...macdValues, 1);
-                                        const range = maxVal - minVal;
-                                        const zeroY = 100 - ((0 - minVal) / range) * 100;
-
-                                        return (
-                                            <>
-                                                <line x1="0" y1={zeroY} x2="100" y2={zeroY} stroke="black" strokeOpacity="0.2" strokeWidth="0.5" />
-
-                                                {/* Histogram */}
-                                                {indicators.map((p, i) => {
-                                                    if (p.macdHistogram === null) return null;
-                                                    const x = (i / (indicators.length - 1)) * 100;
-                                                    const width = (100 / indicators.length) * 0.8;
-                                                    const y = 100 - ((p.macdHistogram - minVal) / range) * 100;
-                                                    const height = Math.abs(y - zeroY);
-                                                    const color = p.macdHistogram >= 0 ? '#10B981' : '#EF4444';
-
-                                                    return (
-                                                        <rect
-                                                            key={i}
-                                                            x={x}
-                                                            y={Math.min(y, zeroY)}
-                                                            width={width}
-                                                            height={height}
-                                                            fill={color}
-                                                            opacity="0.5"
-                                                        />
-                                                    );
-                                                })}
-
-                                                {/* MACD Line */}
-                                                <path
-                                                    d={`M ${indicators.map((p, i) => {
-                                                        if (p.macd === null) return null;
-                                                        const x = (i / (indicators.length - 1)) * 100;
-                                                        const y = 100 - ((p.macd - minVal) / range) * 100;
-                                                        return `${x} ${y}`;
-                                                    }).filter(Boolean).join(' L ')}`}
-                                                    fill="none"
-                                                    stroke="#f97316"
-                                                    strokeWidth="1"
-                                                />
-
-                                                {/* Signal Line */}
-                                                <path
-                                                    d={`M ${indicators.map((p, i) => {
-                                                        if (p.macdSignal === null) return null;
-                                                        const x = (i / (indicators.length - 1)) * 100;
-                                                        const y = 100 - ((p.macdSignal - minVal) / range) * 100;
-                                                        return `${x} ${y}`;
-                                                    }).filter(Boolean).join(' L ')}`}
-                                                    fill="none"
-                                                    stroke="#3b82f6"
-                                                    strokeWidth="0.8"
-                                                />
-
-                                                {/* Scale Labels */}
-                                                <text x="98" y="10" fill="black" fontSize="6" textAnchor="end" opacity="0.9" fontWeight="bold">{maxVal.toFixed(2)}</text>
-                                                <text x="98" y={zeroY - 2} fill="black" fontSize="6" textAnchor="end" opacity="0.9" fontWeight="bold">0.00</text>
-                                                <text x="98" y="95" fill="black" fontSize="6" textAnchor="end" opacity="0.9" fontWeight="bold">{minVal.toFixed(2)}</text>
-                                            </>
-                                        );
-                                    })()}
-                                </svg>
-                            </div>
-                        </div>
-                    )}
-                </Card>
+                </div>
             )}
             {activeTab === 'overview' && (
                 <>
