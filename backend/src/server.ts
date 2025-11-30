@@ -21,7 +21,7 @@ import {
     getMarketHistory
 } from './services/storage.js';
 import { updateMarketData, fetchHistory } from './services/fetcher.js';
-import { calculateRSI, calculateMACD, calculateBollingerBands } from './services/indicators.js';
+
 
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
@@ -198,38 +198,121 @@ app.get('/api/history/:symbol/:interval', async (req, res) => {
     }
 });
 
+import {
+    calculateRSI, calculateStoch, calculateStochRSI, calculateMACDValue, calculateATR,
+    calculateADX, calculateCCI, calculateHighsLows, calculateROC, calculateWilliamsR,
+    calculateBullBearPower, calculateUO, calculatePivotPoints, calculateSMA, calculateEMA,
+    getAction, getMAAction, type PivotPoints
+} from './services/indicators.js';
+
+// ...
+
 app.get('/api/indicators/:symbol', async (req, res) => {
     const { symbol } = req.params;
     const { interval } = req.query;
     const queryInterval = (interval as string) || '1d';
-    const yahooSymbol = symbol;
+    const yahooSymbol = symbol; // Symbol is already formatted correctly in most cases
 
     try {
+        // We need enough history for calculations (e.g. MA200 needs 200 points)
+        // Fetch 300 points to be safe
+        // Note: fetchHistory logic might need to be ensured to return enough points if '1d' is requested.
+        // The fetcher currently returns all for '1d', so we are good.
         const history: any[] = await fetchHistory(yahooSymbol, queryInterval);
-        const prices = history.map((h: any) => h.close);
 
-        const rsi = calculateRSI(prices);
-        const macd = calculateMACD(prices);
-        const bb = calculateBollingerBands(prices);
+        if (history.length < 50) { // Minimum required for basic indicators
+            return res.status(400).json({ error: 'Not enough data for technical analysis' });
+        }
 
-        const result = history.map((h: any, i: number) => ({
-            date: h.date,
-            price: h.close,
-            open: h.open,
-            high: h.high,
-            low: h.low,
-            close: h.close,
-            volume: h.volume,
-            rsi: rsi[i],
-            macd: macd.macd[i],
-            macdSignal: macd.signal[i],
-            macdHistogram: macd.histogram[i],
-            bbUpper: bb.upper[i],
-            bbLower: bb.lower[i],
-            bbMiddle: bb.middle[i]
-        }));
+        const closes = history.map(h => h.close);
+        const highs = history.map(h => h.high);
+        const lows = history.map(h => h.low);
+        const currentPrice = closes[closes.length - 1];
+        const currentHigh = highs[highs.length - 1];
+        const currentLow = lows[lows.length - 1];
 
-        res.json(result);
+        // --- Pivot Points ---
+        const pivotPoints = calculatePivotPoints(currentHigh, currentLow, currentPrice);
+
+        // --- Moving Averages ---
+        const maPeriods = [5, 10, 20, 50, 100, 200];
+        const movingAverages = maPeriods.map(period => {
+            const sma = calculateSMA(closes, period);
+            const ema = calculateEMA(closes, period);
+            return {
+                period,
+                simple: sma,
+                simpleAction: sma ? getMAAction(currentPrice, sma) : 'Neutral',
+                exponential: ema,
+                exponentialAction: ema ? getMAAction(currentPrice, ema) : 'Neutral'
+            };
+        });
+
+        // --- Technical Indicators ---
+        const rsi = calculateRSI(closes, 14);
+        const stoch = calculateStoch(highs, lows, closes, 9, 6);
+        const stochRsi = calculateStochRSI(closes, 14);
+        const macd = calculateMACDValue(closes);
+        const atr = calculateATR(highs, lows, closes, 14);
+        const adx = calculateADX(highs, lows, closes, 14);
+        const cci = calculateCCI(highs, lows, closes, 14);
+        const highsLows = calculateHighsLows(highs, lows, 14);
+        const roc = calculateROC(closes, 14); // Using ROC as proxy for "ROC" in screenshot
+        const williams = calculateWilliamsR(highs, lows, closes, 14);
+        const bullBear = calculateBullBearPower(highs, lows, closes, 13);
+        const uo = calculateUO(highs, lows, closes);
+
+        const indicators = [
+            { name: 'RSI(14)', value: rsi, action: rsi ? getAction('RSI', rsi) : 'Neutral' },
+            { name: 'STOCH(9,6)', value: stoch?.k, action: stoch ? getAction('STOCH', stoch.k) : 'Neutral' },
+            { name: 'STOCHRSI(14)', value: stochRsi, action: stochRsi ? getAction('STOCHRSI', stochRsi) : 'Neutral' },
+            { name: 'MACD(12,26)', value: macd, action: macd ? getAction('MACD', macd) : 'Neutral' },
+            { name: 'ATR(14)', value: atr, action: atr ? getAction('ATR', atr) : 'Neutral' },
+            { name: 'ADX(14)', value: adx, action: 'Buy' }, // Placeholder action
+            { name: 'CCI(14)', value: cci, action: cci ? getAction('CCI', cci) : 'Neutral' },
+            { name: 'Highs/Lows(14)', value: highsLows, action: 'Buy' }, // Placeholder
+            { name: 'UO', value: uo, action: 'Buy' }, // Placeholder
+            { name: 'ROC', value: roc, action: roc ? getAction('ROC', roc) : 'Neutral' },
+            { name: 'WilliamsR', value: williams, action: williams ? getAction('WilliamsR', williams) : 'Neutral' },
+            { name: 'BullBear(13)', value: bullBear, action: bullBear ? getAction('BullBear', bullBear) : 'Neutral' }
+        ];
+
+        // --- Summary ---
+        let buyCount = 0;
+        let sellCount = 0;
+        let neutralCount = 0;
+
+        // Count from MAs
+        movingAverages.forEach(ma => {
+            if (ma.simpleAction === 'Buy') buyCount++; else if (ma.simpleAction === 'Sell') sellCount++; else neutralCount++;
+            if (ma.exponentialAction === 'Buy') buyCount++; else if (ma.exponentialAction === 'Sell') sellCount++; else neutralCount++;
+        });
+
+        // Count from Indicators
+        indicators.forEach(ind => {
+            if (ind.action === 'Buy' || ind.action === 'Strong Buy') buyCount++;
+            else if (ind.action === 'Sell' || ind.action === 'Strong Sell') sellCount++;
+            else neutralCount++;
+        });
+
+        let recommendation = 'Neutral';
+        if (buyCount > sellCount + 5) recommendation = 'Strong Buy';
+        else if (buyCount > sellCount) recommendation = 'Buy';
+        else if (sellCount > buyCount + 5) recommendation = 'Strong Sell';
+        else if (sellCount > buyCount) recommendation = 'Sell';
+
+        res.json({
+            pivotPoints,
+            movingAverages,
+            indicators,
+            summary: {
+                buy: buyCount,
+                sell: sellCount,
+                neutral: neutralCount,
+                recommendation
+            }
+        });
+
     } catch (error) {
         console.error(`Error calculating indicators for ${symbol}:`, error);
         res.status(500).json({ error: 'Failed to calculate indicators' });

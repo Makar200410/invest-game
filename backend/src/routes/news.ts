@@ -149,7 +149,7 @@ router.get('/:symbol', async (req, res) => {
         // TickerTick format: z:SYMBOL
         const querySymbol = symbol.includes('-') ? symbol : `z:${symbol}`;
         try {
-            const response = await fetch(`https://api.tickertick.com/feed?q=${querySymbol}&n=10`);
+            const response = await fetch(`https://api.tickertick.com/feed?q=${querySymbol}&n=50`);
 
             if (response.ok) {
                 const data = await response.json();
@@ -164,7 +164,7 @@ router.get('/:symbol', async (req, res) => {
         // 2. Fallback to Yahoo Finance
         console.log(`Fetching fallback news for ${symbol} from Yahoo Finance...`);
         try {
-            const result = await yahooFinance.search(symbol, { newsCount: 10 });
+            const result = await yahooFinance.search(symbol, { newsCount: 50 });
             if (result.news && result.news.length > 0) {
                 const yahooNews = result.news.map((n: any) => ({
                     id: n.uuid || Math.random().toString(36).substring(7),
