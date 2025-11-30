@@ -170,10 +170,8 @@ app.get('/api/market', async (req, res) => {
 
 app.get('/api/history/:symbol', async (req, res) => {
     const { symbol } = req.params;
-    let yahooSymbol = symbol;
-    if (!['AAPL', 'TSLA', 'MSFT', 'GOOGL', 'AMZN', 'NVDA'].includes(symbol)) {
-        if (!symbol.includes('-USD')) yahooSymbol += '-USD';
-    }
+    // Don't modify the symbol - use it as-is since it comes from the market data
+    const yahooSymbol = symbol;
 
     // Try to get from DB first (cache)
     let history = await getMarketHistory(yahooSymbol, '5m');
@@ -188,43 +186,35 @@ app.get('/api/history/:symbol', async (req, res) => {
 
 app.get('/api/history/:symbol/:interval', async (req, res) => {
     const { symbol, interval } = req.params;
-    let yahooSymbol = symbol;
-    if (!['AAPL', 'TSLA', 'MSFT', 'GOOGL', 'AMZN', 'NVDA'].includes(symbol)) {
-        if (!symbol.includes('-USD')) yahooSymbol += '-USD';
-    }
+    // Don't modify the symbol - use it as-is since it comes from the market data
+    const yahooSymbol = symbol;
 
     try {
         const history = await fetchHistory(yahooSymbol, interval);
         res.json(history);
     } catch (error) {
         console.error(`Error fetching history for ${symbol}:`, error);
-        res.status(500).json({ error: 'Failed to fetch history' });
+        res.json([]);
     }
 });
 
 app.get('/api/indicators/:symbol', async (req, res) => {
     const { symbol } = req.params;
-    const { interval } = req.query; // Get interval from query params
-    const queryInterval = (interval as string) || '1d'; // Default to 1d
-
-    let yahooSymbol = symbol;
-    if (!['AAPL', 'TSLA', 'MSFT', 'GOOGL', 'AMZN', 'NVDA'].includes(symbol)) {
-        if (!symbol.includes('-USD')) yahooSymbol += '-USD';
-    }
+    const { interval } = req.query;
+    const queryInterval = (interval as string) || '1d';
+    const yahooSymbol = symbol;
 
     try {
-        // Fetch history with the requested interval
         const history: any[] = await fetchHistory(yahooSymbol, queryInterval);
-        const prices = history.map((h: any) => h.close); // Use close price for indicators
+        const prices = history.map((h: any) => h.close);
 
         const rsi = calculateRSI(prices);
         const macd = calculateMACD(prices);
         const bb = calculateBollingerBands(prices);
 
-        // Align data with dates
         const result = history.map((h: any, i: number) => ({
             date: h.date,
-            price: h.close, // Use close as price
+            price: h.close,
             open: h.open,
             high: h.high,
             low: h.low,
@@ -248,10 +238,7 @@ app.get('/api/indicators/:symbol', async (req, res) => {
 
 app.get('/api/fundamentals/:symbol', async (req, res) => {
     const { symbol } = req.params;
-    let yahooSymbol = symbol;
-    if (!['AAPL', 'TSLA', 'MSFT', 'GOOGL', 'AMZN', 'NVDA'].includes(symbol)) {
-        if (!symbol.includes('-USD')) yahooSymbol += '-USD';
-    }
+    const yahooSymbol = symbol;
 
     try {
         const yf = new yahooFinance();
