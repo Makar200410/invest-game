@@ -72,7 +72,7 @@ export const updateMarketData = async () => {
     // ALWAYS fetch fresh data from Yahoo Finance
     try {
         console.log(`Symbols to fetch: ${SYMBOLS.join(', ')}`);
-        console.log(`Symbols to fetch: ${SYMBOLS.join(', ')}`);
+
 
         // Fetch all symbols in parallel
         const results = await Promise.all(SYMBOLS.map(async (symbol) => {
