@@ -80,9 +80,17 @@ export const initDB = async () => {
                 symbol VARCHAR(50) NOT NULL,
                 username VARCHAR(255) NOT NULL,
                 content TEXT NOT NULL,
-                timestamp BIGINT NOT NULL
+                timestamp BIGINT NOT NULL,
+                likes JSONB DEFAULT '[]'::jsonb
             );
         `);
+
+        // Migration: Ensure likes column exists
+        try {
+            await query(`ALTER TABLE asset_comments ADD COLUMN IF NOT EXISTS likes JSONB DEFAULT '[]'::jsonb`);
+        } catch (e) {
+            console.log('Migration note: likes column might already exist or error ignored');
+        }
 
         console.log('Database initialized successfully.');
     } catch (error) {
@@ -309,8 +317,8 @@ export const getInsiderTips = async (): Promise<any[]> => {
 export const addAssetComment = async (comment: { id: string, symbol: string, username: string, content: string, timestamp: number }) => {
     try {
         await query(
-            `INSERT INTO asset_comments (id, symbol, username, content, timestamp)
-             VALUES ($1, $2, $3, $4, $5)`,
+            `INSERT INTO asset_comments (id, symbol, username, content, timestamp, likes)
+             VALUES ($1, $2, $3, $4, $5, '[]'::jsonb)`,
             [comment.id, comment.symbol, comment.username, comment.content, comment.timestamp]
         );
     } catch (error) {
@@ -327,7 +335,8 @@ export const getAssetComments = async (symbol: string): Promise<any[]> => {
             symbol: row.symbol,
             username: row.username,
             content: row.content,
-            timestamp: Number(row.timestamp)
+            timestamp: Number(row.timestamp),
+            likes: row.likes || []
         }));
     } catch (error) {
         console.error('Error fetching asset comments:', error);
@@ -335,4 +344,30 @@ export const getAssetComments = async (symbol: string): Promise<any[]> => {
     }
 };
 
+export const toggleLikeComment = async (commentId: string, username: string): Promise<string[]> => {
+    try {
+        // First get the current likes
+        const res = await query('SELECT likes FROM asset_comments WHERE id = $1', [commentId]);
+        if (res.rows.length === 0) {
+            throw new Error('Comment not found');
+        }
 
+        let likes: string[] = res.rows[0].likes || [];
+
+        if (likes.includes(username)) {
+            // Unlike
+            likes = likes.filter(u => u !== username);
+        } else {
+            // Like
+            likes.push(username);
+        }
+
+        // Update the database
+        await query('UPDATE asset_comments SET likes = $1 WHERE id = $2', [JSON.stringify(likes), commentId]);
+
+        return likes;
+    } catch (error) {
+        console.error('Error toggling like:', error);
+        throw error;
+    }
+};

@@ -1,14 +1,3 @@
-import 'dotenv/config';
-import express from 'express';
-import cors from 'cors';
-import cron from 'node-cron';
-import yahooFinance from 'yahoo-finance2';
-import { initDB, getUser, createUser, updateUser, getUsers, getUsersByIp, getMarketItems, getMarketHistory, getInsiderTips, addInsiderTip, getAssetComments, addAssetComment } from './services/storage.js';
-import { updateMarketData, fetchHistory } from './services/fetcher.js';
-import { calculateRSI, calculateMACD, calculateBollingerBands } from './services/indicators.js';
-import newsRoutes from './routes/news.js';
-
-import compression from 'compression';
 
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
@@ -320,6 +309,23 @@ app.post('/api/comments', async (req, res) => {
     } catch (error) {
         console.error('Error adding comment:', error);
         res.status(500).json({ error: 'Failed to add comment' });
+    }
+});
+
+app.post('/api/comments/:id/like', async (req, res) => {
+    const { id } = req.params;
+    const { username } = req.body;
+
+    if (!username) {
+        return res.status(400).json({ error: 'Username is required' });
+    }
+
+    try {
+        const likes = await toggleLikeComment(id, username);
+        res.json({ success: true, likes });
+    } catch (error) {
+        console.error('Error toggling like:', error);
+        res.status(500).json({ error: 'Failed to toggle like' });
     }
 });
 

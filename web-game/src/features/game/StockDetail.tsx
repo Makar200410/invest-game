@@ -1,13 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, TrendingUp, Lock, Target } from 'lucide-react';
+import { ArrowLeft, TrendingUp, Lock, Target, MessageCircle, ThumbsUp, ThumbsDown, MoreHorizontal, Send } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Card } from '../../components/ui/Card';
 import { useGameStore } from '../../store/gameStore';
 import { formatPrice } from '../../utils/format';
-import { fetchCryptoMarket, fetchMarketChart, fetchMarketChartByInterval, fetchIndicators, fetchFundamentals, fetchCompanyNews, fetchAssetComments, postAssetComment, type MarketItem } from '../../services/api';
+import {
+    fetchCryptoMarket,
+    fetchMarketChart,
+    fetchMarketChartByInterval,
+    fetchIndicators,
+    fetchFundamentals,
+    fetchCompanyNews,
+    fetchAssetComments,
+    postAssetComment,
+    likeAssetComment,
+    type MarketItem,
+    type Comment
+} from '../../services/api';
 import { OrderForm } from '../../components/trading/OrderForm';
 
 export const StockDetail: React.FC = () => {
@@ -15,232 +27,144 @@ export const StockDetail: React.FC = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const { balance, buyAsset, portfolio, skills, shortPositions, user } = useGameStore();
+
+    // State
     const [asset, setAsset] = useState<MarketItem | null>(null);
     const [history, setHistory] = useState<{ price: number; date: string; open?: number; high?: number; low?: number; close?: number; volume?: number }[]>([]);
     const [loading, setLoading] = useState(true);
     const [hoverData, setHoverData] = useState<{ price: number; date: string; index: number; open?: number; high?: number; low?: number; close?: number } | null>(null);
-
-    // Initialize interval based on skill
     const [interval, setIntervalState] = useState(skills.multiTimeframe ? '5m' : '1d');
     const [indicatorInterval, setIndicatorInterval] = useState('1d');
     const [chartType, setChartType] = useState<'candle' | 'line'>('line');
-    const [cachedDaily, setCachedDaily] = useState<any[]>([]);
-    const [chartLoaded, setChartLoaded] = useState(false);
-
-    // Technical & Fundamental State
-    const [indicators, setIndicators] = useState<any[]>([]);
-    const [fundamentals, setFundamentals] = useState<any>(null);
+    const [activeTab, setActiveTab] = useState('overview');
+    const [showBB, setShowBB] = useState(false);
     const [showRSI, setShowRSI] = useState(false);
     const [showMACD, setShowMACD] = useState(false);
-    const [showBB, setShowBB] = useState(false);
-
-    // Tabs & News
-    const [activeTab, setActiveTab] = useState<'overview' | 'indicators' | 'news' | 'comments'>('overview');
-    const [comments, setComments] = useState<any[]>([]);
-    const [commentInput, setCommentInput] = useState('');
-    const commentsEndRef = React.useRef<HTMLDivElement>(null);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const [indicators, setIndicators] = useState<any[]>([]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const [fundamentals, setFundamentals] = useState<any>(null);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [companyNews, setCompanyNews] = useState<any[]>([]);
     const [newsLoading, setNewsLoading] = useState(false);
+    const [comments, setComments] = useState<Comment[]>([]);
+    const [commentInput, setCommentInput] = useState('');
+    const commentsEndRef = useRef<HTMLDivElement>(null);
+    const [chartLoaded, setChartLoaded] = useState(false);
 
-    // Trading State
-    // const [amount, setAmount] = useState('1');
-    // const [leverage, setLeverage] = useState(1);
+    // Derived State
+    const assetShorts = shortPositions.filter(p => p.assetId === asset?.id);
 
-    // Filter short positions for this asset (safely)
-    const assetShorts = (shortPositions || []).filter(p => p.assetId === id);
-
+    // Fetch Data
     useEffect(() => {
         const loadData = async () => {
             if (!id) return;
-            // Don't set loading to true on every interval refresh to avoid flickering
-            if (!asset) setLoading(true);
-
+            setLoading(true);
             try {
-                // 1. Fetch Market Data (List)
-                let currentAsset: MarketItem | undefined;
-                try {
-                    const market = await fetchCryptoMarket();
-                    currentAsset = market.find(m => m.id === id);
-                } catch (e) {
-                    console.warn('Failed to fetch market list, trying to proceed with history...', e);
-                }
+                // 1. Fetch Asset Details (using crypto market for now as generic)
+                const marketData = await fetchCryptoMarket();
+                const foundAsset = marketData.find(a => a.id === id);
 
-                // 2. Fetch History (Chart)
-                let chartHistory: any[] = [];
-                try {
-                    if (['1w', '1M', 'All'].includes(interval)) {
-                        // Use cached 1d data or fetch it
-                        let dailyData = cachedDaily;
-                        if (dailyData.length === 0) {
-                            dailyData = await fetchMarketChartByInterval(id, '1d');
-                            setCachedDaily(dailyData);
-                        }
+                if (foundAsset) {
+                    setAsset(foundAsset);
 
-                        // Aggregate Data
-                        if (interval === 'All') {
-                            chartHistory = dailyData;
-                        } else {
-                            const isCrypto = id.includes('-USD');
-                            const groupSize = interval === '1w'
-                                ? (isCrypto ? 7 : 5)
-                                : (isCrypto ? 30 : 21);
+                    // 2. Fetch Chart Data
+                    const chartData = skills.multiTimeframe
+                        ? await fetchMarketChartByInterval(id, interval)
+                        : await fetchMarketChart(id);
+                    setHistory(chartData);
 
-                            const aggregated: any[] = [];
-                            for (let i = 0; i < dailyData.length; i += groupSize) {
-                                const chunk = dailyData.slice(i, i + groupSize);
-                                if (chunk.length === 0) continue;
-
-                                const first = chunk[0];
-                                const last = chunk[chunk.length - 1];
-                                const high = Math.max(...chunk.map((c: any) => c.high || c.price));
-                                const low = Math.min(...chunk.map((c: any) => c.low || c.price));
-
-                                aggregated.push({
-                                    date: first.date,
-                                    open: first.open || first.price,
-                                    close: last.close || last.price,
-                                    high,
-                                    low,
-                                    price: last.close || last.price, // Use close as price
-                                    volume: chunk.reduce((acc: number, c: any) => acc + (c.volume || 0), 0)
-                                });
-                            }
-                            chartHistory = aggregated;
-                        }
-                    } else {
-                        // Standard fetch for 5m, 1h, 1d
-                        chartHistory = interval === '5m'
-                            ? await fetchMarketChart(id)
-                            : await fetchMarketChartByInterval(id, interval);
-
-                        // If we fetched 1d, cache it
-                        if (interval === '1d') {
-                            setCachedDaily(chartHistory);
-                        }
+                    // 3. Fetch Additional Data based on skills/tabs
+                    if (skills.technicalAnalyst) {
+                        const indicatorsData = await fetchIndicators(id, indicatorInterval);
+                        setIndicators(indicatorsData);
                     }
-                } catch (e) {
-                    console.error('Failed to fetch history:', e);
-                }
 
-                // If we found the asset in the list, use it.
-                // If not, but we have history, construct a basic asset object so the page still loads.
-                if (currentAsset) {
-                    setAsset({
-                        ...currentAsset,
-                        description: currentAsset.type === 'crypto'
-                            ? `${currentAsset.name} is a decentralized digital currency.`
-                            : `${currentAsset.name} is a major publicly traded company.`
-                    });
-                } else if (chartHistory.length > 0) {
-                    // Fallback: Create asset from history if market list failed
-                    const lastPoint = chartHistory[chartHistory.length - 1];
-                    setAsset({
-                        id: id,
-                        symbol: id,
-                        name: id,
-                        price: lastPoint.price || lastPoint.close,
-                        change24h: 0, // Unknown without market list
-                        type: id.includes('-USD') ? 'crypto' : 'stock',
-                        sparkline: chartHistory
-                    });
-                }
-
-                if (chartHistory.length > 0) {
-                    // Remove the last point to avoid incomplete/incorrect data
-                    const cleanHistory = chartHistory.length > 1 ? chartHistory.slice(0, -1) : chartHistory;
-
-                    if (interval === 'All') {
-                        setHistory(cleanHistory); // Show full history for All (minus last point)
-                    } else {
-                        setHistory(cleanHistory.slice(-90)); // Last 90 points for consistent display
+                    if (skills.fundamentalAnalyst) {
+                        const fundData = await fetchFundamentals(id);
+                        setFundamentals(fundData);
                     }
-                }
 
-                // 3. Fetch Advanced Data (Skills)
-                if (skills.technicalAnalyst) {
-                    fetchIndicators(id, indicatorInterval).then(setIndicators).catch(console.error);
-                }
-                if (skills.fundamentalAnalyst) {
-                    fetchFundamentals(id).then(data => {
-                        setFundamentals(data);
-                        if (data?.assetProfile?.longBusinessSummary) {
-                            setAsset(prev => prev ? ({ ...prev, description: data.assetProfile.longBusinessSummary }) : null);
-                        }
-                    }).catch(console.error);
-                }
+                    if (skills.newsAlert) {
+                        setNewsLoading(true);
+                        fetchCompanyNews(foundAsset.symbol).then(news => {
+                            setCompanyNews(news);
+                            setNewsLoading(false);
+                        });
+                    }
 
+                    // Fetch Comments
+                    fetchAssetComments(id).then(setComments);
+                }
             } catch (error) {
-                console.error('Error loading asset data:', error);
+                console.error('Failed to load asset data:', error);
             } finally {
                 setLoading(false);
             }
         };
 
         loadData();
-        const timer = setInterval(loadData, 60000);
-        return () => clearInterval(timer);
-    }, [id, interval, indicatorInterval, skills.technicalAnalyst, skills.fundamentalAnalyst]);
 
-    // Fetch News when tab is active
-    useEffect(() => {
-        if (activeTab === 'news' && id && skills.newsAlert) {
-            const loadNews = async () => {
-                setNewsLoading(true);
-                try {
-                    const news = await fetchCompanyNews(id);
-                    setCompanyNews(news);
-                } catch (e) {
-                    console.error('Failed to load company news', e);
-                } finally {
-                    setNewsLoading(false);
-                }
-            };
-            loadNews();
-        }
-    }, [activeTab, id, skills.newsAlert]);
+        // Polling for price updates
+        const pollInterval = setInterval(loadData, 10000); // 10s polling
+        return () => clearInterval(pollInterval);
+    }, [id, interval, indicatorInterval, skills]);
 
-    // Fetch Comments
-    useEffect(() => {
-        if (activeTab === 'comments' && id) {
-            fetchAssetComments(id).then(setComments);
-        }
-    }, [activeTab, id]);
-
-    // Auto-scroll to bottom when comments change
-    useEffect(() => {
-        if (activeTab === 'comments' && commentsEndRef.current) {
-            commentsEndRef.current.scrollIntoView({ behavior: 'smooth' });
-        }
-    }, [comments, activeTab]);
-
+    // Handlers
     const handlePostComment = async () => {
-        if (!id || !user || !commentInput.trim()) return;
+        if (!id || !commentInput.trim() || !user) return;
         try {
-            const newComment = await postAssetComment(id, commentInput, user.username);
-            setComments(prev => [...prev, newComment.comment]); // Append to end for chat flow
+            await postAssetComment(id, commentInput, user.username);
             setCommentInput('');
-        } catch (e) {
-            console.error('Failed to post comment', e);
+            const updatedComments = await fetchAssetComments(id);
+            setComments(updatedComments);
+            // Scroll to bottom
+            setTimeout(() => {
+                commentsEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
+        } catch (error) {
+            console.error('Failed to post comment:', error);
         }
     };
 
-    // Scroll to hash after loading
-    useEffect(() => {
-        if (!loading && asset && window.location.hash) {
-            const id = window.location.hash.replace('#', '');
-            setTimeout(() => {
-                const element = document.getElementById(id);
-                if (element) {
-                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    // Highlight effect
-                    element.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2', 'ring-offset-black');
-                    setTimeout(() => {
-                        element.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-2', 'ring-offset-black');
-                    }, 2000);
+    const handleLike = async (commentId: string) => {
+        if (!user) return;
+        try {
+            // Optimistic update
+            setComments(prev => prev.map(c => {
+                if (c.id === commentId) {
+                    const hasLiked = c.likes.includes(user.username);
+                    return {
+                        ...c,
+                        likes: hasLiked
+                            ? c.likes.filter(u => u !== user.username)
+                            : [...c.likes, user.username]
+                    };
                 }
-            }, 500);
+                return c;
+            }));
+
+            await likeAssetComment(commentId, user.username);
+        } catch (error) {
+            console.error('Failed to like comment:', error);
+            if (id) {
+                fetchAssetComments(id).then(setComments);
+            }
         }
-    }, [loading, asset]);
+    };
+
+    const handleReply = (username: string) => {
+        setCommentInput(`@${username} `);
+        const textarea = document.querySelector('textarea');
+        if (textarea) {
+            textarea.focus();
+        }
+    };
+
+    const handleCoverShort = (positionId: string, positionAmount: number) => {
+        if (!asset) return;
+        buyAsset(asset.id, asset.price, positionAmount, 1, positionId);
+    };
 
     if (loading) {
         return (
@@ -286,13 +210,6 @@ export const StockDetail: React.FC = () => {
     }));
 
     const pathData = chartData.length > 0 ? `M ${chartData.map(p => `${p.x} ${p.y}`).join(' L ')}` : '';
-
-    // Trading Logic
-
-
-    const handleCoverShort = (positionId: string, positionAmount: number) => {
-        buyAsset(asset.id, asset.price, positionAmount, 1, positionId);
-    };
 
     return (
         <div className="space-y-6 pb-40">
@@ -363,7 +280,6 @@ export const StockDetail: React.FC = () => {
 
             {(activeTab === 'overview' || activeTab === 'indicators') && (
                 <>
-
                     {/* Chart Area */}
                     <div id="tutorial-chart-area" className="relative w-full" onMouseLeave={() => setHoverData(null)}>
                         <div className="h-72 w-full overflow-hidden">
@@ -963,73 +879,12 @@ export const StockDetail: React.FC = () => {
                     )}
                 </div>
             )}
-
             {activeTab === 'comments' && (
-                <div className="relative h-[75vh] -mx-5 border-t mt-4" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--card-border)' }}>
-                    {/* Background Pattern */}
-                    <div className="absolute inset-0 opacity-[0.05] pointer-events-none"
-                        style={{ backgroundImage: 'radial-gradient(var(--text-primary) 1px, transparent 1px)', backgroundSize: '24px 24px' }}
-                    />
+                <div className="relative h-[75vh] -mx-5 border-t mt-4 flex flex-col" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--card-border)' }}>
 
-                    {/* Comments List */}
-                    <div className="absolute inset-0 bottom-[80px] overflow-y-auto px-5 py-6 space-y-6 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
-                        {comments.length > 0 ? (
-                            comments.map((comment) => {
-                                const isMe = user?.username === comment.username;
-                                return (
-                                    <div key={comment.id} className={`flex gap-3 animate-fade-in ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
-                                        {/* Avatar */}
-                                        <div
-                                            className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0 shadow-lg ring-2 ring-black"
-                                            style={{
-                                                backgroundColor: `hsl(${comment.username.length * 40}, 70%, 50%)`,
-                                                color: '#fff',
-                                                marginTop: 'auto'
-                                            }}
-                                        >
-                                            {comment.username.substring(0, 2).toUpperCase()}
-                                        </div>
-
-                                        {/* Content */}
-                                        <div className={`flex flex-col max-w-[80%] ${isMe ? 'items-end' : 'items-start'}`}>
-                                            <div className="flex items-baseline gap-2 mb-1 px-1">
-                                                {!isMe && <span className="font-bold text-xs opacity-50" style={{ color: 'var(--text-primary)' }}>{comment.username}</span>}
-                                                <span className="text-[10px] opacity-30" style={{ color: 'var(--text-primary)' }}>{new Date(comment.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                            </div>
-                                            <div
-                                                className={`px-4 py-3 rounded-2xl text-sm leading-relaxed shadow-md whitespace-pre-wrap break-words ${isMe
-                                                    ? 'text-white rounded-tr-none'
-                                                    : 'rounded-tl-none border'
-                                                    }`}
-                                                style={{
-                                                    backgroundColor: isMe ? 'var(--accent-color)' : 'var(--card-bg)',
-                                                    color: isMe ? '#fff' : 'var(--text-primary)',
-                                                    borderColor: isMe ? 'transparent' : 'var(--card-border)'
-                                                }}
-                                            >
-                                                {comment.content}
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })
-                        ) : (
-                            <div className="flex flex-col items-center justify-center h-full opacity-40 gap-4">
-                                <div className="w-20 h-20 rounded-full flex items-center justify-center animate-pulse" style={{ backgroundColor: 'var(--card-bg)' }}>
-                                    <span className="text-4xl">💬</span>
-                                </div>
-                                <div className="text-center">
-                                    <p className="text-base font-bold mb-1" style={{ color: 'var(--text-primary)' }}>{t('no_comments', 'Start the conversation!')}</p>
-                                    <p className="text-xs opacity-50" style={{ color: 'var(--text-primary)' }}>{t('be_first', 'Be the first to share your thoughts on this asset.')}</p>
-                                </div>
-                            </div>
-                        )}
-                        <div ref={commentsEndRef} />
-                    </div>
-
-                    {/* Input Area */}
-                    <div className="absolute bottom-0 left-0 right-0 p-4" style={{ background: 'linear-gradient(to top, var(--bg-primary) 70%, transparent)' }}>
-                        <div className="relative flex items-end gap-2 rounded-3xl p-2 pl-4 border focus-within:ring-1 transition-all shadow-lg"
+                    {/* Input Area - Moved to Top */}
+                    <div className="p-4 border-b" style={{ borderColor: 'var(--card-border)', backgroundColor: 'var(--bg-primary)' }}>
+                        <div className="relative flex items-end gap-2 rounded-2xl p-2 pl-4 border focus-within:ring-1 transition-all shadow-sm"
                             style={{
                                 backgroundColor: 'var(--card-bg)',
                                 borderColor: 'var(--card-border)',
@@ -1039,7 +894,7 @@ export const StockDetail: React.FC = () => {
                             <textarea
                                 value={commentInput}
                                 onChange={(e) => setCommentInput(e.target.value)}
-                                placeholder={t('write_comment', 'Message...')}
+                                placeholder={t('write_comment', 'Leave your comment...')}
                                 className="flex-1 bg-transparent text-sm outline-none resize-none scrollbar-hide py-3 max-h-[100px]"
                                 rows={1}
                                 style={{ color: 'var(--text-primary)' }}
@@ -1058,12 +913,90 @@ export const StockDetail: React.FC = () => {
                             <button
                                 onClick={handlePostComment}
                                 disabled={!commentInput.trim()}
-                                className="p-3 rounded-full text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95 shrink-0 mb-[2px]"
+                                className="p-2.5 rounded-full text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95 shrink-0 mb-[2px]"
                                 style={{ backgroundColor: 'var(--accent-color)' }}
                             >
-                                <ArrowLeft size={18} className="rotate-90" />
+                                <Send size={18} />
                             </button>
                         </div>
+                    </div>
+
+                    {/* Comments List - Reversed Order */}
+                    <div className="flex-1 overflow-y-auto px-5 py-4 space-y-6 scrollbar-thin scrollbar-thumb-black/10 scrollbar-track-transparent">
+                        {comments.length > 0 ? (
+                            [...comments].reverse().map((comment) => {
+                                return (
+                                    <div key={comment.id} className="flex gap-3 animate-fade-in">
+                                        {/* Avatar */}
+                                        <div
+                                            className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0 shadow-sm"
+                                            style={{
+                                                backgroundColor: `hsl(${comment.username.length * 40}, 70%, 50%)`,
+                                                color: '#fff'
+                                            }}
+                                        >
+                                            {comment.username.substring(0, 2).toUpperCase()}
+                                        </div>
+
+                                        {/* Content */}
+                                        <div className="flex-1">
+                                            <div className="flex justify-between items-start mb-1">
+                                                <div className="flex items-baseline gap-2">
+                                                    <span className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>{comment.username}</span>
+                                                    <span className="text-xs opacity-40" style={{ color: 'var(--text-primary)' }}>{new Date(comment.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                </div>
+                                                <button className="opacity-30 hover:opacity-100 transition-opacity">
+                                                    <MoreHorizontal size={16} style={{ color: 'var(--text-primary)' }} />
+                                                </button>
+                                            </div>
+
+                                            <div
+                                                className="text-sm leading-relaxed whitespace-pre-wrap break-words mb-3"
+                                                style={{ color: 'var(--text-primary)' }}
+                                            >
+                                                {comment.content}
+                                            </div>
+
+                                            {/* Actions */}
+                                            <div className="flex items-center gap-6">
+                                                <button
+                                                    onClick={() => handleReply(comment.username)}
+                                                    className="flex items-center gap-1.5 text-xs font-medium opacity-60 hover:opacity-100 transition-opacity"
+                                                    style={{ color: 'var(--text-primary)' }}
+                                                >
+                                                    <MessageCircle size={16} />
+                                                    <span>{t('reply', 'Reply')}</span>
+                                                </button>
+                                                <div className="flex items-center gap-4">
+                                                    <button
+                                                        onClick={() => handleLike(comment.id)}
+                                                        className={`flex items-center gap-1.5 text-xs font-medium transition-all ${comment.likes.includes(user?.username || '') ? 'opacity-100 text-blue-500' : 'opacity-60 hover:opacity-100'}`}
+                                                        style={{ color: comment.likes.includes(user?.username || '') ? '#3b82f6' : 'var(--text-primary)' }}
+                                                    >
+                                                        <ThumbsUp size={16} fill={comment.likes.includes(user?.username || '') ? 'currentColor' : 'none'} />
+                                                        <span>{comment.likes.length}</span>
+                                                    </button>
+                                                    <button className="flex items-center gap-1.5 text-xs font-medium opacity-60 hover:opacity-100 transition-opacity" style={{ color: 'var(--text-primary)' }}>
+                                                        <ThumbsDown size={16} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        ) : (
+                            <div className="flex flex-col items-center justify-center h-full opacity-40 gap-4">
+                                <div className="w-20 h-20 rounded-full flex items-center justify-center animate-pulse" style={{ backgroundColor: 'var(--card-bg)' }}>
+                                    <span className="text-4xl">💬</span>
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-base font-bold mb-1" style={{ color: 'var(--text-primary)' }}>{t('no_comments', 'Start the conversation!')}</p>
+                                    <p className="text-xs opacity-50" style={{ color: 'var(--text-primary)' }}>{t('be_first', 'Be the first to share your thoughts on this asset.')}</p>
+                                </div>
+                            </div>
+                        )}
+                        <div ref={commentsEndRef} />
                     </div>
                 </div>
             )}
@@ -1146,15 +1079,17 @@ export const StockDetail: React.FC = () => {
             }
 
             {/* Order Form (Stop Loss / Take Profit) */}
-            {activeTab === 'overview' && (
-                <div id="order-form">
-                    <OrderForm
-                        assetId={asset.id}
-                        currentPrice={asset.price}
-                        ownedAmount={owned}
-                    />
-                </div>
-            )}
+            {
+                activeTab === 'overview' && (
+                    <div id="order-form">
+                        <OrderForm
+                            assetId={asset.id}
+                            currentPrice={asset.price}
+                            ownedAmount={owned}
+                        />
+                    </div>
+                )
+            }
         </div >
     );
 };

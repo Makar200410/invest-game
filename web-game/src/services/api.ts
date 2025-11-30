@@ -100,21 +100,6 @@ export const registerUser = async (username: string, password: string, email?: s
     return response.data;
 };
 
-export const loginUser = async (username: string, password: string) => {
-    const response = await api.post('/login', { username, password });
-    return response.data;
-};
-
-export const syncGameState = async (username: string, gameState: any) => {
-    const response = await api.post('/sync', { username, gameState });
-    return response.data;
-};
-
-export const recoverPassword = async (username: string, email: string, newPassword: string) => {
-    const response = await api.post('/recover', { username, email, newPassword });
-    return response.data;
-};
-
 export const updateScore = async (username: string, portfolioValue: number) => {
     const response = await api.post('/update-score', { username, portfolioValue });
     return response.data;
@@ -155,7 +140,16 @@ export const fetchCompanyNews = async (symbol: string) => {
     }
 };
 
-export const fetchAssetComments = async (symbol: string) => {
+export interface Comment {
+    id: string;
+    symbol: string;
+    username: string;
+    content: string;
+    timestamp: number;
+    likes: string[];
+}
+
+export const fetchAssetComments = async (symbol: string): Promise<Comment[]> => {
     try {
         const response = await api.get(`/comments/${symbol}`);
         return response.data;
@@ -171,6 +165,16 @@ export const postAssetComment = async (symbol: string, content: string, username
         return response.data;
     } catch (error) {
         console.error('Error posting comment:', error);
+        throw error;
+    }
+};
+
+export const likeAssetComment = async (commentId: string, username: string) => {
+    try {
+        const response = await api.post(`/comments/${commentId}/like`, { username });
+        return response.data;
+    } catch (error) {
+        console.error('Error liking comment:', error);
         throw error;
     }
 };
