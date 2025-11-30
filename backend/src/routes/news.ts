@@ -136,23 +136,53 @@ router.get('/insider', async (req, res) => {
     }
 });
 
+import YahooFinance from 'yahoo-finance2';
+const yahooFinance = new YahooFinance();
+
+// ... (existing imports)
+
 // Get news for specific symbol
 router.get('/:symbol', async (req, res) => {
     const { symbol } = req.params;
     try {
-        // Fetch specific news from TickerTick
+        // 1. Try TickerTick first
         // TickerTick format: z:SYMBOL
         const querySymbol = symbol.includes('-') ? symbol : `z:${symbol}`;
-        const response = await fetch(`https://api.tickertick.com/feed?q=${querySymbol}&n=10`);
+        try {
+            const response = await fetch(`https://api.tickertick.com/feed?q=${querySymbol}&n=10`);
 
-        if (response.ok) {
-            const data = await response.json();
-            if (data.stories && data.stories.length > 0) {
-                return res.json(data.stories);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.stories && data.stories.length > 0) {
+                    return res.json(data.stories);
+                }
             }
+        } catch (ttError) {
+            console.warn(`TickerTick failed for ${symbol}:`, ttError);
         }
 
-        // Fallback to repository if API fails or returns empty
+        // 2. Fallback to Yahoo Finance
+        console.log(`Fetching fallback news for ${symbol} from Yahoo Finance...`);
+        try {
+            const result = await yahooFinance.search(symbol, { newsCount: 10 });
+            if (result.news && result.news.length > 0) {
+                const yahooNews = result.news.map((n: any) => ({
+                    id: n.uuid || Math.random().toString(36).substring(7),
+                    title: n.title,
+                    url: n.link,
+                    site: n.providerPublishTime ? new Date(n.providerPublishTime).toLocaleDateString() : 'Yahoo Finance',
+                    time: n.providerPublishTime ? new Date(n.providerPublishTime).getTime() : Date.now(),
+                    favicon_url: '',
+                    tags: [symbol],
+                    tickers: [symbol]
+                }));
+                return res.json(yahooNews);
+            }
+        } catch (yfError) {
+            console.error(`Yahoo Finance news fetch failed for ${symbol}:`, yfError);
+        }
+
+        // 3. Fallback to repository if API fails or returns empty
         const repoPath = path.join(__dirname, '../news_repository.json');
         if (fs.existsSync(repoPath)) {
             const repoData: TickerTickStory[] = JSON.parse(fs.readFileSync(repoPath, 'utf-8'));

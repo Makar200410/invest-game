@@ -213,8 +213,8 @@ export const updateMarketData = async () => {
                             };
 
                             history5m.push(newDataPoint);
-                            // Keep last 90 points for 5m
-                            if (history5m.length > 90) history5m = history5m.slice(-90);
+                            // Keep last 120 points for 5m
+                            if (history5m.length > 120) history5m = history5m.slice(-120);
                             await saveMarketHistory(symbol, '5m', history5m);
                         }
                     } catch (updateError) {
@@ -380,8 +380,8 @@ export const fetchHistory = async (symbol: string, interval: string = '5m') => {
             // Fallback logic for empty data (e.g. weekend/closed market)
             if (!result.quotes || result.quotes.length === 0) {
                 console.log(`No data for ${symbol} with interval ${interval}, extending range...`);
-                // Extend range significantly
-                queryOptions.period1 = new Date(Date.now() - (periodDays * 2) * 24 * 60 * 60 * 1000);
+                // Extend range significantly to capture last trading session (e.g. 60 days for safety)
+                queryOptions.period1 = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
                 result = await yahooFinance.chart(symbol, queryOptions);
             }
 
@@ -407,9 +407,9 @@ export const fetchHistory = async (symbol: string, interval: string = '5m') => {
         console.log(`Successfully fetched ${historyData.length} data points for ${symbol} (${interval})`);
 
         // Limit data points for short intervals to avoid overcrowding charts
-        // Keep last 90 points for minute/hourly data, but keep all for daily/weekly
+        // Keep last 120 points for minute/hourly data as requested
         const shouldLimit = ['1m', '5m', '15m', '1h'].includes(interval);
-        let finalData = shouldLimit ? historyData.slice(-90) : historyData;
+        let finalData = shouldLimit ? historyData.slice(-120) : historyData;
 
         //For default 5m and 1d, update cache
         if (interval === '5m') {
