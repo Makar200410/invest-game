@@ -3,7 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import cron from 'node-cron';
 import yahooFinance from 'yahoo-finance2';
-import { initDB, getUser, createUser, updateUser, getUsers, getUsersByIp, getMarketItems, getMarketHistory } from './services/storage.js';
+import { initDB, getUser, createUser, updateUser, getUsers, getUsersByIp, getMarketItems, getMarketHistory, getInsiderTips, addInsiderTip } from './services/storage.js';
 import { updateMarketData, fetchHistory } from './services/fetcher.js';
 import { calculateRSI, calculateMACD, calculateBollingerBands } from './services/indicators.js';
 import newsRoutes from './routes/news.js';
@@ -29,6 +29,43 @@ initDB().then(async () => {
     try {
         const users = await getUsers();
         console.log(`Startup DB Check: Found ${users.length} users in the database.`);
+
+        // Seed Insider Tips if empty
+        const tips = await getInsiderTips();
+        if (tips.length === 0) {
+            console.log('Seeding initial insider tips...');
+            const initialTips = [
+                {
+                    title: "Tech Giant Merger Rumors",
+                    content: "Sources suggest a major acquisition in the tech sector is imminent. Watch for movement in mid-cap tech stocks.",
+                    impact: "High",
+                    reliability: "Verified",
+                    url: "#"
+                },
+                {
+                    title: "Regulatory Crackdown on Crypto",
+                    content: "New regulations regarding stablecoins are being drafted. Expect volatility in the crypto market next week.",
+                    impact: "High",
+                    reliability: "High",
+                    url: "#"
+                },
+                {
+                    title: "Oil Reserves Depleting",
+                    content: "Unexpected report on oil reserves shows lower than expected levels. Energy sector might see a boost.",
+                    impact: "Medium",
+                    reliability: "Medium",
+                    url: "#"
+                }
+            ];
+
+            for (const tip of initialTips) {
+                await addInsiderTip({
+                    id: Math.random().toString(36).substring(2, 15),
+                    ...tip,
+                    date: Date.now()
+                });
+            }
+        }
     } catch (e) {
         console.error('Startup DB Check Failed:', e);
     }
@@ -212,6 +249,42 @@ app.get('/api/fundamentals/:symbol', async (req, res) => {
     } catch (error: any) {
         console.error(`Error fetching fundamentals for ${symbol}:`, error);
         res.status(500).json({ error: 'Failed to fetch fundamentals', details: error.message });
+    }
+});
+
+// Insider Info Endpoints
+app.get('/api/insider', async (req, res) => {
+    try {
+        const tips = await getInsiderTips();
+        res.json(tips);
+    } catch (error) {
+        console.error('Error fetching insider tips:', error);
+        res.status(500).json({ error: 'Failed to fetch insider tips' });
+    }
+});
+
+app.post('/api/insider', async (req, res) => {
+    const { title, content, impact, reliability, url } = req.body;
+    if (!title || !content) {
+        return res.status(400).json({ error: 'Title and content are required' });
+    }
+
+    const newTip = {
+        id: Math.random().toString(36).substring(2, 15),
+        title,
+        content,
+        impact: impact || 'Medium',
+        reliability: reliability || 'Unverified',
+        date: Date.now(),
+        url: url || '#'
+    };
+
+    try {
+        await addInsiderTip(newTip);
+        res.json({ success: true, tip: newTip });
+    } catch (error) {
+        console.error('Error adding insider tip:', error);
+        res.status(500).json({ error: 'Failed to add insider tip' });
     }
 });
 

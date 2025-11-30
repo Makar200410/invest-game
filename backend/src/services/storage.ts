@@ -60,6 +60,19 @@ export const initDB = async () => {
             );
         `);
 
+        // Insider Tips Table
+        await query(`
+            CREATE TABLE IF NOT EXISTS insider_tips (
+                id VARCHAR(255) PRIMARY KEY,
+                title VARCHAR(255),
+                content TEXT,
+                impact VARCHAR(50),
+                reliability VARCHAR(50),
+                date BIGINT,
+                url VARCHAR(500)
+            );
+        `);
+
         console.log('Database initialized successfully.');
     } catch (error) {
         console.error('Error initializing database:', error);
@@ -231,6 +244,7 @@ export const getMarketHistory = async (symbol: string, interval: string): Promis
     }
 };
 
+
 export const getMarketHistoryWithMeta = async (symbol: string, interval: string): Promise<{ data: any[], lastUpdated: Date } | null> => {
     try {
         const res = await query('SELECT data, last_updated FROM market_history WHERE symbol = $1 AND interval = $2', [symbol, interval]);
@@ -246,4 +260,38 @@ export const getMarketHistoryWithMeta = async (symbol: string, interval: string)
         return null;
     }
 };
+
+// Insider Tips Functions
+export const addInsiderTip = async (tip: any) => {
+    try {
+        await query(
+            `INSERT INTO insider_tips (id, title, content, impact, reliability, date, url)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            [tip.id, tip.title, tip.content, tip.impact, tip.reliability, tip.date, tip.url]
+        );
+        console.log(`addInsiderTip: Added tip ${tip.title}`);
+    } catch (error) {
+        console.error('Error adding insider tip:', error);
+    }
+};
+
+export const getInsiderTips = async (): Promise<any[]> => {
+    try {
+        // Get random 5 tips
+        const res = await query('SELECT * FROM insider_tips ORDER BY RANDOM() LIMIT 5');
+        return res.rows.map(row => ({
+            id: row.id,
+            title: row.title,
+            content: row.content,
+            impact: row.impact,
+            reliability: row.reliability,
+            date: Number(row.date), // Ensure date is number (timestamp)
+            url: row.url
+        }));
+    } catch (error) {
+        console.error('Error fetching insider tips:', error);
+        return [];
+    }
+};
+
 
