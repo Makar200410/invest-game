@@ -1,4 +1,28 @@
 
+import express from 'express';
+import cors from 'cors';
+import compression from 'compression';
+import cron from 'node-cron';
+import yahooFinance from 'yahoo-finance2';
+import newsRoutes from './routes/news.js';
+import {
+    initDB,
+    getUsers,
+    getUser,
+    getUsersByIp,
+    createUser,
+    updateUser,
+    addInsiderTip,
+    getInsiderTips,
+    addAssetComment,
+    getAssetComments,
+    toggleLikeComment,
+    getMarketItems,
+    getMarketHistory
+} from './services/storage.js';
+import { updateMarketData, fetchHistory } from './services/fetcher.js';
+import { calculateRSI, calculateMACD, calculateBollingerBands } from './services/indicators.js';
+
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 
