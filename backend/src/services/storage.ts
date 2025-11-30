@@ -73,6 +73,17 @@ export const initDB = async () => {
             );
         `);
 
+        // Asset Comments Table
+        await query(`
+            CREATE TABLE IF NOT EXISTS asset_comments (
+                id VARCHAR(255) PRIMARY KEY,
+                symbol VARCHAR(50) NOT NULL,
+                username VARCHAR(255) NOT NULL,
+                content TEXT NOT NULL,
+                timestamp BIGINT NOT NULL
+            );
+        `);
+
         console.log('Database initialized successfully.');
     } catch (error) {
         console.error('Error initializing database:', error);
@@ -290,6 +301,36 @@ export const getInsiderTips = async (): Promise<any[]> => {
         }));
     } catch (error) {
         console.error('Error fetching insider tips:', error);
+        return [];
+    }
+};
+
+// Asset Comments Functions
+export const addAssetComment = async (comment: { id: string, symbol: string, username: string, content: string, timestamp: number }) => {
+    try {
+        await query(
+            `INSERT INTO asset_comments (id, symbol, username, content, timestamp)
+             VALUES ($1, $2, $3, $4, $5)`,
+            [comment.id, comment.symbol, comment.username, comment.content, comment.timestamp]
+        );
+    } catch (error) {
+        console.error('Error adding asset comment:', error);
+        throw error;
+    }
+};
+
+export const getAssetComments = async (symbol: string): Promise<any[]> => {
+    try {
+        const res = await query('SELECT * FROM asset_comments WHERE symbol = $1 ORDER BY timestamp DESC', [symbol]);
+        return res.rows.map(row => ({
+            id: row.id,
+            symbol: row.symbol,
+            username: row.username,
+            content: row.content,
+            timestamp: Number(row.timestamp)
+        }));
+    } catch (error) {
+        console.error('Error fetching asset comments:', error);
         return [];
     }
 };

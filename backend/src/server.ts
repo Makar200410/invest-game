@@ -3,7 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import cron from 'node-cron';
 import yahooFinance from 'yahoo-finance2';
-import { initDB, getUser, createUser, updateUser, getUsers, getUsersByIp, getMarketItems, getMarketHistory, getInsiderTips, addInsiderTip } from './services/storage.js';
+import { initDB, getUser, createUser, updateUser, getUsers, getUsersByIp, getMarketItems, getMarketHistory, getInsiderTips, addInsiderTip, getAssetComments, addAssetComment } from './services/storage.js';
 import { updateMarketData, fetchHistory } from './services/fetcher.js';
 import { calculateRSI, calculateMACD, calculateBollingerBands } from './services/indicators.js';
 import newsRoutes from './routes/news.js';
@@ -285,6 +285,41 @@ app.post('/api/insider', async (req, res) => {
     } catch (error) {
         console.error('Error adding insider tip:', error);
         res.status(500).json({ error: 'Failed to add insider tip' });
+    }
+});
+
+// Asset Comments Endpoints
+app.get('/api/comments/:symbol', async (req, res) => {
+    const { symbol } = req.params;
+    try {
+        const comments = await getAssetComments(symbol);
+        res.json(comments);
+    } catch (error) {
+        console.error(`Error fetching comments for ${symbol}:`, error);
+        res.status(500).json({ error: 'Failed to fetch comments' });
+    }
+});
+
+app.post('/api/comments', async (req, res) => {
+    const { symbol, username, content } = req.body;
+    if (!symbol || !username || !content) {
+        return res.status(400).json({ error: 'Symbol, username, and content are required' });
+    }
+
+    const newComment = {
+        id: Math.random().toString(36).substring(2, 15),
+        symbol,
+        username,
+        content,
+        timestamp: Date.now()
+    };
+
+    try {
+        await addAssetComment(newComment);
+        res.json({ success: true, comment: newComment });
+    } catch (error) {
+        console.error('Error adding comment:', error);
+        res.status(500).json({ error: 'Failed to add comment' });
     }
 });
 

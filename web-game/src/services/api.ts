@@ -1,7 +1,4 @@
-
 import axios from 'axios';
-
-
 
 // Default Public Tunnel URL
 const DEFAULT_BACKEND_URL = 'https://invest-game-production.up.railway.app'; // Updated to Railway Production URL
@@ -145,5 +142,35 @@ export const fetchInsiderTips = async () => {
     } catch (error) {
         console.error('Error fetching insider tips:', error);
         return [];
+    }
+};
+
+export const fetchCompanyNews = async (symbol: string) => {
+    try {
+        const response = await api.get(`/news/${symbol}`);
+        return response.data;
+    } catch (error) {
+        console.error(`Error fetching news for ${symbol}:`, error);
+        return [];
+    }
+};
+
+export const fetchAssetComments = async (symbol: string) => {
+    try {
+        const response = await api.get(`/comments/${symbol}`);
+        return response.data;
+    } catch (error) {
+        console.error(`Error fetching comments for ${symbol}:`, error);
+        return [];
+    }
+};
+
+export const postAssetComment = async (symbol: string, content: string, username: string) => {
+    try {
+        const response = await api.post('/comments', { symbol, content, username });
+        return response.data;
+    } catch (error) {
+        console.error('Error posting comment:', error);
+        throw error;
     }
 };

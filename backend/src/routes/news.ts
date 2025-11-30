@@ -136,4 +136,37 @@ router.get('/insider', async (req, res) => {
     }
 });
 
+// Get news for specific symbol
+router.get('/:symbol', async (req, res) => {
+    const { symbol } = req.params;
+    try {
+        // Fetch specific news from TickerTick
+        // TickerTick format: z:SYMBOL
+        const querySymbol = symbol.includes('-') ? symbol : `z:${symbol}`;
+        const response = await fetch(`https://api.tickertick.com/feed?q=${querySymbol}&n=10`);
+
+        if (response.ok) {
+            const data = await response.json();
+            if (data.stories && data.stories.length > 0) {
+                return res.json(data.stories);
+            }
+        }
+
+        // Fallback to repository if API fails or returns empty
+        const repoPath = path.join(__dirname, '../news_repository.json');
+        if (fs.existsSync(repoPath)) {
+            const repoData: TickerTickStory[] = JSON.parse(fs.readFileSync(repoPath, 'utf-8'));
+            const filtered = repoData.filter(story =>
+                story.tickers && story.tickers.some(t => t.toLowerCase() === symbol.toLowerCase())
+            );
+            return res.json(filtered);
+        }
+
+        res.json([]);
+    } catch (error) {
+        console.error(`Error fetching news for ${symbol}:`, error);
+        res.json([]);
+    }
+});
+
 export default router;
