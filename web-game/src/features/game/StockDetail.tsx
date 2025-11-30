@@ -540,11 +540,18 @@ export const StockDetail: React.FC = () => {
                                 );
                             })}
                         </div>
+
+                    </div>
+
+                    {/* Chart Type Selector */}
+                    <div className="flex justify-start px-2 mt-2">
                         <button
                             onClick={() => setChartType(prev => prev === 'candle' ? 'line' : 'candle')}
-                            className="p-2 rounded-full hover:bg-white/10 transition-colors"
+                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-xs font-bold"
+                            style={{ color: 'var(--text-primary)' }}
                         >
-                            <TrendingUp size={20} style={{ color: 'var(--text-primary)' }} />
+                            <TrendingUp size={16} />
+                            {chartType === 'candle' ? 'Candles' : 'Line'}
                         </button>
                     </div>
 
