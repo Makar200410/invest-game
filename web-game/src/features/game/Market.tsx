@@ -14,6 +14,7 @@ export const Market: React.FC = () => {
     const [items, setItems] = useState<MarketItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [marketInterval, setMarketInterval] = useState<string>('1d'); // Default to daily
+    const [activeTab, setActiveTab] = useState<string>('all');
 
     const [prevPrices, setPrevPrices] = useState<Record<string, number>>({});
     const [priceFlashes, setPriceFlashes] = useState<Record<string, 'up' | 'down' | null>>({});
@@ -408,123 +409,155 @@ export const Market: React.FC = () => {
                 </div>
             </div>
 
+            {/* Category Tabs */}
+            <div className="px-4 pb-2">
+                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                    {[
+                        { id: 'all', label: 'All' },
+                        { id: 'stock', label: 'Stocks' },
+                        { id: 'crypto', label: 'Crypto' },
+                        { id: 'index', label: 'Indices' },
+                        { id: 'future', label: 'Futures' },
+                        { id: 'forex', label: 'Forex' },
+                        { id: 'commodity', label: 'Commodities' }
+                    ].map((tab) => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)}
+                            className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${activeTab === tab.id
+                                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30'
+                                    : 'bg-white/5 text-gray-500 hover:bg-white/10'
+                                }`}
+                            style={{
+                                color: activeTab === tab.id ? '#ffffff' : 'var(--text-primary)',
+                                opacity: activeTab === tab.id ? 1 : 0.6
+                            }}
+                        >
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
             {loading ? (
                 <div className="flex justify-center p-12">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
                 </div>
             ) : (
                 <div className="grid gap-2 grid-cols-1 px-1">
-                    {items.map((item, index) => {
-                        const portfolioItem = portfolio.find(p => p.id === item.id);
-                        const leveragedAmount = leveragedPositions
-                            .filter(p => p.assetId === item.id)
-                            .reduce((sum, p) => sum + p.amount, 0);
-                        const owned = (portfolioItem?.amount || 0) + leveragedAmount;
+                    {items
+                        .filter(item => activeTab === 'all' || item.type === activeTab)
+                        .map((item, index) => {
+                            const portfolioItem = portfolio.find(p => p.id === item.id);
+                            const leveragedAmount = leveragedPositions
+                                .filter(p => p.assetId === item.id)
+                                .reduce((sum, p) => sum + p.amount, 0);
+                            const owned = (portfolioItem?.amount || 0) + leveragedAmount;
 
-                        // Create sparkline data with full history (approx 24h) - exclude last point
-                        const fullHistory = item.sparkline || [];
-                        // Remove the last point if it exists to avoid incomplete/incorrect data
-                        // Then limit to last 90 points for consistent display
-                        let chartHistory = fullHistory.length > 1 ? fullHistory.slice(0, -1) : fullHistory;
-                        chartHistory = chartHistory.slice(-90); // Show last 90 points maximum
-                        const prices = chartHistory.map(p => p.price);
-                        const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
-                        const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
-                        const priceRange = maxPrice - minPrice || 1;
-                        const chartColor = item.change24h >= 0 ? '#22c55e' : '#ef4444';
+                            // Create sparkline data with full history (approx 24h) - exclude last point
+                            const fullHistory = item.sparkline || [];
+                            // Remove the last point if it exists to avoid incomplete/incorrect data
+                            // Then limit to last 90 points for consistent display
+                            let chartHistory = fullHistory.length > 1 ? fullHistory.slice(0, -1) : fullHistory;
+                            chartHistory = chartHistory.slice(-90); // Show last 90 points maximum
+                            const prices = chartHistory.map(p => p.price);
+                            const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
+                            const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
+                            const priceRange = maxPrice - minPrice || 1;
+                            const chartColor = item.change24h >= 0 ? '#22c55e' : '#ef4444';
 
-                        const sparklinePoints = chartHistory.map((point, idx) => {
-                            const x = (idx / (chartHistory.length - 1)) * 100; // Width 100px
-                            const y = 60 - ((point.price - minPrice) / priceRange) * 60; // Height 60px
-                            return `${x},${y}`;
-                        }).join(' ');
+                            const sparklinePoints = chartHistory.map((point, idx) => {
+                                const x = (idx / (chartHistory.length - 1)) * 100; // Width 100px
+                                const y = 60 - ((point.price - minPrice) / priceRange) * 60; // Height 60px
+                                return `${x},${y}`;
+                            }).join(' ');
 
-                        const fillPoints = `0,60 ${sparklinePoints} 100,60`;
+                            const fillPoints = `0,60 ${sparklinePoints} 100,60`;
 
-                        // Determine layout: even index = chart right, odd index = chart left
-                        const chartOnRight = index % 2 === 0;
+                            // Determine layout: even index = chart right, odd index = chart left
+                            const chartOnRight = index % 2 === 0;
 
-                        // Flash Effect
-                        const flash = priceFlashes[item.id];
-                        const flashClass = flash === 'up' ? 'bg-green-500/20' : flash === 'down' ? 'bg-red-500/20' : '';
+                            // Flash Effect
+                            const flash = priceFlashes[item.id];
+                            const flashClass = flash === 'up' ? 'bg-green-500/20' : flash === 'down' ? 'bg-red-500/20' : '';
 
-                        return (
-                            <div
-                                key={item.id}
-                                id={index === 0 ? 'tutorial-first-stock-item' : `tutorial-stock-item-${item.id}`}
-                                onClick={() => navigate(`/stock/${item.id}`)}
-                                className={`group rounded-2xl p-3 shadow-sm border hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer relative overflow-hidden ${flashClass}`}
-                                style={{ backgroundColor: flash ? undefined : 'var(--card-bg)', borderColor: 'var(--card-border)', transition: 'background-color 0.5s ease' }}
-                            >
-                                <div className={`flex gap-4 items-center ${chartOnRight ? 'flex-row' : 'flex-row-reverse'}`}>
-                                    {/* Left/Right Content: Icon + Info */}
-                                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                                        <div className="flex-1 min-w-0">
-                                            <h3 className="font-bold text-lg leading-tight truncate" style={{ color: 'var(--text-primary)' }}>{item.symbol}</h3>
-                                            <p className="text-xs font-medium opacity-60" style={{ color: 'var(--text-primary)' }}>{item.name}</p>
-                                            {owned > 0 && (
-                                                <span className="inline-block text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md mt-1 font-bold">
-                                                    {owned} {t('owned_badge')}
-                                                </span>
+                            return (
+                                <div
+                                    key={item.id}
+                                    id={index === 0 ? 'tutorial-first-stock-item' : `tutorial-stock-item-${item.id}`}
+                                    onClick={() => navigate(`/stock/${item.id}`)}
+                                    className={`group rounded-2xl p-3 shadow-sm border hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer relative overflow-hidden ${flashClass}`}
+                                    style={{ backgroundColor: flash ? undefined : 'var(--card-bg)', borderColor: 'var(--card-border)', transition: 'background-color 0.5s ease' }}
+                                >
+                                    <div className={`flex gap-4 items-center ${chartOnRight ? 'flex-row' : 'flex-row-reverse'}`}>
+                                        {/* Left/Right Content: Icon + Info */}
+                                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                                            <div className="flex-1 min-w-0">
+                                                <h3 className="font-bold text-lg leading-tight truncate" style={{ color: 'var(--text-primary)' }}>{item.symbol}</h3>
+                                                <p className="text-xs font-medium opacity-60" style={{ color: 'var(--text-primary)' }}>{item.name}</p>
+                                                {owned > 0 && (
+                                                    <span className="inline-block text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md mt-1 font-bold">
+                                                        {owned} {t('owned_badge')}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Right/Left Content: Chart + Price */}
+                                        <div className={`flex items-center gap-4 ${chartOnRight ? 'flex-row' : 'flex-row-reverse'}`}>
+                                            {/* Larger Chart */}
+                                            {chartHistory.length > 1 && (
+                                                <svg width="100" height="60" className="overflow-visible opacity-70 shrink-0">
+                                                    <defs>
+                                                        <linearGradient id={`gradient-${item.id}`} x1="0" y1="0" x2="0" y2="1">
+                                                            <stop offset="0%" stopColor={chartColor} stopOpacity="0.3" />
+                                                            <stop offset="100%" stopColor={chartColor} stopOpacity="0" />
+                                                        </linearGradient>
+                                                    </defs>
+                                                    <polygon
+                                                        points={fillPoints}
+                                                        fill={`url(#gradient-${item.id})`}
+                                                    />
+                                                    <polyline
+                                                        points={sparklinePoints}
+                                                        fill="none"
+                                                        stroke={chartColor}
+                                                        strokeWidth="2.5"
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                    />
+                                                </svg>
                                             )}
+
+                                            {/* Price Info */}
+                                            <div className={`text-${chartOnRight ? 'right' : 'left'} shrink-0`}>
+                                                <p className="font-black text-lg" style={{ color: 'var(--text-primary)' }}>${formatPrice(item.price)}</p>
+                                                <p className={`text-xs font-bold ${item.change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                                    {item.change24h >= 0 ? '+' : ''}{item.change24h.toFixed(2)}%
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
 
-                                    {/* Right/Left Content: Chart + Price */}
-                                    <div className={`flex items-center gap-4 ${chartOnRight ? 'flex-row' : 'flex-row-reverse'}`}>
-                                        {/* Larger Chart */}
-                                        {chartHistory.length > 1 && (
-                                            <svg width="100" height="60" className="overflow-visible opacity-70 shrink-0">
-                                                <defs>
-                                                    <linearGradient id={`gradient-${item.id}`} x1="0" y1="0" x2="0" y2="1">
-                                                        <stop offset="0%" stopColor={chartColor} stopOpacity="0.3" />
-                                                        <stop offset="100%" stopColor={chartColor} stopOpacity="0" />
-                                                    </linearGradient>
-                                                </defs>
-                                                <polygon
-                                                    points={fillPoints}
-                                                    fill={`url(#gradient-${item.id})`}
-                                                />
-                                                <polyline
-                                                    points={sparklinePoints}
-                                                    fill="none"
-                                                    stroke={chartColor}
-                                                    strokeWidth="2.5"
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                />
-                                            </svg>
-                                        )}
-
-                                        {/* Price Info */}
-                                        <div className={`text-${chartOnRight ? 'right' : 'left'} shrink-0`}>
-                                            <p className="font-black text-lg" style={{ color: 'var(--text-primary)' }}>${formatPrice(item.price)}</p>
-                                            <p className={`text-xs font-bold ${item.change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                                                {item.change24h >= 0 ? '+' : ''}{item.change24h.toFixed(2)}%
-                                            </p>
-                                        </div>
+                                    {/* Always Visible Action Buttons */}
+                                    <div className="flex gap-2 mt-4 pt-3 border-t" style={{ borderColor: 'var(--card-border)' }}>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); navigate(`/trade/${item.id}?type=sell`); }}
+                                            disabled={owned <= 0}
+                                            className="flex-1 px-3 py-1.5 rounded-lg bg-red-50 text-red-600 font-bold text-xs hover:bg-red-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                                        >
+                                            {t('sell')}
+                                        </button>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); navigate(`/trade/${item.id}?type=buy`); }}
+                                            className="flex-1 px-3 py-1.5 rounded-lg bg-black text-white font-bold text-xs hover:bg-gray-800 transition-all"
+                                        >
+                                            {t('buy')}
+                                        </button>
                                     </div>
                                 </div>
-
-                                {/* Always Visible Action Buttons */}
-                                <div className="flex gap-2 mt-4 pt-3 border-t" style={{ borderColor: 'var(--card-border)' }}>
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); navigate(`/trade/${item.id}?type=sell`); }}
-                                        disabled={owned <= 0}
-                                        className="flex-1 px-3 py-1.5 rounded-lg bg-red-50 text-red-600 font-bold text-xs hover:bg-red-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                                    >
-                                        {t('sell')}
-                                    </button>
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); navigate(`/trade/${item.id}?type=buy`); }}
-                                        className="flex-1 px-3 py-1.5 rounded-lg bg-black text-white font-bold text-xs hover:bg-gray-800 transition-all"
-                                    >
-                                        {t('buy')}
-                                    </button>
-                                </div>
-                            </div>
-                        );
-                    })}
+                            );
+                        })}
                 </div>
             )}
         </div>

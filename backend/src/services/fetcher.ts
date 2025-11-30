@@ -4,8 +4,50 @@ import { getMarketHistory, saveMarketHistory, saveMarketItems, getMarketHistoryW
 // Create Yahoo Finance instance
 const yahooFinance = new YahooFinance();
 const SYMBOLS = [
-    'BTC-USD', 'ETH-USD', 'SOL-USD', 'DOGE-USD', // Crypto
-    'AAPL', 'TSLA', 'MSFT', 'GOOGL', 'AMZN', 'NVDA' // Stocks
+    // --- Crypto (10) ---
+    'BTC-USD', 'ETH-USD', 'SOL-USD', 'BNB-USD', 'XRP-USD',
+    'ADA-USD', 'DOGE-USD', 'AVAX-USD', 'DOT-USD', 'MATIC-USD',
+
+    // --- Commodities (10) ---
+    'GC=F', 'SI=F', 'CL=F', 'NG=F', 'HG=F',
+    'PL=F', 'PA=F', 'ZC=F', 'ZS=F', 'ZW=F',
+
+    // --- Forex (Major Pairs) ---
+    'EURUSD=X', 'GBPUSD=X', 'JPY=X', 'CNY=X', 'BRL=X',
+    'RUB=X', 'INR=X', 'CAD=X',
+
+    // --- US (en) ---
+    'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'NVDA', 'META', 'BRK-B', 'JPM', 'JNJ', 'V', 'PG', 'UNH', 'HD', 'MA',
+    '^GSPC', '^DJI', '^IXIC', // Indices
+    'ES=F', 'YM=F', 'NQ=F', // Futures
+
+    // --- UK (en-GB) ---
+    'HSBA.L', 'SHEL.L', 'AZN.L', 'RIO.L', 'BP.L', 'ULVR.L', 'GSK.L', 'DGE.L', 'BATS.L', 'REL.L', 'RKT.L', 'LSEG.L', 'VOD.L', 'LLOY.L', 'BARC.L',
+    '^FTSE', '^FTMC', '^FTAI', // Indices
+
+    // --- Germany (de) ---
+    'SAP.DE', 'SIE.DE', 'ALV.DE', 'DTE.DE', 'AIR.DE', 'MBG.DE', 'BMW.DE', 'VOW3.DE', 'BAS.DE', 'IFX.DE', 'DPW.DE', 'MUV2.DE', 'DB1.DE', 'BEI.DE', 'HEN3.DE',
+    '^GDAXI', '^MDAXI', '^TECDAX', // Indices
+
+    // --- France (fr) ---
+    'MC.PA', 'OR.PA', 'TTE.PA', 'SAN.PA', 'AIR.PA', 'SU.PA', 'AI.PA', 'EL.PA', 'BNP.PA', 'KER.PA', 'CS.PA', 'DG.PA', 'ORA.PA', 'GLE.PA', 'LR.PA',
+    '^FCHI', '^SBF120', // Indices
+
+    // --- Spain (es) ---
+    'ITX.MC', 'IBE.MC', 'SAN.MC', 'BBVA.MC', 'TEF.MC', 'AMS.MC', 'REP.MC', 'CABK.MC', 'AENA.MC', 'FER.MC', 'NTGY.MC', 'GRF.MC', 'ACS.MC', 'ENG.MC', 'MAP.MC',
+    '^IBEX', // Indices
+
+    // --- China/HK (zh) ---
+    '0700.HK', '9988.HK', '0939.HK', '0941.HK', '1398.HK', '3690.HK', '2318.HK', '3988.HK', '0883.HK', '1299.HK', '1810.HK', '2015.HK', '1211.HK', '0386.HK', '2628.HK',
+    '^HSI', '000001.SS', '399001.SZ', // Indices
+
+    // --- Japan (ja) ---
+    '7203.T', '6758.T', '9984.T', '9432.T', '8306.T', '6861.T', '6098.T', '8035.T', '4063.T', '7974.T', '8058.T', '9983.T', '4502.T', '6501.T', '7267.T',
+    '^N225', // Indices
+
+    // --- Brazil (pt) ---
+    'PETR4.SA', 'VALE3.SA', 'ITUB4.SA', 'BBDC4.SA', 'PETR3.SA', 'ABEV3.SA', 'B3SA3.SA', 'WEGE3.SA', 'BBAS3.SA', 'ITSA4.SA', 'JBSS3.SA', 'SUZB3.SA', 'GGBR4.SA', 'RENT3.SA', 'RDOR3.SA',
+    '^BVSP' // Indices
 ];
 
 // Helper to fetch crypto price from Binance
@@ -71,7 +113,7 @@ export const updateMarketData = async () => {
 
     // ALWAYS fetch fresh data from Yahoo Finance
     try {
-        console.log(`Symbols to fetch: ${SYMBOLS.join(', ')}`);
+        console.log(`Symbols to fetch: ${SYMBOLS.length} items`);
 
 
         // Fetch all symbols in parallel
@@ -171,13 +213,21 @@ export const updateMarketData = async () => {
                 // fetchHistory now handles caching and staleness checks
                 const history1d = await fetchHistory(symbol, '1d');
 
+                // Determine Type
+                let type = 'stock';
+                if (symbol.includes('-USD')) type = 'crypto';
+                else if (['GC=F', 'SI=F', 'CL=F', 'NG=F', 'HG=F', 'PL=F', 'PA=F', 'ZC=F', 'ZS=F', 'ZW=F'].includes(symbol)) type = 'commodity';
+                else if (symbol.endsWith('=X')) type = 'forex';
+                else if (symbol.startsWith('^')) type = 'index';
+                else if (symbol.endsWith('=F')) type = 'future';
+
                 return {
                     id: symbol,
-                    symbol: symbol.replace('-USD', ''),
+                    symbol: symbol.replace('-USD', '').replace('=F', '').replace('=X', ''),
                     name: quoteResult?.shortName || quoteResult?.longName || symbol,
                     price: price,
                     change24h: quoteResult?.regularMarketChangePercent || 0,
-                    type: symbol.includes('-USD') ? 'crypto' : 'stock',
+                    type: type,
                     sparkline: history1d // Use 1d data for main page sparklines
                 };
             } catch (err) {

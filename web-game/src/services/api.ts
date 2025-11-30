@@ -39,7 +39,7 @@ export interface MarketItem {
     name: string;
     price: number;
     change24h: number;
-    type: 'crypto' | 'stock';
+    type: 'crypto' | 'stock' | 'index' | 'future' | 'forex' | 'commodity';
     sparkline?: { price: number; date: string }[];
     description?: string;
     high24h?: number;
