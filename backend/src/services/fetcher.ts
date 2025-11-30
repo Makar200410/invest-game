@@ -116,125 +116,143 @@ export const updateMarketData = async () => {
         console.log(`Symbols to fetch: ${SYMBOLS.length} items`);
 
 
-        // Fetch all symbols in parallel
-        const results = await Promise.all(SYMBOLS.map(async (symbol) => {
-            try {
-                // console.log(`Fetching ${symbol}...`); // Reduce logging
-                let price = 0;
-                let marketTime = 0;
-                let quoteResult: any = null;
+        // Process in chunks to avoid rate limiting
+        const CHUNK_SIZE = 5;
+        const chunks = [];
+        for (let i = 0; i < SYMBOLS.length; i += CHUNK_SIZE) {
+            chunks.push(SYMBOLS.slice(i, i + CHUNK_SIZE));
+        }
 
-                // Try Binance for Crypto first
-                if (symbol.includes('-USD')) {
-                    const binanceData = await fetchCryptoPrice(symbol);
-                    if (binanceData) {
-                        price = binanceData.price;
-                        marketTime = binanceData.time;
-                        // console.log(`✓ ${symbol} (Binance): $${price}`);
-                    }
-                }
-
-                // Fallback to Yahoo or if it's a Stock
-                if (price === 0) {
-                    quoteResult = await yahooFinance.quote(symbol);
-                    if (quoteResult && quoteResult.regularMarketPrice) {
-                        price = quoteResult.regularMarketPrice;
-                        marketTime = quoteResult.regularMarketTime ? new Date(quoteResult.regularMarketTime).getTime() : Date.now();
-                        // console.log(`✓ ${symbol} (Yahoo): $${price}`);
-                    }
-                }
-
-                if (price === 0) {
-                    console.warn(`No price data for ${symbol}, skipping...`);
-                    return null;
-                }
-
-                // Update 5m history with new data point
-                let history5m = await getMarketHistory(symbol, '5m');
-                if (!Array.isArray(history5m)) {
-                    console.warn(`Invalid history data for ${symbol}, resetting to empty array.`);
-                    history5m = [];
-                }
-
+        const results = [];
+        for (const chunk of chunks) {
+            // console.log(`Processing chunk of ${chunk.length} symbols...`);
+            const chunkResults = await Promise.all(chunk.map(async (symbol) => {
                 try {
-                    // Calculate 5m candle start time to ensure we aggregate into 5m buckets
-                    const timestamp = new Date(marketTime).getTime();
-                    const candleSize = 5 * 60 * 1000;
-                    const candleStart = Math.floor(timestamp / candleSize) * candleSize;
-                    const candleStartDate = new Date(candleStart).toISOString();
+                    // console.log(`Fetching ${symbol}...`); // Reduce logging
+                    let price = 0;
+                    let marketTime = 0;
+                    let quoteResult: any = null;
 
-                    const lastPoint = history5m[history5m.length - 1];
-
-                    // Check if last point belongs to the current 5m candle
-                    let lastPointTime = 0;
-                    if (lastPoint && lastPoint.date) {
-                        lastPointTime = new Date(lastPoint.date).getTime();
+                    // Try Binance for Crypto first
+                    if (symbol.includes('-USD')) {
+                        const binanceData = await fetchCryptoPrice(symbol);
+                        if (binanceData) {
+                            price = binanceData.price;
+                            marketTime = binanceData.time;
+                            // console.log(`✓ ${symbol} (Binance): $${price}`);
+                        }
                     }
 
-                    // If last point is within the same candle window (or very close), update it
-                    const isSameCandle = lastPoint && lastPointTime >= candleStart;
+                    // Fallback to Yahoo or if it's a Stock
+                    if (price === 0) {
+                        try {
+                            quoteResult = await yahooFinance.quote(symbol);
+                            if (quoteResult && quoteResult.regularMarketPrice) {
+                                price = quoteResult.regularMarketPrice;
+                                marketTime = quoteResult.regularMarketTime ? new Date(quoteResult.regularMarketTime).getTime() : Date.now();
+                                // console.log(`✓ ${symbol} (Yahoo): $${price}`);
+                            }
+                        } catch (yError) {
+                            console.warn(`Yahoo quote failed for ${symbol}: ${yError.message}`);
+                        }
+                    }
 
-                    if (isSameCandle) {
-                        // Update existing candle
-                        lastPoint.close = price;
-                        lastPoint.price = price;
-                        if (price > lastPoint.high) lastPoint.high = price;
-                        if (price < lastPoint.low) lastPoint.low = price;
+                    if (price === 0) {
+                        console.warn(`No price data for ${symbol}, skipping...`);
+                        return null;
+                    }
 
-                        // Update volume
-                        if (quoteResult?.regularMarketVolume) {
-                            lastPoint.volume = quoteResult.regularMarketVolume;
+                    // Update 5m history with new data point
+                    let history5m = await getMarketHistory(symbol, '5m');
+                    if (!Array.isArray(history5m)) {
+                        console.warn(`Invalid history data for ${symbol}, resetting to empty array.`);
+                        history5m = [];
+                    }
+
+                    try {
+                        // Calculate 5m candle start time to ensure we aggregate into 5m buckets
+                        const timestamp = new Date(marketTime).getTime();
+                        const candleSize = 5 * 60 * 1000;
+                        const candleStart = Math.floor(timestamp / candleSize) * candleSize;
+                        const candleStartDate = new Date(candleStart).toISOString();
+
+                        const lastPoint = history5m[history5m.length - 1];
+
+                        // Check if last point belongs to the current 5m candle
+                        let lastPointTime = 0;
+                        if (lastPoint && lastPoint.date) {
+                            lastPointTime = new Date(lastPoint.date).getTime();
                         }
 
-                        await saveMarketHistory(symbol, '5m', history5m);
-                    } else {
-                        // Start new candle
-                        const newDataPoint = {
-                            date: candleStartDate,
-                            open: price,
-                            high: price,
-                            low: price,
-                            close: price,
-                            volume: quoteResult?.regularMarketVolume || 0,
-                            price: price
-                        };
+                        // If last point is within the same candle window (or very close), update it
+                        const isSameCandle = lastPoint && lastPointTime >= candleStart;
 
-                        history5m.push(newDataPoint);
-                        // Keep last 90 points for 5m
-                        if (history5m.length > 90) history5m = history5m.slice(-90);
-                        await saveMarketHistory(symbol, '5m', history5m);
+                        if (isSameCandle) {
+                            // Update existing candle
+                            lastPoint.close = price;
+                            lastPoint.price = price;
+                            if (price > lastPoint.high) lastPoint.high = price;
+                            if (price < lastPoint.low) lastPoint.low = price;
+
+                            // Update volume
+                            if (quoteResult?.regularMarketVolume) {
+                                lastPoint.volume = quoteResult.regularMarketVolume;
+                            }
+
+                            await saveMarketHistory(symbol, '5m', history5m);
+                        } else {
+                            // Start new candle
+                            const newDataPoint = {
+                                date: candleStartDate,
+                                open: price,
+                                high: price,
+                                low: price,
+                                close: price,
+                                volume: quoteResult?.regularMarketVolume || 0,
+                                price: price
+                            };
+
+                            history5m.push(newDataPoint);
+                            // Keep last 90 points for 5m
+                            if (history5m.length > 90) history5m = history5m.slice(-90);
+                            await saveMarketHistory(symbol, '5m', history5m);
+                        }
+                    } catch (updateError) {
+                        console.error(`Error updating 5m history for ${symbol}:`, updateError);
+                        // Don't fail the whole item if history update fails
                     }
-                } catch (updateError) {
-                    console.error(`Error updating 5m history for ${symbol}:`, updateError);
-                    // Don't fail the whole item if history update fails
+
+                    // Update or fetch 1d history for Sparkline (Main Page)
+                    // fetchHistory now handles caching and staleness checks
+                    const history1d = await fetchHistory(symbol, '1d');
+
+                    // Determine Type
+                    let type = 'stock';
+                    if (symbol.includes('-USD')) type = 'crypto';
+                    else if (['GC=F', 'SI=F', 'CL=F', 'NG=F', 'HG=F', 'PL=F', 'PA=F', 'ZC=F', 'ZS=F', 'ZW=F'].includes(symbol)) type = 'commodity';
+                    else if (symbol.endsWith('=X')) type = 'forex';
+                    else if (symbol.startsWith('^')) type = 'index';
+                    else if (symbol.endsWith('=F')) type = 'future';
+
+                    return {
+                        id: symbol,
+                        symbol: symbol.replace('-USD', '').replace('=F', '').replace('=X', ''),
+                        name: quoteResult?.shortName || quoteResult?.longName || symbol,
+                        price: price,
+                        change24h: quoteResult?.regularMarketChangePercent || 0,
+                        type: type,
+                        sparkline: history1d // Use 1d data for main page sparklines
+                    };
+                } catch (err) {
+                    console.error(`Error fetching ${symbol}:`, err);
+                    return null;
                 }
+            }));
 
-                // Update or fetch 1d history for Sparkline (Main Page)
-                // fetchHistory now handles caching and staleness checks
-                const history1d = await fetchHistory(symbol, '1d');
-
-                // Determine Type
-                let type = 'stock';
-                if (symbol.includes('-USD')) type = 'crypto';
-                else if (['GC=F', 'SI=F', 'CL=F', 'NG=F', 'HG=F', 'PL=F', 'PA=F', 'ZC=F', 'ZS=F', 'ZW=F'].includes(symbol)) type = 'commodity';
-                else if (symbol.endsWith('=X')) type = 'forex';
-                else if (symbol.startsWith('^')) type = 'index';
-                else if (symbol.endsWith('=F')) type = 'future';
-
-                return {
-                    id: symbol,
-                    symbol: symbol.replace('-USD', '').replace('=F', '').replace('=X', ''),
-                    name: quoteResult?.shortName || quoteResult?.longName || symbol,
-                    price: price,
-                    change24h: quoteResult?.regularMarketChangePercent || 0,
-                    type: type,
-                    sparkline: history1d // Use 1d data for main page sparklines
-                };
-            } catch (err) {
-                console.error(`Error fetching ${symbol}:`, err);
-                return null;
-            }
-        }));
+            results.push(...chunkResults);
+            // Small delay between chunks to be nice to the API
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
 
         items = results.filter(item => item !== null);
     } catch (error) {

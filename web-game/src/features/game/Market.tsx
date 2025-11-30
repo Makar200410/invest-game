@@ -9,12 +9,47 @@ import { formatPrice } from '../../utils/format';
 
 export const Market: React.FC = () => {
     const { t } = useTranslation();
+
+    // Top 20 Popular Assets
+    const POPULAR_IDS = [
+        'BTC-USD', 'ETH-USD', 'SOL-USD', // Crypto
+        'AAPL', 'NVDA', 'TSLA', 'MSFT', 'AMZN', 'GOOGL', 'META', // US Stocks
+        'GC=F', 'CL=F', // Commodities
+        'EURUSD=X', 'GBPUSD=X', // Forex
+        '^GSPC', '^DJI', '^IXIC', // US Indices
+        '^FTSE', '^GDAXI', '^N225' // Global Indices
+    ];
+
+    const COUNTRIES = [
+        { id: 'all', label: 'country_all' },
+        { id: 'us', label: 'country_us' },
+        { id: 'uk', label: 'country_uk' },
+        { id: 'de', label: 'country_de' },
+        { id: 'fr', label: 'country_fr' },
+        { id: 'es', label: 'country_es' },
+        { id: 'cn', label: 'country_cn' },
+        { id: 'jp', label: 'country_jp' },
+        { id: 'br', label: 'country_br' },
+    ];
+
+    const getCountry = (symbol: string): string => {
+        if (symbol.endsWith('.L')) return 'uk';
+        if (symbol.endsWith('.DE')) return 'de';
+        if (symbol.endsWith('.PA')) return 'fr';
+        if (symbol.endsWith('.MC')) return 'es';
+        if (symbol.endsWith('.HK') || symbol.endsWith('.SS') || symbol.endsWith('.SZ')) return 'cn';
+        if (symbol.endsWith('.T')) return 'jp';
+        if (symbol.endsWith('.SA')) return 'br';
+        return 'us';
+    };
+
     const navigate = useNavigate();
     const { balance, loan, portfolio, leveragedPositions, shortPositions, user, skills, tradesToday, getDiversificationBonus, checkOrders } = useGameStore();
     const [items, setItems] = useState<MarketItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [marketInterval, setMarketInterval] = useState<string>('1d'); // Default to daily
-    const [activeTab, setActiveTab] = useState<string>('all');
+    const [activeTab, setActiveTab] = useState<string>('popular');
+    const [selectedCountry, setSelectedCountry] = useState<string>('all');
 
     const [prevPrices, setPrevPrices] = useState<Record<string, number>>({});
     const [priceFlashes, setPriceFlashes] = useState<Record<string, 'up' | 'down' | null>>({});
@@ -411,22 +446,22 @@ export const Market: React.FC = () => {
 
             {/* Category Tabs */}
             <div className="px-4 pb-2">
-                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                <div className="flex flex-wrap gap-2 justify-start pb-2">
                     {[
-                        { id: 'all', label: 'All' },
-                        { id: 'stock', label: 'Stocks' },
-                        { id: 'crypto', label: 'Crypto' },
-                        { id: 'index', label: 'Indices' },
-                        { id: 'future', label: 'Futures' },
-                        { id: 'forex', label: 'Forex' },
-                        { id: 'commodity', label: 'Commodities' }
+                        { id: 'popular', label: t('cat_popular') },
+                        { id: 'stock', label: t('cat_stocks') },
+                        { id: 'crypto', label: t('cat_crypto') },
+                        { id: 'index', label: t('cat_indices') },
+                        { id: 'future', label: t('cat_futures') },
+                        { id: 'forex', label: t('cat_forex') },
+                        { id: 'commodity', label: t('cat_commodities') }
                     ].map((tab) => (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
                             className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${activeTab === tab.id
-                                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30'
-                                    : 'bg-white/5 text-gray-500 hover:bg-white/10'
+                                ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30'
+                                : 'bg-white/5 text-gray-500 hover:bg-white/10'
                                 }`}
                             style={{
                                 color: activeTab === tab.id ? '#ffffff' : 'var(--text-primary)',
@@ -439,6 +474,26 @@ export const Market: React.FC = () => {
                 </div>
             </div>
 
+            {/* Country Filter for Stocks */}
+            {activeTab === 'stock' && (
+                <div className="px-4 pb-2">
+                    <div className="flex flex-wrap gap-2 justify-start pb-2">
+                        {COUNTRIES.map((country) => (
+                            <button
+                                key={country.id}
+                                onClick={() => setSelectedCountry(country.id)}
+                                className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${selectedCountry === country.id
+                                    ? 'bg-blue-500/20 text-blue-500 border border-blue-500/50'
+                                    : 'bg-white/5 text-gray-500 hover:bg-white/10 border border-transparent'
+                                    }`}
+                            >
+                                {t(country.label)}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+
             {loading ? (
                 <div className="flex justify-center p-12">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
@@ -446,36 +501,21 @@ export const Market: React.FC = () => {
             ) : (
                 <div className="grid gap-2 grid-cols-1 px-1">
                     {items
-                        .filter(item => activeTab === 'all' || item.type === activeTab)
+                        .filter(item => {
+                            if (activeTab === 'popular') return POPULAR_IDS.includes(item.id);
+                            if (activeTab === 'stock') {
+                                if (item.type !== 'stock') return false;
+                                if (selectedCountry === 'all') return true;
+                                return getCountry(item.symbol) === selectedCountry;
+                            }
+                            return item.type === activeTab;
+                        })
                         .map((item, index) => {
                             const portfolioItem = portfolio.find(p => p.id === item.id);
                             const leveragedAmount = leveragedPositions
                                 .filter(p => p.assetId === item.id)
                                 .reduce((sum, p) => sum + p.amount, 0);
                             const owned = (portfolioItem?.amount || 0) + leveragedAmount;
-
-                            // Create sparkline data with full history (approx 24h) - exclude last point
-                            const fullHistory = item.sparkline || [];
-                            // Remove the last point if it exists to avoid incomplete/incorrect data
-                            // Then limit to last 90 points for consistent display
-                            let chartHistory = fullHistory.length > 1 ? fullHistory.slice(0, -1) : fullHistory;
-                            chartHistory = chartHistory.slice(-90); // Show last 90 points maximum
-                            const prices = chartHistory.map(p => p.price);
-                            const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
-                            const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
-                            const priceRange = maxPrice - minPrice || 1;
-                            const chartColor = item.change24h >= 0 ? '#22c55e' : '#ef4444';
-
-                            const sparklinePoints = chartHistory.map((point, idx) => {
-                                const x = (idx / (chartHistory.length - 1)) * 100; // Width 100px
-                                const y = 60 - ((point.price - minPrice) / priceRange) * 60; // Height 60px
-                                return `${x},${y}`;
-                            }).join(' ');
-
-                            const fillPoints = `0,60 ${sparklinePoints} 100,60`;
-
-                            // Determine layout: even index = chart right, odd index = chart left
-                            const chartOnRight = index % 2 === 0;
 
                             // Flash Effect
                             const flash = priceFlashes[item.id];
@@ -489,12 +529,12 @@ export const Market: React.FC = () => {
                                     className={`group rounded-2xl p-3 shadow-sm border hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer relative overflow-hidden ${flashClass}`}
                                     style={{ backgroundColor: flash ? undefined : 'var(--card-bg)', borderColor: 'var(--card-border)', transition: 'background-color 0.5s ease' }}
                                 >
-                                    <div className={`flex gap-4 items-center ${chartOnRight ? 'flex-row' : 'flex-row-reverse'}`}>
-                                        {/* Left/Right Content: Icon + Info */}
+                                    <div className="flex justify-between items-center">
+                                        {/* Left Content: Name + Ticker */}
                                         <div className="flex items-center gap-3 flex-1 min-w-0">
                                             <div className="flex-1 min-w-0">
-                                                <h3 className="font-bold text-lg leading-tight truncate" style={{ color: 'var(--text-primary)' }}>{item.symbol}</h3>
-                                                <p className="text-xs font-medium opacity-60" style={{ color: 'var(--text-primary)' }}>{item.name}</p>
+                                                <h3 className="font-bold text-lg leading-tight truncate" style={{ color: 'var(--text-primary)' }}>{item.name}</h3>
+                                                <p className="text-xs font-medium opacity-60" style={{ color: 'var(--text-primary)' }}>{item.symbol}</p>
                                                 {owned > 0 && (
                                                     <span className="inline-block text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md mt-1 font-bold">
                                                         {owned} {t('owned_badge')}
@@ -503,39 +543,12 @@ export const Market: React.FC = () => {
                                             </div>
                                         </div>
 
-                                        {/* Right/Left Content: Chart + Price */}
-                                        <div className={`flex items-center gap-4 ${chartOnRight ? 'flex-row' : 'flex-row-reverse'}`}>
-                                            {/* Larger Chart */}
-                                            {chartHistory.length > 1 && (
-                                                <svg width="100" height="60" className="overflow-visible opacity-70 shrink-0">
-                                                    <defs>
-                                                        <linearGradient id={`gradient-${item.id}`} x1="0" y1="0" x2="0" y2="1">
-                                                            <stop offset="0%" stopColor={chartColor} stopOpacity="0.3" />
-                                                            <stop offset="100%" stopColor={chartColor} stopOpacity="0" />
-                                                        </linearGradient>
-                                                    </defs>
-                                                    <polygon
-                                                        points={fillPoints}
-                                                        fill={`url(#gradient-${item.id})`}
-                                                    />
-                                                    <polyline
-                                                        points={sparklinePoints}
-                                                        fill="none"
-                                                        stroke={chartColor}
-                                                        strokeWidth="2.5"
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                    />
-                                                </svg>
-                                            )}
-
-                                            {/* Price Info */}
-                                            <div className={`text-${chartOnRight ? 'right' : 'left'} shrink-0`}>
-                                                <p className="font-black text-lg" style={{ color: 'var(--text-primary)' }}>${formatPrice(item.price)}</p>
-                                                <p className={`text-xs font-bold ${item.change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                                                    {item.change24h >= 0 ? '+' : ''}{item.change24h.toFixed(2)}%
-                                                </p>
-                                            </div>
+                                        {/* Right Content: Price + Change */}
+                                        <div className="text-right shrink-0">
+                                            <p className="font-black text-lg" style={{ color: 'var(--text-primary)' }}>${formatPrice(item.price)}</p>
+                                            <p className={`text-xs font-bold ${item.change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                                {item.change24h >= 0 ? '+' : ''}{item.change24h.toFixed(2)}%
+                                            </p>
                                         </div>
                                     </div>
 

@@ -9,7 +9,6 @@ import { useGameStore } from '../../store/gameStore';
 import { formatPrice } from '../../utils/format';
 import {
     fetchCryptoMarket,
-    fetchMarketChart,
     fetchMarketChartByInterval,
     fetchIndicators,
     fetchFundamentals,
@@ -69,9 +68,7 @@ export const StockDetail: React.FC = () => {
                     setAsset(foundAsset);
 
                     // 2. Fetch Chart Data
-                    const chartData = skills.multiTimeframe
-                        ? await fetchMarketChartByInterval(id, interval)
-                        : await fetchMarketChart(id);
+                    const chartData = await fetchMarketChartByInterval(id, interval);
                     setHistory(chartData);
 
                     // 3. Fetch Additional Data based on skills/tabs
@@ -551,7 +548,7 @@ export const StockDetail: React.FC = () => {
                             style={{ color: 'var(--text-primary)' }}
                         >
                             <TrendingUp size={16} />
-                            {chartType === 'candle' ? 'Candles' : 'Line'}
+                            {chartType === 'candle' ? t('candles') : t('line')}
                         </button>
                     </div>
 
