@@ -26,7 +26,7 @@ const SYMBOLS = [
     '^FTSE', '^FTMC', '^FTAI', // Indices
 
     // --- Germany (de) ---
-    'SAP.DE', 'SIE.DE', 'ALV.DE', 'DTE.DE', 'AIR.DE', 'MBG.DE', 'BMW.DE', 'VOW3.DE', 'BAS.DE', 'IFX.DE', 'DPW.DE', 'MUV2.DE', 'DB1.DE', 'BEI.DE', 'HEN3.DE',
+    'SAP.DE', 'SIE.DE', 'ALV.DE', 'DTE.DE', 'AIR.DE', 'MBG.DE', 'BMW.DE', 'VOW3.DE', 'BAS.DE', 'IFX.DE', 'MUV2.DE', 'DB1.DE', 'BEI.DE', 'HEN3.DE',
     '^GDAXI', '^MDAXI', '^TECDAX', // Indices
 
     // --- France (fr) ---
@@ -46,7 +46,7 @@ const SYMBOLS = [
     '^N225', // Indices
 
     // --- Brazil (pt) ---
-    'PETR4.SA', 'VALE3.SA', 'ITUB4.SA', 'BBDC4.SA', 'PETR3.SA', 'ABEV3.SA', 'B3SA3.SA', 'WEGE3.SA', 'BBAS3.SA', 'ITSA4.SA', 'JBSS3.SA', 'SUZB3.SA', 'GGBR4.SA', 'RENT3.SA', 'RDOR3.SA',
+    'PETR4.SA', 'VALE3.SA', 'ITUB4.SA', 'BBDC4.SA', 'PETR3.SA', 'ABEV3.SA', 'B3SA3.SA', 'WEGE3.SA', 'BBAS3.SA', 'ITSA4.SA', 'SUZB3.SA', 'GGBR4.SA', 'RENT3.SA', 'RDOR3.SA',
     '^BVSP' // Indices
 ];
 
@@ -311,9 +311,12 @@ export const fetchHistory = async (symbol: string, interval: string = '5m') => {
                 const staleThreshold = interval === '5m' ? 5 * 60 * 1000 : 60 * 60 * 1000;
 
                 if (diffMs < staleThreshold) {
+                    console.log(`Using cached data for ${symbol} (${interval}): ${cached.data.length} points`);
                     return cached.data;
                 }
                 console.log(`Cache stale for ${symbol} (${interval}). Age: ${Math.round(diffMs / 1000)}s. Fetching fresh...`);
+            } else {
+                console.log(`No cache found for ${symbol} (${interval}). Fetching fresh data...`);
             }
         }
 

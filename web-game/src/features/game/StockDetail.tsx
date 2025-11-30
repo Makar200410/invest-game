@@ -68,7 +68,9 @@ export const StockDetail: React.FC = () => {
                     setAsset(foundAsset);
 
                     // 2. Fetch Chart Data
+                    console.log(`Fetching chart data for ${id} with interval ${interval}`);
                     const chartData = await fetchMarketChartByInterval(id, interval);
+                    console.log(`Received ${chartData.length} data points for ${id}`);
                     setHistory(chartData);
 
                     // 3. Fetch Additional Data based on skills/tabs
