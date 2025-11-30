@@ -153,7 +153,7 @@ export const updateMarketData = async () => {
                                 // console.log(`✓ ${symbol} (Yahoo): $${price}`);
                             }
                         } catch (yError) {
-                            console.warn(`Yahoo quote failed for ${symbol}: ${yError.message}`);
+                            console.warn(`Yahoo quote failed for ${symbol}: ${yError instanceof Error ? yError.message : String(yError)}`);
                         }
                     }
 
