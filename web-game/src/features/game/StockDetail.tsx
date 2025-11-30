@@ -550,51 +550,57 @@ export const StockDetail: React.FC = () => {
 
                     {indicators && (
                         <>
+                            <div className="flex justify-end mb-2 px-1">
+                                <span className="text-[10px] opacity-50 uppercase tracking-wider font-bold">
+                                    Interval: {indicatorInterval === '1d' ? 'Daily (24h)' : indicatorInterval}
+                                </span>
+                            </div>
+
                             {/* Summary */}
                             <Card className="p-4" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
                                 <div className="flex justify-between items-center mb-4">
-                                    <h4 className="font-bold">{t('summary')}</h4>
+                                    <h4 className="font-bold text-lg">Technical Summary</h4>
                                     <div className={`px-4 py-1.5 rounded text-sm font-bold ${indicators.summary?.recommendation.includes('Buy') ? 'bg-green-500 text-white' :
                                         indicators.summary?.recommendation.includes('Sell') ? 'bg-red-500 text-white' :
                                             'bg-gray-500 text-white'
                                         }`}>
-                                        {t(indicators.summary?.recommendation?.toLowerCase().replace(' ', '_') || 'neutral')}
+                                        {indicators.summary?.recommendation || 'Neutral'}
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-3 gap-2 text-center text-xs font-bold">
-                                    <div className="p-2 rounded bg-white/5">
-                                        <div className="opacity-50 mb-1">{t('buy')}</div>
-                                        <div className="text-green-400 text-lg">{indicators.summary?.buy || 0}</div>
+                                    <div className="p-3 rounded bg-white/5 border border-white/10">
+                                        <div className="opacity-50 mb-1 uppercase tracking-wider">Buy</div>
+                                        <div className="text-green-400 text-xl">{indicators.summary?.buy || 0}</div>
                                     </div>
-                                    <div className="p-2 rounded bg-white/5">
-                                        <div className="opacity-50 mb-1">{t('sell')}</div>
-                                        <div className="text-red-400 text-lg">{indicators.summary?.sell || 0}</div>
+                                    <div className="p-3 rounded bg-white/5 border border-white/10">
+                                        <div className="opacity-50 mb-1 uppercase tracking-wider">Sell</div>
+                                        <div className="text-red-400 text-xl">{indicators.summary?.sell || 0}</div>
                                     </div>
-                                    <div className="p-2 rounded bg-white/5">
-                                        <div className="opacity-50 mb-1">{t('neutral')}</div>
-                                        <div className="text-gray-400 text-lg">{indicators.summary?.neutral || 0}</div>
+                                    <div className="p-3 rounded bg-white/5 border border-white/10">
+                                        <div className="opacity-50 mb-1 uppercase tracking-wider">Neutral</div>
+                                        <div className="text-gray-400 text-xl">{indicators.summary?.neutral || 0}</div>
                                     </div>
                                 </div>
                             </Card>
 
                             {/* Pivot Points */}
                             <Card className="p-4" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
-                                <h4 className="font-bold mb-4">{t('pivot_points')}</h4>
+                                <h4 className="font-bold mb-4 text-lg">Pivot Points</h4>
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-xs">
                                         <thead>
                                             <tr className="opacity-50 border-b border-white/10">
-                                                <th className="text-left py-2">{t('level')}</th>
-                                                <th className="text-right py-2">{t('classic')}</th>
-                                                <th className="text-right py-2">{t('fibonacci')}</th>
+                                                <th className="text-left py-2">Level</th>
+                                                <th className="text-right py-2">Classic</th>
+                                                <th className="text-right py-2">Fibonacci</th>
                                             </tr>
                                         </thead>
                                         <tbody className="font-mono">
                                             {['r3', 'r2', 'r1', 'p', 's1', 's2', 's3'].map((level) => (
-                                                <tr key={level} className="border-b border-white/5 last:border-0">
-                                                    <td className="py-2 font-bold uppercase">{level}</td>
-                                                    <td className="py-2 text-right">{formatPrice(indicators.pivotPoints?.classic[level] || 0)}</td>
-                                                    <td className="py-2 text-right">{formatPrice(indicators.pivotPoints?.fibonacci[level] || 0)}</td>
+                                                <tr key={level} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+                                                    <td className="py-2.5 font-bold uppercase text-blue-400">{level}</td>
+                                                    <td className="py-2.5 text-right">{formatPrice(indicators.pivotPoints?.classic[level] || 0)}</td>
+                                                    <td className="py-2.5 text-right">{formatPrice(indicators.pivotPoints?.fibonacci[level] || 0)}</td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -604,39 +610,39 @@ export const StockDetail: React.FC = () => {
 
                             {/* Moving Averages */}
                             <Card className="p-4" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
-                                <h4 className="font-bold mb-4">{t('moving_averages')}</h4>
+                                <h4 className="font-bold mb-4 text-lg">Moving Averages</h4>
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-xs">
                                         <thead>
                                             <tr className="opacity-50 border-b border-white/10">
-                                                <th className="text-left py-2">MA</th>
-                                                <th className="text-right py-2">{t('simple')}</th>
-                                                <th className="text-right py-2">{t('exponential')}</th>
+                                                <th className="text-left py-2">Period</th>
+                                                <th className="text-right py-2">Simple</th>
+                                                <th className="text-right py-2">Exponential</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {indicators.movingAverages?.map((ma: any) => (
-                                                <tr key={ma.period} className="border-b border-white/5 last:border-0">
-                                                    <td className="py-2 font-bold">MA{ma.period}</td>
-                                                    <td className="py-2 text-right">
+                                                <tr key={ma.period} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+                                                    <td className="py-2.5 font-bold text-blue-400">MA{ma.period}</td>
+                                                    <td className="py-2.5 text-right">
                                                         <div className="flex justify-end items-center gap-2">
-                                                            <span className="font-mono">{formatPrice(ma.simple || 0)}</span>
-                                                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${ma.simpleAction === 'Buy' ? 'bg-green-500/20 text-green-500' :
+                                                            <span className="font-mono opacity-80">{formatPrice(ma.simple || 0)}</span>
+                                                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${ma.simpleAction === 'Buy' ? 'bg-green-500/20 text-green-500' :
                                                                 ma.simpleAction === 'Sell' ? 'bg-red-500/20 text-red-500' :
                                                                     'bg-gray-500/20 text-gray-500'
                                                                 }`}>
-                                                                {t(ma.simpleAction?.toLowerCase() || 'neutral')}
+                                                                {ma.simpleAction || 'Neutral'}
                                                             </span>
                                                         </div>
                                                     </td>
-                                                    <td className="py-2 text-right">
+                                                    <td className="py-2.5 text-right">
                                                         <div className="flex justify-end items-center gap-2">
-                                                            <span className="font-mono">{formatPrice(ma.exponential || 0)}</span>
-                                                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${ma.exponentialAction === 'Buy' ? 'bg-green-500/20 text-green-500' :
+                                                            <span className="font-mono opacity-80">{formatPrice(ma.exponential || 0)}</span>
+                                                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${ma.exponentialAction === 'Buy' ? 'bg-green-500/20 text-green-500' :
                                                                 ma.exponentialAction === 'Sell' ? 'bg-red-500/20 text-red-500' :
                                                                     'bg-gray-500/20 text-gray-500'
                                                                 }`}>
-                                                                {t(ma.exponentialAction?.toLowerCase() || 'neutral')}
+                                                                {ma.exponentialAction || 'Neutral'}
                                                             </span>
                                                         </div>
                                                     </td>
@@ -649,28 +655,28 @@ export const StockDetail: React.FC = () => {
 
                             {/* Technical Indicators */}
                             <Card className="p-4" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
-                                <h4 className="font-bold mb-4">{t('technical_indicators')}</h4>
+                                <h4 className="font-bold mb-4 text-lg">Technical Indicators</h4>
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-xs">
                                         <thead>
                                             <tr className="opacity-50 border-b border-white/10">
-                                                <th className="text-left py-2">{t('indicator')}</th>
-                                                <th className="text-right py-2">{t('value')}</th>
-                                                <th className="text-right py-2">{t('action')}</th>
+                                                <th className="text-left py-2">Indicator</th>
+                                                <th className="text-right py-2">Value</th>
+                                                <th className="text-right py-2">Action</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {indicators.indicators?.map((ind: any) => (
-                                                <tr key={ind.name} className="border-b border-white/5 last:border-0">
-                                                    <td className="py-2 font-bold">{ind.name}</td>
-                                                    <td className="py-2 text-right font-mono">{ind.value?.toFixed(4) || '-'}</td>
-                                                    <td className="py-2 text-right">
-                                                        <span className={`px-2 py-1 rounded text-[10px] font-bold ${['Buy', 'Strong Buy'].includes(ind.action) ? 'bg-green-500 text-white' :
-                                                            ['Sell', 'Strong Sell'].includes(ind.action) ? 'bg-red-500 text-white' :
-                                                                ['Overbought', 'High Volatility'].includes(ind.action) ? 'bg-gray-500 text-white' : // Using gray for neutral/special states as per screenshot style
+                                                <tr key={ind.name} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+                                                    <td className="py-2.5 font-bold">{ind.name}</td>
+                                                    <td className="py-2.5 text-right font-mono opacity-80">{ind.value?.toFixed(4) || '-'}</td>
+                                                    <td className="py-2.5 text-right">
+                                                        <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${['Buy', 'Strong Buy'].includes(ind.action) || ind.action?.includes('Upside') ? 'bg-green-500 text-white' :
+                                                            ['Sell', 'Strong Sell'].includes(ind.action) || ind.action?.includes('Downside') ? 'bg-red-500 text-white' :
+                                                                ['Overbought', 'High Volatility'].includes(ind.action) ? 'bg-orange-500 text-white' :
                                                                     'bg-gray-500 text-white'
                                                             }`}>
-                                                            {t(ind.action?.toLowerCase().replace(' ', '_') || 'neutral')}
+                                                            {ind.action?.replace('_', ' ') || 'Neutral'}
                                                         </span>
                                                     </td>
                                                 </tr>
@@ -742,31 +748,127 @@ export const StockDetail: React.FC = () => {
                             </div>
                         )}
 
-                        <h3 className="font-bold text-lg mb-4">{t('fundamentals')}</h3>
-                        <div className="grid grid-cols-2 gap-y-4 gap-x-8">
+                        <h3 className="font-bold text-lg mb-6">{t('fundamentals')}</h3>
+
+                        <div className="space-y-8">
+                            {/* Valuation Measures */}
                             <div>
-                                <p className="text-xs opacity-50 uppercase">{t('market_cap')}</p>
-                                <p className="font-bold">{fundamentals?.summaryDetail?.marketCap ? `$${(fundamentals.summaryDetail.marketCap / 1e9).toFixed(2)}B` : 'N/A'}</p>
+                                <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-3 border-b border-white/10 pb-1">Valuation Measures</h4>
+                                <div className="grid grid-cols-2 gap-y-4 gap-x-8">
+                                    <div>
+                                        <p className="text-xs opacity-50">Market Cap</p>
+                                        <p className="font-bold">{fundamentals?.summaryDetail?.marketCap ? `$${(fundamentals.summaryDetail.marketCap / 1e9).toFixed(2)}B` : 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs opacity-50">Enterprise Value</p>
+                                        <p className="font-bold">{fundamentals?.defaultKeyStatistics?.enterpriseValue ? `$${(fundamentals.defaultKeyStatistics.enterpriseValue / 1e9).toFixed(2)}B` : 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs opacity-50">Trailing P/E</p>
+                                        <p className="font-bold">{fundamentals?.summaryDetail?.trailingPE?.toFixed(2) || 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs opacity-50">Forward P/E</p>
+                                        <p className="font-bold">{fundamentals?.summaryDetail?.forwardPE?.toFixed(2) || 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs opacity-50">PEG Ratio</p>
+                                        <p className="font-bold">{fundamentals?.defaultKeyStatistics?.pegRatio?.toFixed(2) || 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs opacity-50">Price/Sales</p>
+                                        <p className="font-bold">{fundamentals?.summaryDetail?.priceToSalesTrailing12Months?.toFixed(2) || 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs opacity-50">Price/Book</p>
+                                        <p className="font-bold">{fundamentals?.defaultKeyStatistics?.priceToBook?.toFixed(2) || 'N/A'}</p>
+                                    </div>
+                                </div>
                             </div>
+
+                            {/* Financial Highlights */}
                             <div>
-                                <p className="text-xs opacity-50 uppercase">{t('pe_ratio')}</p>
-                                <p className="font-bold">{fundamentals?.summaryDetail?.trailingPE?.toFixed(2) || 'N/A'}</p>
+                                <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-3 border-b border-white/10 pb-1">Financial Highlights</h4>
+                                <div className="grid grid-cols-2 gap-y-4 gap-x-8">
+                                    <div>
+                                        <p className="text-xs opacity-50">Profit Margin</p>
+                                        <p className="font-bold">{fundamentals?.defaultKeyStatistics?.profitMargins ? `${(fundamentals.defaultKeyStatistics.profitMargins * 100).toFixed(2)}%` : 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs opacity-50">Operating Margin</p>
+                                        <p className="font-bold">{fundamentals?.financialData?.operatingMargins ? `${(fundamentals.financialData.operatingMargins * 100).toFixed(2)}%` : 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs opacity-50">Return on Assets</p>
+                                        <p className="font-bold">{fundamentals?.financialData?.returnOnAssets ? `${(fundamentals.financialData.returnOnAssets * 100).toFixed(2)}%` : 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs opacity-50">Return on Equity</p>
+                                        <p className="font-bold">{fundamentals?.financialData?.returnOnEquity ? `${(fundamentals.financialData.returnOnEquity * 100).toFixed(2)}%` : 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs opacity-50">Revenue (ttm)</p>
+                                        <p className="font-bold">{fundamentals?.financialData?.totalRevenue ? `$${(fundamentals.financialData.totalRevenue / 1e9).toFixed(2)}B` : 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs opacity-50">Revenue Per Share</p>
+                                        <p className="font-bold">{fundamentals?.financialData?.revenuePerShare?.toFixed(2) || 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs opacity-50">Gross Profit</p>
+                                        <p className="font-bold">{fundamentals?.financialData?.grossProfits ? `$${(fundamentals.financialData.grossProfits / 1e9).toFixed(2)}B` : 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs opacity-50">EBITDA</p>
+                                        <p className="font-bold">{fundamentals?.financialData?.ebitda ? `$${(fundamentals.financialData.ebitda / 1e9).toFixed(2)}B` : 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs opacity-50">Diluted EPS</p>
+                                        <p className="font-bold">{fundamentals?.defaultKeyStatistics?.trailingEps?.toFixed(2) || 'N/A'}</p>
+                                    </div>
+                                </div>
                             </div>
+
+                            {/* Balance Sheet */}
                             <div>
-                                <p className="text-xs opacity-50 uppercase">{t('eps')}</p>
-                                <p className="font-bold">{fundamentals?.defaultKeyStatistics?.trailingEps?.toFixed(2) || 'N/A'}</p>
+                                <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-3 border-b border-white/10 pb-1">Balance Sheet</h4>
+                                <div className="grid grid-cols-2 gap-y-4 gap-x-8">
+                                    <div>
+                                        <p className="text-xs opacity-50">Total Cash</p>
+                                        <p className="font-bold">{fundamentals?.financialData?.totalCash ? `$${(fundamentals.financialData.totalCash / 1e9).toFixed(2)}B` : 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs opacity-50">Total Debt</p>
+                                        <p className="font-bold">{fundamentals?.financialData?.totalDebt ? `$${(fundamentals.financialData.totalDebt / 1e9).toFixed(2)}B` : 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs opacity-50">Debt/Equity</p>
+                                        <p className="font-bold">{fundamentals?.financialData?.debtToEquity?.toFixed(2) || 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs opacity-50">Current Ratio</p>
+                                        <p className="font-bold">{fundamentals?.financialData?.currentRatio?.toFixed(2) || 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs opacity-50">Book Value</p>
+                                        <p className="font-bold">{fundamentals?.defaultKeyStatistics?.bookValue?.toFixed(2) || 'N/A'}</p>
+                                    </div>
+                                </div>
                             </div>
+
+                            {/* Cash Flow */}
                             <div>
-                                <p className="text-xs opacity-50 uppercase">{t('week_high')}</p>
-                                <p className="font-bold">${fundamentals?.summaryDetail?.fiftyTwoWeekHigh?.toFixed(2) || 'N/A'}</p>
-                            </div>
-                            <div>
-                                <p className="text-xs opacity-50 uppercase">{t('week_low')}</p>
-                                <p className="font-bold">${fundamentals?.summaryDetail?.fiftyTwoWeekLow?.toFixed(2) || 'N/A'}</p>
-                            </div>
-                            <div>
-                                <p className="text-xs opacity-50 uppercase">{t('volume')}</p>
-                                <p className="font-bold">{fundamentals?.summaryDetail?.volume ? (fundamentals.summaryDetail.volume / 1e6).toFixed(2) + 'M' : 'N/A'}</p>
+                                <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-3 border-b border-white/10 pb-1">Cash Flow</h4>
+                                <div className="grid grid-cols-2 gap-y-4 gap-x-8">
+                                    <div>
+                                        <p className="text-xs opacity-50">Operating Cash Flow</p>
+                                        <p className="font-bold">{fundamentals?.financialData?.operatingCashflow ? `$${(fundamentals.financialData.operatingCashflow / 1e9).toFixed(2)}B` : 'N/A'}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs opacity-50">Levered Free Cash Flow</p>
+                                        <p className="font-bold">{fundamentals?.financialData?.freeCashflow ? `$${(fundamentals.financialData.freeCashflow / 1e9).toFixed(2)}B` : 'N/A'}</p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </Card>

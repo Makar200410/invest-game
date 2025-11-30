@@ -220,14 +220,21 @@ app.get('/api/indicators/:symbol', async (req, res) => {
         // The fetcher currently returns all for '1d', so we are good.
         const history: any[] = await fetchHistory(yahooSymbol, queryInterval);
 
+        console.log(`[Indicators] Symbol: ${yahooSymbol}, History Length: ${history.length}`);
+        if (history.length > 0) {
+            console.log(`[Indicators] Sample history item:`, history[history.length - 1]);
+        }
+
         if (history.length < 50) { // Minimum required for basic indicators
             return res.status(400).json({ error: 'Not enough data for technical analysis' });
         }
 
-        const closes = history.map(h => h.close);
-        const highs = history.map(h => h.high);
-        const lows = history.map(h => h.low);
+        const closes = history.map(h => h.close || h.price); // Handle potential 'price' property
+        const highs = history.map(h => h.high || h.close || h.price); // Fallback
+        const lows = history.map(h => h.low || h.close || h.price); // Fallback
         const currentPrice = closes[closes.length - 1];
+
+        console.log(`[Indicators] Current Price: ${currentPrice}`);
         const currentHigh = highs[highs.length - 1];
         const currentLow = lows[lows.length - 1];
 
@@ -333,7 +340,16 @@ app.get('/api/fundamentals/:symbol', async (req, res) => {
     try {
         const yf = new yahooFinance();
         const summary = await yf.quoteSummary(yahooSymbol, {
-            modules: ['summaryDetail', 'financialData', 'defaultKeyStatistics', 'assetProfile']
+            modules: [
+                'summaryDetail',
+                'financialData',
+                'defaultKeyStatistics',
+                'assetProfile',
+                'incomeStatementHistory',
+                'balanceSheetHistory',
+                'cashflowStatementHistory',
+                'earnings'
+            ]
         });
         res.json(summary);
     } catch (error: any) {
