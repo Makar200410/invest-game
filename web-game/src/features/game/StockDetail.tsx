@@ -524,8 +524,8 @@ export const StockDetail: React.FC = () => {
                     {/* Timeframe Selector */}
                     <div id="timeframe-selector" className="flex justify-between items-center px-2">
                         <div className="flex gap-4">
-                            {['1m', '5m', '1h', '1d', '1w', '1M', 'All'].map((t) => {
-                                const isLocked = !skills.multiTimeframe && ['1m', '5m', '1h', '1w', '1M'].includes(t);
+                            {['1m', '5m', '1h', '1d', '1w', 'All'].map((t) => {
+                                const isLocked = !skills.multiTimeframe && ['1m', '5m', '1h', '1w'].includes(t);
                                 return (
                                     <button
                                         key={t}

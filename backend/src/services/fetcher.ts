@@ -344,6 +344,14 @@ export const fetchHistory = async (symbol: string, interval: string = '5m') => {
             case '1d':
                 periodDays = 730; // 2 years for daily charts
                 break;
+            case '1w':
+                periodDays = 3650; // 10 years for weekly charts (more history)
+                queryInterval = '1wk'; // Yahoo Finance uses '1wk' for weekly
+                break;
+            case 'All':
+                periodDays = 3650; // 10 years for "All" timeframe
+                queryInterval = '1wk'; // Use weekly data for "All" to avoid overload
+                break;
             default:
                 periodDays = 1;
         }
@@ -398,14 +406,19 @@ export const fetchHistory = async (symbol: string, interval: string = '5m') => {
 
         console.log(`Successfully fetched ${historyData.length} data points for ${symbol} (${interval})`);
 
-        // For default 5m and 1d (used for weekly/monthly), update cache
+        // Limit data points for short intervals to avoid overcrowding charts
+        // Keep last 90 points for minute/hourly data, but keep all for daily/weekly
+        const shouldLimit = ['1m', '5m', '15m', '1h'].includes(interval);
+        let finalData = shouldLimit ? historyData.slice(-90) : historyData;
+
+        //For default 5m and 1d, update cache
         if (interval === '5m') {
-            await saveMarketHistory(symbol, '5m', historyData.slice(-90));
+            await saveMarketHistory(symbol, '5m', finalData);
         } else if (interval === '1d') {
-            await saveMarketHistory(symbol, '1d', historyData);
+            await saveMarketHistory(symbol, '1d', finalData);
         }
 
-        return historyData;
+        return finalData;
     } catch (error) {
         console.error(`Error fetching history for ${symbol} (${interval}):`, error);
         return [];
