@@ -343,7 +343,7 @@ export const Market: React.FC = () => {
                         return (
                             <div
                                 key={item.id}
-                                id={`tutorial-stock-item-${index}`}
+                                id={index === 0 ? 'tutorial-first-stock-item' : `tutorial-stock-item-${item.id}`}
                                 onClick={() => navigate(`/stock/${item.id}`)}
                                 className={`group rounded-2xl p-4 shadow-sm border hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer relative overflow-hidden ${flashClass}`}
                                 style={{ backgroundColor: flash ? undefined : 'var(--card-bg)', borderColor: 'var(--card-border)', transition: 'background-color 0.5s ease' }}

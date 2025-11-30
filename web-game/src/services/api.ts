@@ -4,7 +4,7 @@ import axios from 'axios';
 import newsRepo from '../data/news_repository.json';
 
 // Default Public Tunnel URL
-const DEFAULT_BACKEND_URL = 'http://localhost:3000'; // Changed to local for dev
+const DEFAULT_BACKEND_URL = 'https://invest-game-production.up.railway.app'; // Updated to Railway Production URL
 
 // Get URL from storage or use default
 const getBackendUrl = () => {

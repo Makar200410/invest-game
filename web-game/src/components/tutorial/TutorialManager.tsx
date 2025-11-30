@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
@@ -27,7 +27,7 @@ const STEPS: TutorialStep[] = [
     },
     {
         id: 'market-item',
-        targetId: 'tutorial-stock-item-1', // Target Ethereum (usually 2nd)
+        targetId: 'tutorial-first-stock-item', // Target first item generically
         titleKey: 'tutorial_market_title',
         contentKey: 'tutorial_market_content',
         position: 'top',
@@ -83,79 +83,98 @@ export const TutorialManager: React.FC = () => {
     const { tutorialActive, tutorialStep, setTutorialStep, completeTutorial } = useGameStore();
     const [rect, setRect] = useState<DOMRect | null>(null);
     const [isVisible, setIsVisible] = useState(false);
-    const observerRef = useRef<ResizeObserver | null>(null);
 
     const currentStep = STEPS[tutorialStep];
 
     useEffect(() => {
         if (!tutorialActive) return;
 
+        console.log(`[Tutorial] Active. Step: ${tutorialStep}, Target: ${currentStep.targetId}, Path: ${currentStep.path}`);
+
+        // Reset state when step changes
+        setIsVisible(false);
+        setRect(null);
+
         const nextStep = STEPS[tutorialStep + 1];
 
+        // Helper to check path match
+        const isPathMatch = (targetPath?: string) => {
+            if (!targetPath) return true;
+            if (location.pathname === targetPath) return true;
+            if (targetPath.startsWith('/stock/') && location.pathname.startsWith('/stock/')) return true;
+            return false;
+        };
+
+        const isCorrectPath = isPathMatch(currentStep.path);
+
         // Auto-advance if user navigates to the next step's path manually
-        if (nextStep && nextStep.path && location.pathname === nextStep.path) {
+        if (nextStep && nextStep.path && isPathMatch(nextStep.path)) {
+            console.log('[Tutorial] Auto-advancing to next step due to navigation match.');
             setTutorialStep(tutorialStep + 1);
             return;
         }
 
         // Handle Navigation Enforcement
-        // Only enforce if we are NOT on the correct path AND we are not transitioning to the next step's path
-        if (currentStep.path && location.pathname !== currentStep.path) {
-            // Special case for dynamic routes like /stock/:id
-            const isOnStockPage = location.pathname.startsWith('/stock/');
-            const targetIsStockPage = currentStep.path.includes('/stock/');
-
-            if (targetIsStockPage && isOnStockPage) {
-                // Already on a stock page, assume it's fine (or strict check if needed)
-            } else {
-                // Prevent redirecting if user is navigating TO the next step
-                if (nextStep && location.pathname === nextStep.path) {
-                    // Do nothing, let the auto-advance above handle it on next render
-                } else {
-                    navigate(currentStep.path);
-                }
-            }
+        if (!isCorrectPath && currentStep.path) {
+            console.log(`[Tutorial] Wrong path (${location.pathname}). Redirecting to ${currentStep.path}`);
+            navigate(currentStep.path);
+            // Don't start checking elements yet, wait for path change to re-trigger effect
+            return;
         }
 
-        const findTarget = () => {
+        let cleanupFn: (() => void) | undefined;
+        let retryTimer: ReturnType<typeof setTimeout>;
+        let attempts = 0;
+
+        const check = () => {
+            attempts++;
             const element = document.getElementById(currentStep.targetId);
+
             if (element) {
-                const updateRect = () => {
-                    const newRect = element.getBoundingClientRect();
-                    // Check if rect is valid (visible)
-                    if (newRect.width > 0 && newRect.height > 0) {
-                        setRect(newRect);
-                        setIsVisible(true);
-                    }
-                };
+                const newRect = element.getBoundingClientRect();
+                if (newRect.width > 0 && newRect.height > 0) {
+                    console.log(`[Tutorial] Target found: ${currentStep.targetId} (Attempt ${attempts})`);
 
-                updateRect();
+                    const updateRect = () => {
+                        const updatedRect = element.getBoundingClientRect();
+                        if (updatedRect.width > 0 && updatedRect.height > 0) {
+                            setRect(updatedRect);
+                            setIsVisible(true);
+                        }
+                    };
 
-                // Observe resize
-                if (observerRef.current) observerRef.current.disconnect();
-                observerRef.current = new ResizeObserver(updateRect);
-                observerRef.current.observe(element);
+                    updateRect();
 
-                // Also listen to window resize/scroll
-                window.addEventListener('resize', updateRect);
-                window.addEventListener('scroll', updateRect, true);
+                    const resizeObserver = new ResizeObserver(updateRect);
+                    resizeObserver.observe(element);
+                    window.addEventListener('resize', updateRect);
+                    window.addEventListener('scroll', updateRect, true);
 
-                return () => {
-                    window.removeEventListener('resize', updateRect);
-                    window.removeEventListener('scroll', updateRect, true);
-                    if (observerRef.current) observerRef.current.disconnect();
-                };
+                    cleanupFn = () => {
+                        resizeObserver.disconnect();
+                        window.removeEventListener('resize', updateRect);
+                        window.removeEventListener('scroll', updateRect, true);
+                    };
+                } else {
+                    console.log(`[Tutorial] Target found but 0 size: ${currentStep.targetId}. Retrying...`);
+                    retryTimer = setTimeout(check, 200);
+                }
             } else {
-                // Element not found yet, retry
-                setIsVisible(false);
-                const timer = setTimeout(findTarget, 500);
-                return () => clearTimeout(timer);
+                if (attempts % 5 === 0) console.log(`[Tutorial] Target NOT found: ${currentStep.targetId}. Retrying... (Attempt ${attempts})`);
+                retryTimer = setTimeout(check, 200);
             }
         };
 
-        const cleanup = findTarget();
+        // Only start checking if we are on the correct path
+        if (isCorrectPath) {
+            retryTimer = setTimeout(check, 300);
+        } else {
+            console.log('[Tutorial] Waiting for correct path before checking elements...');
+        }
+
         return () => {
-            if (cleanup && typeof cleanup === 'function') cleanup();
+            clearTimeout(retryTimer);
+            if (cleanupFn) cleanupFn();
         };
 
     }, [tutorialActive, tutorialStep, currentStep, location.pathname, navigate, setTutorialStep]);
@@ -210,50 +229,48 @@ export const TutorialManager: React.FC = () => {
     return createPortal(
         <AnimatePresence>
             {isVisible && rect && (
-                <div className="fixed inset-0 z-[9999] pointer-events-none">
-                    {/* Dark Overlay with Cutout */}
-                    <svg className="absolute inset-0 w-full h-full pointer-events-auto">
-                        <defs>
-                            <mask id="tutorial-mask">
-                                <rect x="0" y="0" width="100%" height="100%" fill="white" />
-                                <rect
-                                    x={rect.left - 5}
-                                    y={rect.top - 5}
-                                    width={rect.width + 10}
-                                    height={rect.height + 10}
-                                    rx="8"
-                                    fill="black"
-                                />
-                            </mask>
-                        </defs>
-                        <rect
-                            x="0"
-                            y="0"
-                            width="100%"
-                            height="100%"
-                            fill="rgba(0,0,0,0.7)"
-                            mask="url(#tutorial-mask)"
+                <>
+                    {/* Overlay using 4 divs to allow click-through in the center */}
+                    <div className="fixed inset-0 z-[9999] pointer-events-none">
+                        {/* Top */}
+                        <div
+                            className="absolute bg-black/70 pointer-events-auto transition-all duration-300 ease-out"
+                            style={{ top: 0, left: 0, right: 0, height: rect.top - 5 }}
                         />
+                        {/* Bottom */}
+                        <div
+                            className="absolute bg-black/70 pointer-events-auto transition-all duration-300 ease-out"
+                            style={{ top: rect.bottom + 5, left: 0, right: 0, bottom: 0 }}
+                        />
+                        {/* Left */}
+                        <div
+                            className="absolute bg-black/70 pointer-events-auto transition-all duration-300 ease-out"
+                            style={{ top: rect.top - 5, left: 0, width: rect.left - 5, height: rect.height + 10 }}
+                        />
+                        {/* Right */}
+                        <div
+                            className="absolute bg-black/70 pointer-events-auto transition-all duration-300 ease-out"
+                            style={{ top: rect.top - 5, left: rect.right + 5, right: 0, height: rect.height + 10 }}
+                        />
+
                         {/* Highlight Border */}
-                        <rect
-                            x={rect.left - 5}
-                            y={rect.top - 5}
-                            width={rect.width + 10}
-                            height={rect.height + 10}
-                            rx="8"
-                            fill="none"
-                            stroke="var(--accent-color)"
-                            strokeWidth="2"
-                            className="animate-pulse"
+                        <div
+                            className="absolute border-2 border-blue-500 rounded-lg animate-pulse pointer-events-none transition-all duration-300 ease-out"
+                            style={{
+                                top: rect.top - 5,
+                                left: rect.left - 5,
+                                width: rect.width + 10,
+                                height: rect.height + 10
+                            }}
                         />
-                    </svg>
+                    </div>
 
                     {/* Tooltip */}
                     <motion.div
                         initial={{ opacity: 0, scale: 0.9 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.9 }}
-                        className="absolute pointer-events-auto max-w-xs w-full"
+                        className="absolute z-[10000] pointer-events-auto max-w-xs w-full"
                         style={getTooltipStyle()}
                     >
                         <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 shadow-2xl border border-white/10 text-left">
@@ -292,7 +309,7 @@ export const TutorialManager: React.FC = () => {
                             </div>
                         </div>
                     </motion.div>
-                </div>
+                </>
             )}
         </AnimatePresence>,
         document.body

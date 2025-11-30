@@ -109,27 +109,55 @@ export const updateMarketData = async () => {
 
                 // Update 5m history with new data point
                 let history5m = await getMarketHistory(symbol, '5m');
-                const currentTime = new Date(marketTime).toISOString();
 
-                // Always append new data point
-                const newDataPoint = {
-                    date: currentTime,
-                    open: price,
-                    high: price, // Approximation for live update
-                    low: price,  // Approximation for live update
-                    close: price,
-                    volume: quoteResult?.regularMarketVolume || 0,
-                    price: price
-                };
+                // Calculate 5m candle start time to ensure we aggregate into 5m buckets
+                const timestamp = new Date(marketTime).getTime();
+                const candleSize = 5 * 60 * 1000;
+                const candleStart = Math.floor(timestamp / candleSize) * candleSize;
+                const candleStartDate = new Date(candleStart).toISOString();
 
-                // Check if we need to add a new point (different timestamp)
                 const lastPoint = history5m[history5m.length - 1];
-                if (!lastPoint || lastPoint.date !== currentTime) {
+
+                // Check if last point belongs to the current 5m candle
+                let lastPointTime = 0;
+                if (lastPoint) {
+                    lastPointTime = new Date(lastPoint.date).getTime();
+                }
+
+                // If last point is within the same candle window (or very close), update it
+                const isSameCandle = lastPoint && lastPointTime >= candleStart;
+
+                if (isSameCandle) {
+                    // Update existing candle
+                    lastPoint.close = price;
+                    lastPoint.price = price;
+                    if (price > lastPoint.high) lastPoint.high = price;
+                    if (price < lastPoint.low) lastPoint.low = price;
+
+                    // Update volume if available (and if it looks like a cumulative daily volume, we might just update it)
+                    if (quoteResult?.regularMarketVolume) {
+                        lastPoint.volume = quoteResult.regularMarketVolume;
+                    }
+
+                    await saveMarketHistory(symbol, '5m', history5m);
+                    // console.log(`Updated existing 5m candle for ${symbol}`);
+                } else {
+                    // Start new candle
+                    const newDataPoint = {
+                        date: candleStartDate,
+                        open: price,
+                        high: price,
+                        low: price,
+                        close: price,
+                        volume: quoteResult?.regularMarketVolume || 0,
+                        price: price
+                    };
+
                     history5m.push(newDataPoint);
                     // Keep last 90 points for 5m
                     if (history5m.length > 90) history5m = history5m.slice(-90);
                     await saveMarketHistory(symbol, '5m', history5m);
-                    // console.log(`Updated 5m history for ${symbol}`);
+                    // console.log(`Started new 5m candle for ${symbol}`);
                 }
 
                 // Update or fetch 1d history for Sparkline (Main Page)
