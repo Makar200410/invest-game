@@ -100,6 +100,22 @@ export const registerUser = async (username: string, password: string, email?: s
     return response.data;
 };
 
+export const loginUser = async (username: string, password: string) => {
+    const response = await api.post('/login', { username, password });
+    return response.data;
+};
+
+export const recoverPassword = async (username: string, email: string, newPassword: string) => {
+    const response = await api.post('/recover', { username, email, newPassword });
+    return response.data;
+};
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const syncGameState = async (username: string, gameState: any) => {
+    const response = await api.post('/sync', { username, gameState });
+    return response.data;
+};
+
 export const updateScore = async (username: string, portfolioValue: number) => {
     const response = await api.post('/update-score', { username, portfolioValue });
     return response.data;
