@@ -88,7 +88,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Create Yahoo Finance instance
-const yahooFinance = new YahooFinance();
+// Create Yahoo Finance instance
+const yahooFinance = YahooFinance;
 (yahooFinance as any).suppressNotices(['validation']);
 const SYMBOLS = [
     // --- Crypto (10) ---
@@ -456,7 +457,7 @@ export const fetchHistory = async (symbol: string, interval: string = '5m', forc
 
                 queryOptions.period1 = new Date(Date.now() - extendedDays * 24 * 60 * 60 * 1000);
                 try {
-                    const extendedResult = await yahooFinance.chart(symbol, queryOptions);
+                    const extendedResult = await yahooFinance.chart(symbol, queryOptions) as any;
                     if (extendedResult && extendedResult.quotes && (extendedResult.quotes as any[]).length > ((result as any).quotes?.length || 0)) {
                         result = extendedResult;
                     }
@@ -528,7 +529,7 @@ const updateLongTermCandles = async (interval: string, daysBack: number) => {
                 newCandles = cryptoHistory.slice(-10);
             } else {
                 try {
-                    const result = await yahooFinance.chart(symbol, queryOptions);
+                    const result = await yahooFinance.chart(symbol, queryOptions) as any;
                     if (result && result.quotes && Array.isArray(result.quotes)) {
                         newCandles = (result.quotes as any[])
                             .filter((q: any) => q.close !== null)
