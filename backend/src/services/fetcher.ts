@@ -193,7 +193,18 @@ const fetchCryptoHistory = async (symbol: string, interval: string): Promise<any
 const updateCandleHistory = async (symbol: string, interval: string, price: number, volume: number, marketTime: number) => {
     try {
         let history = await getMarketHistory(symbol, interval);
-        if (!Array.isArray(history)) history = [];
+
+        // Backfill if empty or insufficient data (ensure we have ~120 points if possible)
+        if (!Array.isArray(history) || history.length < 10) {
+            // console.log(`Backfilling ${interval} history for ${symbol}...`);
+            // fetchHistory will fetch from Yahoo, slice to 120, and save to DB.
+            const backfilled = await fetchHistory(symbol, interval);
+            if (backfilled && backfilled.length > 0) {
+                history = backfilled;
+            } else {
+                history = [];
+            }
+        }
 
         // Determine candle size in ms
         let candleSize = 0;
