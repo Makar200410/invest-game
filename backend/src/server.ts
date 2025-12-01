@@ -28,6 +28,7 @@ import {
     calculateBullBearPower, calculateUO, calculatePivotPoints, calculateSMA, calculateEMA,
     getAction, getMAAction, getYahooIndicators, type PivotPoints
 } from './services/indicators.js';
+import { query } from './services/db.js';
 
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
@@ -85,6 +86,11 @@ initDB().then(async () => {
                 });
             }
         }
+
+        // Clear all historical data cache on startup to force fresh fetches
+        console.log('Clearing historical data cache to force fresh data fetching...');
+        await query('DELETE FROM market_history');
+        console.log('Cache cleared. Market data will be fetched fresh on first request.');
     } catch (e) {
         console.error('Startup DB Check Failed:', e);
     }
@@ -104,6 +110,20 @@ app.get('/api/debug/users', async (req, res) => {
             users: users.map(u => ({ username: u.username, id: u.id, portfolio: u.portfolioValue })),
             db_url_prefix: process.env.DATABASE_URL ? process.env.DATABASE_URL.substring(0, 15) : 'UNDEFINED'
         });
+    } catch (error) {
+        res.status(500).json({ error: String(error) });
+    }
+});
+
+// Admin endpoint to clear cache
+app.delete('/api/admin/cache/:symbol', async (req, res) => {
+    const { symbol } = req.params;
+    const { interval } = req.query;
+    const queryInterval = (interval as string) || '1d';
+
+    try {
+        await query('DELETE FROM market_history WHERE symbol = $1 AND interval = $2', [symbol, queryInterval]);
+        res.json({ success: true, message: `Cache cleared for ${symbol} (${queryInterval})` });
     } catch (error) {
         res.status(500).json({ error: String(error) });
     }
