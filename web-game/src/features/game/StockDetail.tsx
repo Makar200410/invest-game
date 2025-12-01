@@ -80,11 +80,10 @@ export const StockDetail: React.FC = () => {
                     const chartData = await fetchMarketChartByInterval(id, interval);
                     setHistory(chartData);
 
-                    // 3. Fetch Additional Data based on skills/tabs
-                    if (skills.technicalAnalyst) {
-                        const indicatorsData = await fetchIndicators(id, indicatorInterval);
-                        setIndicators(indicatorsData);
-                    }
+                    // 3. Fetch Additional Data
+                    // Always fetch indicators data for the Indicators tab
+                    const indicatorsData = await fetchIndicators(id, indicatorInterval);
+                    setIndicators(indicatorsData);
 
                     if (skills.fundamentalAnalyst) {
                         const fundData = await fetchFundamentals(id);
