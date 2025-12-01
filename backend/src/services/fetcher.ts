@@ -89,8 +89,7 @@ const __dirname = path.dirname(__filename);
 
 // Create Yahoo Finance instance
 // Create Yahoo Finance instance
-const yahooFinance = YahooFinance;
-(yahooFinance as any).suppressNotices(['validation']);
+const yahooFinance = new YahooFinance();
 const SYMBOLS = [
     // --- Crypto (10) ---
     'BTC-USD', 'ETH-USD', 'SOL-USD', 'BNB-USD', 'XRP-USD',
