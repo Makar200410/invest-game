@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ThemeSwitcher } from './ThemeSwitcher';
-import { LanguageSwitcher } from './LanguageSwitcher';
-import { TrendingUp, Trophy, Zap, Newspaper, User as UserIcon, LogOut, HelpCircle } from 'lucide-react';
+import { TrendingUp, Trophy, Zap, Newspaper, User as UserIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../../store/gameStore';
 import { AuthModal } from '../auth/AuthModal';
@@ -14,7 +12,7 @@ type OnboardingStep = 'language' | 'intro' | 'auth' | 'tour' | 'complete';
 export const AppLayout = () => {
     const { t } = useTranslation();
     const location = useLocation();
-    const { user, login, logout, startTutorial, hasCompletedTutorial, tutorialActive } = useGameStore();
+    const { user, login, startTutorial, hasCompletedTutorial, tutorialActive } = useGameStore();
 
     // Onboarding State
     const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>('complete');
@@ -92,43 +90,51 @@ export const AppLayout = () => {
                     backgroundColor: 'var(--card-bg)',
                     borderColor: 'var(--card-border)'
                 }}>
-                <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-lg shadow-blue-500/30">
-                        IG
-                    </div>
-                    <h1 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>
-                        InvestGame
-                    </h1>
-                </div>
-                <div className="flex items-center gap-2">
-                    <button
-                        onClick={startTutorial}
-                        className="p-2 rounded-full hover:bg-white/10 transition-colors text-slate-500 dark:text-slate-400"
-                        title="Help / Tutorial"
+                {/* New Rectangular Logo - 3D Gradient Style */}
+                <div className="flex items-center">
+                    <div
+                        className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 via-violet-600 to-fuchsia-600 shadow-lg shadow-violet-500/30 group cursor-pointer transform transition-all duration-300 hover:scale-105 hover:shadow-violet-500/50 border-t border-white/30 border-b-2 border-black/10"
+                        onClick={() => window.location.href = '/'}
                     >
-                        <HelpCircle size={20} />
-                    </button>
-                    <LanguageSwitcher />
-                    <ThemeSwitcher />
+                        {/* Glossy Overlay */}
+                        <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/10 to-white/20 opacity-100 pointer-events-none" />
 
-                    {user ? (
-                        <div className="flex items-center gap-2 ml-2">
-                            <span className="text-sm font-medium hidden sm:block">{user.username}</span>
-                            <button
-                                onClick={logout}
-                                className="p-2 rounded-full hover:bg-white/10 transition-colors"
-                                title="Logout"
-                            >
-                                <LogOut size={20} />
-                            </button>
+                        <div className="flex items-center px-4 py-2.5 gap-3 relative z-10">
+                            <div className="bg-black/10 p-2 rounded-xl backdrop-blur-sm shadow-inner border border-white/10">
+                                <TrendingUp size={20} className="text-white drop-shadow-md" />
+                            </div>
+                            <span className="text-white font-extrabold tracking-wide text-base drop-shadow-sm" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
+                                InvestGame
+                            </span>
                         </div>
+                    </div>
+                </div>
+
+                {/* Profile / Auth Entry */}
+                <div className="flex items-center gap-2">
+                    {user ? (
+                        <NavLink
+                            to="/profile"
+                            className={({ isActive }) => `
+                                flex items-center gap-3 pl-1 pr-1 py-1 rounded-full transition-all duration-300
+                                ${isActive ? 'bg-white/10 ring-2 ring-blue-500/20' : 'hover:bg-white/5'}
+                            `}
+                        >
+                            <div className="text-right hidden sm:block mr-1">
+                                <p className="text-xs font-bold leading-none">{user.username}</p>
+                                <p className="text-[10px] opacity-50 leading-none mt-1">{t('profile', 'Profile')}</p>
+                            </div>
+                            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold shadow-md border-2 border-white/10">
+                                {user.username.substring(0, 2).toUpperCase()}
+                            </div>
+                        </NavLink>
                     ) : (
                         <button
                             onClick={() => setIsAuthOpen(true)}
-                            className="p-2 rounded-full hover:bg-white/10 transition-colors ml-2"
-                            title="Login"
+                            className="flex items-center gap-2 px-4 py-2 rounded-full bg-blue-600 text-white hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/30 active:scale-95"
                         >
-                            <UserIcon size={20} />
+                            <UserIcon size={18} />
+                            <span className="text-sm font-bold">{t('login', 'Login')}</span>
                         </button>
                     )}
                 </div>

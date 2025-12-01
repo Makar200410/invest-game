@@ -9,7 +9,9 @@ import { Skills } from './features/game/Skills';
 import { NewsPage } from './features/game/NewsPage';
 import { StockDetail } from './features/game/StockDetail';
 import { TradePage } from './features/game/TradePage';
+import { BatchClosePage } from './features/game/BatchClosePage';
 import { Portfolio } from './features/game/Portfolio'; // Assuming Portfolio is a new component
+import { Profile } from './features/game/Profile';
 
 import { App as CapacitorApp } from '@capacitor/app';
 
@@ -73,11 +75,13 @@ function App() {
             <Route path="/" element={<Market />} />
             <Route path="/market" element={<Market />} />
             <Route path="/stock/:id" element={<StockDetail />} />
+            <Route path="/trade/batch" element={<BatchClosePage />} />
             <Route path="/trade/:id" element={<TradePage />} />
             <Route path="/portfolio" element={<Portfolio />} />
             <Route path="/skills" element={<Skills />} />
             <Route path="/ranking" element={<Ranking />} />
             <Route path="/news" element={<NewsPage />} />
+            <Route path="/profile" element={<Profile />} />
           </Route>
         </Routes>
       </AnimatePresence>

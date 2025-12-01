@@ -288,7 +288,7 @@ export const TradePage: React.FC = () => {
                             }
                             className={`w-full py-3 rounded-xl font-black text-sm shadow-lg transition-all transform active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed`}
                             style={{
-                                backgroundColor: tradeType === 'buy' ? 'var(--text-primary)' : tradeType === 'sell' ? '#ef4444' : '#eab308',
+                                backgroundColor: tradeType === 'buy' ? 'var(--text-primary)' : tradeType === 'sell' ? '#8b5cf6' : '#eab308',
                                 color: tradeType === 'buy' ? 'var(--bg-primary)' : '#ffffff'
                             }}
                         >

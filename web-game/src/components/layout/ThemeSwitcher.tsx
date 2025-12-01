@@ -6,7 +6,7 @@ type Theme = 'swiss' | 'dark';
 
 export const ThemeSwitcher: React.FC = () => {
     const [theme, setTheme] = useState<Theme>(() => {
-        return (localStorage.getItem('theme') as Theme) || 'swiss';
+        return (localStorage.getItem('theme') as Theme) || 'dark';
     });
 
     useEffect(() => {

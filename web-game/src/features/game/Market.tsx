@@ -47,9 +47,17 @@ export const Market: React.FC = () => {
     const { balance, loan, portfolio, leveragedPositions, shortPositions, user, skills, tradesToday, getDiversificationBonus, checkOrders } = useGameStore();
     const [items, setItems] = useState<MarketItem[]>([]);
     const [loading, setLoading] = useState(true);
-    const [marketInterval, setMarketInterval] = useState<string>('1d'); // Default to daily
-    const [activeTab, setActiveTab] = useState<string>('popular');
-    const [selectedCountry, setSelectedCountry] = useState<string>('all');
+    const [marketInterval] = useState<string>('1d'); // Default to daily
+    const [activeTab, setActiveTab] = useState<string>(() => localStorage.getItem('marketActiveTab') || 'popular');
+    const [selectedCountry, setSelectedCountry] = useState<string>(() => localStorage.getItem('marketSelectedCountry') || 'all');
+
+    useEffect(() => {
+        localStorage.setItem('marketActiveTab', activeTab);
+    }, [activeTab]);
+
+    useEffect(() => {
+        localStorage.setItem('marketSelectedCountry', selectedCountry);
+    }, [selectedCountry]);
 
     const [prevPrices, setPrevPrices] = useState<Record<string, number>>({});
     const [priceFlashes, setPriceFlashes] = useState<Record<string, 'up' | 'down' | null>>({});
@@ -347,7 +355,25 @@ export const Market: React.FC = () => {
             {allPositions.length > 0 && (
                 <div className="px-4">
                     <h3 className="text-sm font-bold opacity-70 mb-3" style={{ color: 'var(--text-primary)' }}>{t('your_assets')}</h3>
-                    <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
+                    <div className="flex gap-2 mb-3">
+                        {allPositions.some(p => p.type !== 'short') && (
+                            <button
+                                onClick={() => navigate('/trade/batch?type=long')}
+                                className="flex-1 py-2 rounded-xl bg-violet-500/10 text-violet-500 font-bold text-xs hover:bg-violet-500/20 transition-colors"
+                            >
+                                {t('close_all_longs', 'Close All Longs')}
+                            </button>
+                        )}
+                        {allPositions.some(p => p.type === 'short') && (
+                            <button
+                                onClick={() => navigate('/trade/batch?type=short')}
+                                className="flex-1 py-2 rounded-xl bg-blue-500/10 text-blue-500 font-bold text-xs hover:bg-blue-500/20 transition-colors"
+                            >
+                                {t('close_all_shorts', 'Close All Shorts')}
+                            </button>
+                        )}
+                    </div>
+                    <div className="flex flex-col gap-3 pb-2">
                         {allPositions.map((pos) => {
                             const item = items.find(i => i.id === pos.assetId);
                             if (!item) return null;
@@ -369,16 +395,16 @@ export const Market: React.FC = () => {
                                 <div
                                     key={pos.uniqueId}
                                     onClick={() => navigate(`/stock/${pos.assetId}`)}
-                                    className="min-w-[300px] p-4 rounded-2xl backdrop-blur-md relative overflow-hidden group cursor-pointer"
+                                    className="w-full p-4 rounded-2xl backdrop-blur-md relative overflow-hidden group cursor-pointer"
                                     style={{
                                         backgroundColor: 'var(--card-bg)'
                                     }}
                                 >
-                                    <div className="flex justify-between items-center">
+                                    <div className="flex justify-between items-center mb-3">
                                         <div>
                                             <div className="flex items-center gap-2 mb-1">
                                                 <span className="font-bold text-base" style={{ color: 'var(--text-primary)' }}>{item.symbol}</span>
-                                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${pos.type === 'short' ? 'bg-red-500/20 text-red-500' :
+                                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${pos.type === 'short' ? 'bg-orange-500/20 text-orange-500' :
                                                     pos.type === 'leverage' ? 'bg-purple-500/20 text-purple-500' :
                                                         'bg-blue-500/20 text-blue-500'
                                                     }`}>
@@ -393,15 +419,32 @@ export const Market: React.FC = () => {
                                         </div>
 
                                         <div className="text-right">
-                                            <div className={`text-sm font-bold flex items-center justify-end gap-1 ${pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                            <div className={`text-sm font-bold flex items-center justify-end gap-1 ${pnl >= 0 ? 'text-green-500' : 'text-orange-500'}`}>
                                                 {pnl >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
                                                 {pnl >= 0 ? '+' : ''}{formatPrice(pnl)}
                                             </div>
-                                            <div className={`text-xs font-medium ${pnl >= 0 ? 'text-green-500/70' : 'text-red-500/70'}`}>
+                                            <div className={`text-xs font-medium ${pnl >= 0 ? 'text-green-500/70' : 'text-orange-500/70'}`}>
                                                 ({pnlPercent.toFixed(2)}%)
                                             </div>
                                         </div>
                                     </div>
+
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (pos.type === 'short') {
+                                                navigate(`/trade/${pos.assetId}?type=buy`); // Buy to cover short
+                                            } else {
+                                                navigate(`/trade/${pos.assetId}?type=sell`); // Sell long/leverage
+                                            }
+                                        }}
+                                        className={`w-full py-2 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-2 ${pos.type === 'short'
+                                            ? 'bg-blue-500/10 hover:bg-blue-500/20 text-blue-500'
+                                            : 'bg-violet-500/10 hover:bg-violet-500/20 text-violet-500'
+                                            }`}
+                                    >
+                                        {pos.type === 'short' ? 'Close Short' : 'Sell Position'}
+                                    </button>
                                 </div>
                             );
                         })}
@@ -409,40 +452,7 @@ export const Market: React.FC = () => {
                 </div>
             )}
 
-            {/* Timeframe Selector */}
-            <div className="px-4 pb-2">
-                <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: 'var(--card-bg)' }}>
-                    <div className="p-4">
-                        <div className="flex items-center justify-between mb-3">
-                            <h3 className="text-sm font-bold opacity-70" style={{ color: 'var(--text-primary)' }}>{t('chart_timeframe')}</h3>
-                            {!skills.multiTimeframe && (
-                                <span className="text-xs px-2 py-1 rounded-full bg-white/5 text-white/40 flex items-center gap-1">
-                                    <Lock size={10} /> {t('locked')}
-                                </span>
-                            )}
-                        </div>
-                        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-                            {['1m', '5m', '1h', '1d'].map((interval) => {
-                                const isLocked = !skills.multiTimeframe && interval !== '1d';
-                                return (
-                                    <button
-                                        key={interval}
-                                        onClick={() => !isLocked ? setMarketInterval(interval) : navigate('/skills')}
-                                        className={`px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${marketInterval === interval
-                                            ? 'bg-blue-500 text-white'
-                                            : 'bg-gray-500/10 hover:bg-gray-500/20'
-                                            } ${isLocked ? 'opacity-50 cursor-pointer' : ''}`}
-                                        style={{ color: marketInterval === interval ? '#ffffff' : 'var(--text-primary)' }}
-                                    >
-                                        {interval}
-                                        {isLocked && <span className="ml-1">🔒</span>}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-                </div>
-            </div>
+
 
             {/* Category Tabs */}
             <div className="px-4 pb-2">
@@ -535,11 +545,7 @@ export const Market: React.FC = () => {
                                             <div className="flex-1 min-w-0">
                                                 <h3 className="font-bold text-lg leading-tight truncate" style={{ color: 'var(--text-primary)' }}>{item.name}</h3>
                                                 <p className="text-xs font-medium opacity-60" style={{ color: 'var(--text-primary)' }}>{item.symbol}</p>
-                                                {owned > 0 && (
-                                                    <span className="inline-block text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-md mt-1 font-bold">
-                                                        {owned} {t('owned_badge')}
-                                                    </span>
-                                                )}
+
                                             </div>
                                         </div>
 
@@ -554,13 +560,31 @@ export const Market: React.FC = () => {
 
                                     {/* Always Visible Action Buttons */}
                                     <div className="flex gap-2 mt-4 pt-3 border-t" style={{ borderColor: 'var(--card-border)' }}>
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); navigate(`/trade/${item.id}?type=sell`); }}
-                                            disabled={owned <= 0}
-                                            className="flex-1 px-3 py-1.5 rounded-lg bg-red-50 text-red-600 font-bold text-xs hover:bg-red-100 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                                        >
-                                            {t('sell')}
-                                        </button>
+                                        {owned > 0 ? (
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); navigate(`/trade/${item.id}?type=sell`); }}
+                                                className="flex-1 px-3 py-1.5 rounded-lg bg-violet-50 text-violet-600 font-bold text-xs hover:bg-violet-100 transition-all"
+                                            >
+                                                {t('sell')}
+                                            </button>
+                                        ) : (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (skills.shortSelling) {
+                                                        navigate(`/trade/${item.id}?type=short`);
+                                                    } else {
+                                                        navigate('/skills');
+                                                    }
+                                                }}
+                                                className={`flex-1 px-3 py-1.5 rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-1 ${skills.shortSelling
+                                                    ? 'bg-yellow-500/10 text-yellow-600 hover:bg-yellow-500/20'
+                                                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                                    }`}
+                                            >
+                                                {t('short')} {!skills.shortSelling && <Lock size={10} />}
+                                            </button>
+                                        )}
                                         <button
                                             onClick={(e) => { e.stopPropagation(); navigate(`/trade/${item.id}?type=buy`); }}
                                             className="flex-1 px-3 py-1.5 rounded-lg bg-black text-white font-bold text-xs hover:bg-gray-800 transition-all"

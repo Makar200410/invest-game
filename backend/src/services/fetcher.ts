@@ -488,7 +488,7 @@ export const fetchHistory = async (symbol: string, interval: string = '5m', forc
         if (historyData.length > 500) historyData = historyData.slice(-500);
 
         // Save to DB
-        if (['1m', '5m', '1h', '1d', '1mo'].includes(interval)) {
+        if (['1m', '5m', '1h', '1d', '1mo'].includes(interval) && historyData.length > 0) {
             await saveMarketHistory(symbol, interval, historyData);
         }
 
