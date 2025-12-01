@@ -450,6 +450,7 @@ export const fetchHistory = async (symbol: string, interval: string = '5m', forc
                 if (['1d', '1wk', '1mo'].includes(queryInterval)) {
                     const historicalResult = await yahooFinance.historical(symbol, {
                         period1: queryOptions.period1,
+                        period2: new Date(), // End date (now)
                         interval: queryInterval
                     });
 
