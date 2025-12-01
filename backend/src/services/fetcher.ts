@@ -445,40 +445,62 @@ export const fetchHistory = async (symbol: string, interval: string = '5m', forc
         }
 
         if (historyData.length === 0) {
-            let result: any = await yahooFinance.chart(symbol, queryOptions);
+            try {
+                // Use historical() for daily/weekly/monthly as it's more reliable for US stocks
+                if (['1d', '1wk', '1mo'].includes(queryInterval)) {
+                    const historicalResult = await yahooFinance.historical(symbol, {
+                        period1: queryOptions.period1,
+                        interval: queryInterval
+                    });
 
-            // If we didn't get enough data, try expanding the range (except for 1m which is limited)
-            if ((!result.quotes || result.quotes.length < 120) && interval !== '1m') {
-                // Try a much longer period to ensure we fill the chart
-                let extendedDays = periodDays * 5;
-                if (interval === '5m') extendedDays = 55; // Max ~60 days
-                if (interval === '1h') extendedDays = 700; // Max ~730 days
-
-                queryOptions.period1 = new Date(Date.now() - extendedDays * 24 * 60 * 60 * 1000);
-                try {
-                    const extendedResult = await yahooFinance.chart(symbol, queryOptions) as any;
-                    if (extendedResult && extendedResult.quotes && (extendedResult.quotes as any[]).length > ((result as any).quotes?.length || 0)) {
-                        result = extendedResult;
+                    if (historicalResult && historicalResult.length > 0) {
+                        historyData = historicalResult.map((q: any) => ({
+                            date: q.date.toISOString(),
+                            open: q.open, high: q.high, low: q.low, close: q.close, volume: q.volume, price: q.close
+                        }));
                     }
-                } catch (e) {
-                    // Ignore extension error, use what we have
                 }
+            } catch (e) {
+                console.error(`Historical fetch failed for ${symbol}:`, e);
             }
 
-            if (!result.quotes || result.quotes.length === 0) {
-                // Last resort fallback
-                queryOptions.period1 = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
-                try {
-                    result = await yahooFinance.chart(symbol, queryOptions);
-                } catch (e) { }
-            }
-            if (result && result.quotes) {
-                historyData = result.quotes
-                    .filter((q: any) => q.close !== null)
-                    .map((q: any) => ({
-                        date: q.date.toISOString(),
-                        open: q.open, high: q.high, low: q.low, close: q.close, volume: q.volume, price: q.close
-                    }));
+            // Fallback to chart() if historical failed or for intraday
+            if (historyData.length === 0) {
+                let result: any = await yahooFinance.chart(symbol, queryOptions);
+
+                // If we didn't get enough data, try expanding the range (except for 1m which is limited)
+                if ((!result.quotes || result.quotes.length < 120) && interval !== '1m') {
+                    // Try a much longer period to ensure we fill the chart
+                    let extendedDays = periodDays * 5;
+                    if (interval === '5m') extendedDays = 55; // Max ~60 days
+                    if (interval === '1h') extendedDays = 700; // Max ~730 days
+
+                    queryOptions.period1 = new Date(Date.now() - extendedDays * 24 * 60 * 60 * 1000);
+                    try {
+                        const extendedResult = await yahooFinance.chart(symbol, queryOptions) as any;
+                        if (extendedResult && extendedResult.quotes && (extendedResult.quotes as any[]).length > ((result as any).quotes?.length || 0)) {
+                            result = extendedResult;
+                        }
+                    } catch (e) {
+                        // Ignore extension error, use what we have
+                    }
+                }
+
+                if (!result.quotes || result.quotes.length === 0) {
+                    // Last resort fallback
+                    queryOptions.period1 = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
+                    try {
+                        result = await yahooFinance.chart(symbol, queryOptions);
+                    } catch (e) { }
+                }
+                if (result && result.quotes) {
+                    historyData = result.quotes
+                        .filter((q: any) => q.close !== null)
+                        .map((q: any) => ({
+                            date: q.date.toISOString(),
+                            open: q.open, high: q.high, low: q.low, close: q.close, volume: q.volume, price: q.close
+                        }));
+                }
             }
         }
 

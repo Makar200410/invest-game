@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, TrendingUp, Lock, Target, MessageCircle, ThumbsUp, Send, Trash2, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
@@ -26,6 +26,7 @@ export const StockDetail: React.FC = () => {
     const { t } = useTranslation();
     const { id } = useParams();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const { balance, buyAsset, portfolio, skills, shortPositions, user } = useGameStore();
 
     // State
@@ -50,7 +51,7 @@ export const StockDetail: React.FC = () => {
     const [indicatorInterval, setIndicatorInterval] = useState('1d');
 
     const [chartType, setChartType] = useState<'candle' | 'line'>('line');
-    const [activeTab, setActiveTab] = useState('overview');
+    const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'overview');
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [fundamentals, setFundamentals] = useState<any>(null);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

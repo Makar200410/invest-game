@@ -135,7 +135,7 @@ export const Skills: React.FC = () => {
                                                 navigate('/market');
                                                 break;
                                             case 'technicalAnalyst':
-                                                navigate('/stock/BTC-USD#technical-analysis');
+                                                navigate('/stock/BTC-USD?tab=indicators');
                                                 break;
                                             case 'fundamentalAnalyst':
                                                 navigate('/stock/BTC-USD#fundamentals');
