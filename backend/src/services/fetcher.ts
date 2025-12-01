@@ -195,15 +195,19 @@ const updateCandleHistory = async (symbol: string, interval: string, price: numb
         let history = await getMarketHistory(symbol, interval);
 
         // Backfill if empty or insufficient data (ensure we have ~120 points if possible)
-        if (!Array.isArray(history) || history.length < 10) {
+        const backfillKey = `${symbol}-${interval}`;
+        if ((!Array.isArray(history) || history.length < 120) && !backfilledSymbols.has(backfillKey)) {
             // console.log(`Backfilling ${interval} history for ${symbol}...`);
+            backfilledSymbols.add(backfillKey);
             // fetchHistory will fetch from Yahoo, slice to 120, and save to DB.
-            const backfilled = await fetchHistory(symbol, interval);
+            const backfilled = await fetchHistory(symbol, interval, true); // Force fresh
             if (backfilled && backfilled.length > 0) {
                 history = backfilled;
             } else {
-                history = [];
+                if (!Array.isArray(history)) history = [];
             }
+        } else if (!Array.isArray(history)) {
+            history = [];
         }
 
         // Determine candle size in ms
@@ -383,10 +387,12 @@ export const updateMarketData = async () => {
 };
 
 
-export const fetchHistory = async (symbol: string, interval: string = '5m') => {
+const backfilledSymbols = new Set<string>();
+
+export const fetchHistory = async (symbol: string, interval: string = '5m', forceFresh: boolean = false) => {
     try {
         // Check DB for all supported intervals
-        if (['1m', '5m', '1h', '1d', '1mo'].includes(interval)) {
+        if (!forceFresh && ['1m', '5m', '1h', '1d', '1mo'].includes(interval)) {
             const cached = await getMarketHistoryWithMeta(symbol, interval);
 
             if (cached && cached.data.length > 0) {
@@ -443,9 +449,31 @@ export const fetchHistory = async (symbol: string, interval: string = '5m') => {
 
         if (historyData.length === 0) {
             let result: any = await yahooFinance.chart(symbol, queryOptions);
+
+            // If we didn't get enough data, try expanding the range (except for 1m which is limited)
+            if ((!result.quotes || result.quotes.length < 120) && interval !== '1m') {
+                // Try a much longer period to ensure we fill the chart
+                let extendedDays = periodDays * 5;
+                if (interval === '5m') extendedDays = 55; // Max ~60 days
+                if (interval === '1h') extendedDays = 700; // Max ~730 days
+
+                queryOptions.period1 = new Date(Date.now() - extendedDays * 24 * 60 * 60 * 1000);
+                try {
+                    const extendedResult = await yahooFinance.chart(symbol, queryOptions);
+                    if (extendedResult && extendedResult.quotes && (extendedResult.quotes as any[]).length > ((result as any).quotes?.length || 0)) {
+                        result = extendedResult;
+                    }
+                } catch (e) {
+                    // Ignore extension error, use what we have
+                }
+            }
+
             if (!result.quotes || result.quotes.length === 0) {
+                // Last resort fallback
                 queryOptions.period1 = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
-                result = await yahooFinance.chart(symbol, queryOptions);
+                try {
+                    result = await yahooFinance.chart(symbol, queryOptions);
+                } catch (e) { }
             }
             if (result && result.quotes) {
                 historyData = result.quotes

@@ -762,161 +762,209 @@ export const StockDetail: React.FC = () => {
 
                         <h3 className="font-bold text-lg mb-6">{t('fundamentals')}</h3>
 
-                        <div className="space-y-8">
-                            {/* Valuation Measures */}
-                            <div>
-                                <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-3 border-b border-white/10 pb-1">Valuation Measures</h4>
-                                <div className="grid grid-cols-2 gap-y-4 gap-x-8">
-                                    <div>
-                                        <p className="text-xs opacity-50">Market Cap</p>
-                                        <p className="font-bold">{fundamentals?.summaryDetail?.marketCap ? `$${(fundamentals.summaryDetail.marketCap / 1e9).toFixed(2)}B` : 'N/A'}</p>
+                        {(!fundamentals?.financialData && fundamentals?.summaryDetail) ? (
+                            /* Crypto / Alternative View */
+                            <div className="space-y-8">
+                                <div>
+                                    <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-3 border-b border-white/10 pb-1">Market Statistics</h4>
+                                    <div className="grid grid-cols-2 gap-y-4 gap-x-8">
+                                        <div>
+                                            <p className="text-xs opacity-50">Market Cap</p>
+                                            <p className="font-bold">{fundamentals.summaryDetail.marketCap ? `$${(fundamentals.summaryDetail.marketCap / 1e9).toFixed(2)}B` : 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs opacity-50">Volume (24h)</p>
+                                            <p className="font-bold">{fundamentals.summaryDetail.volume ? `$${(fundamentals.summaryDetail.volume / 1e9).toFixed(2)}B` : 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs opacity-50">Circulating Supply</p>
+                                            <p className="font-bold">{fundamentals.summaryDetail.circulatingSupply ? `${(fundamentals.summaryDetail.circulatingSupply / 1e6).toFixed(2)}M` : 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs opacity-50">Max Supply</p>
+                                            <p className="font-bold">{fundamentals.summaryDetail.maxSupply ? `${(fundamentals.summaryDetail.maxSupply / 1e6).toFixed(2)}M` : '∞'}</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className="text-xs opacity-50">Enterprise Value</p>
-                                        <p className="font-bold">{fundamentals?.defaultKeyStatistics?.enterpriseValue ? `$${(fundamentals.defaultKeyStatistics.enterpriseValue / 1e9).toFixed(2)}B` : 'N/A'}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs opacity-50">Trailing P/E</p>
-                                        <p className="font-bold">{fundamentals?.summaryDetail?.trailingPE?.toFixed(2) || 'N/A'}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs opacity-50">Forward P/E</p>
-                                        <p className="font-bold">{fundamentals?.summaryDetail?.forwardPE?.toFixed(2) || 'N/A'}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs opacity-50">PEG Ratio</p>
-                                        <p className="font-bold">{fundamentals?.defaultKeyStatistics?.pegRatio?.toFixed(2) || 'N/A'}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs opacity-50">Price/Sales</p>
-                                        <p className="font-bold">{fundamentals?.summaryDetail?.priceToSalesTrailing12Months?.toFixed(2) || 'N/A'}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs opacity-50">Price/Book</p>
-                                        <p className="font-bold">{fundamentals?.defaultKeyStatistics?.priceToBook?.toFixed(2) || 'N/A'}</p>
+                                </div>
+                                <div>
+                                    <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-3 border-b border-white/10 pb-1">Price Statistics</h4>
+                                    <div className="grid grid-cols-2 gap-y-4 gap-x-8">
+                                        <div>
+                                            <p className="text-xs opacity-50">52 Week High</p>
+                                            <p className="font-bold">{fundamentals.summaryDetail.fiftyTwoWeekHigh ? `$${fundamentals.summaryDetail.fiftyTwoWeekHigh.toLocaleString()}` : 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs opacity-50">52 Week Low</p>
+                                            <p className="font-bold">{fundamentals.summaryDetail.fiftyTwoWeekLow ? `$${fundamentals.summaryDetail.fiftyTwoWeekLow.toLocaleString()}` : 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs opacity-50">Day High</p>
+                                            <p className="font-bold">{fundamentals.summaryDetail.dayHigh ? `$${fundamentals.summaryDetail.dayHigh.toLocaleString()}` : 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs opacity-50">Day Low</p>
+                                            <p className="font-bold">{fundamentals.summaryDetail.dayLow ? `$${fundamentals.summaryDetail.dayLow.toLocaleString()}` : 'N/A'}</p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
+                        ) : (
+                            /* Standard Stock View */
+                            <div className="space-y-8">
+                                {/* Valuation Measures */}
+                                <div>
+                                    <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-3 border-b border-white/10 pb-1">Valuation Measures</h4>
+                                    <div className="grid grid-cols-2 gap-y-4 gap-x-8">
+                                        <div>
+                                            <p className="text-xs opacity-50">Market Cap</p>
+                                            <p className="font-bold">{fundamentals?.summaryDetail?.marketCap ? `$${(fundamentals.summaryDetail.marketCap / 1e9).toFixed(2)}B` : 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs opacity-50">Enterprise Value</p>
+                                            <p className="font-bold">{fundamentals?.defaultKeyStatistics?.enterpriseValue ? `$${(fundamentals.defaultKeyStatistics.enterpriseValue / 1e9).toFixed(2)}B` : 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs opacity-50">Trailing P/E</p>
+                                            <p className="font-bold">{fundamentals?.summaryDetail?.trailingPE?.toFixed(2) || 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs opacity-50">Forward P/E</p>
+                                            <p className="font-bold">{fundamentals?.summaryDetail?.forwardPE?.toFixed(2) || 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs opacity-50">PEG Ratio</p>
+                                            <p className="font-bold">{fundamentals?.defaultKeyStatistics?.pegRatio?.toFixed(2) || 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs opacity-50">Price/Sales</p>
+                                            <p className="font-bold">{fundamentals?.summaryDetail?.priceToSalesTrailing12Months?.toFixed(2) || 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs opacity-50">Price/Book</p>
+                                            <p className="font-bold">{fundamentals?.defaultKeyStatistics?.priceToBook?.toFixed(2) || 'N/A'}</p>
+                                        </div>
+                                    </div>
+                                </div>
 
-                            {/* Financial Highlights */}
-                            <div>
-                                <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-3 border-b border-white/10 pb-1">Financial Highlights</h4>
-                                <div className="grid grid-cols-2 gap-y-4 gap-x-8">
-                                    <div>
-                                        <p className="text-xs opacity-50">Profit Margin</p>
-                                        <p className="font-bold">{fundamentals?.defaultKeyStatistics?.profitMargins ? `${(fundamentals.defaultKeyStatistics.profitMargins * 100).toFixed(2)}%` : 'N/A'}</p>
+                                {/* Financial Highlights */}
+                                <div>
+                                    <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-3 border-b border-white/10 pb-1">Financial Highlights</h4>
+                                    <div className="grid grid-cols-2 gap-y-4 gap-x-8">
+                                        <div>
+                                            <p className="text-xs opacity-50">Profit Margin</p>
+                                            <p className="font-bold">{fundamentals?.defaultKeyStatistics?.profitMargins ? `${(fundamentals.defaultKeyStatistics.profitMargins * 100).toFixed(2)}%` : 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs opacity-50">Operating Margin</p>
+                                            <p className="font-bold">{fundamentals?.financialData?.operatingMargins ? `${(fundamentals.financialData.operatingMargins * 100).toFixed(2)}%` : 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs opacity-50">Return on Assets</p>
+                                            <p className="font-bold">{fundamentals?.financialData?.returnOnAssets ? `${(fundamentals.financialData.returnOnAssets * 100).toFixed(2)}%` : 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs opacity-50">Return on Equity</p>
+                                            <p className="font-bold">{fundamentals?.financialData?.returnOnEquity ? `${(fundamentals.financialData.returnOnEquity * 100).toFixed(2)}%` : 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs opacity-50">Revenue (ttm)</p>
+                                            <p className="font-bold">{fundamentals?.financialData?.totalRevenue ? `$${(fundamentals.financialData.totalRevenue / 1e9).toFixed(2)}B` : 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs opacity-50">Revenue Per Share</p>
+                                            <p className="font-bold">{fundamentals?.financialData?.revenuePerShare?.toFixed(2) || 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs opacity-50">Gross Profit</p>
+                                            <p className="font-bold">{fundamentals?.financialData?.grossProfits ? `$${(fundamentals.financialData.grossProfits / 1e9).toFixed(2)}B` : 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs opacity-50">EBITDA</p>
+                                            <p className="font-bold">{fundamentals?.financialData?.ebitda ? `$${(fundamentals.financialData.ebitda / 1e9).toFixed(2)}B` : 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs opacity-50">Diluted EPS</p>
+                                            <p className="font-bold">{fundamentals?.defaultKeyStatistics?.trailingEps?.toFixed(2) || 'N/A'}</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className="text-xs opacity-50">Operating Margin</p>
-                                        <p className="font-bold">{fundamentals?.financialData?.operatingMargins ? `${(fundamentals.financialData.operatingMargins * 100).toFixed(2)}%` : 'N/A'}</p>
+                                </div>
+
+                                {/* Balance Sheet */}
+                                <div>
+                                    <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-3 border-b border-white/10 pb-1">Balance Sheet</h4>
+                                    <div className="grid grid-cols-2 gap-y-4 gap-x-8">
+                                        <div>
+                                            <p className="text-xs opacity-50">Total Cash</p>
+                                            <p className="font-bold">{fundamentals?.financialData?.totalCash ? `$${(fundamentals.financialData.totalCash / 1e9).toFixed(2)}B` : 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs opacity-50">Total Debt</p>
+                                            <p className="font-bold">{fundamentals?.financialData?.totalDebt ? `$${(fundamentals.financialData.totalDebt / 1e9).toFixed(2)}B` : 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs opacity-50">Debt/Equity</p>
+                                            <p className="font-bold">{fundamentals?.financialData?.debtToEquity?.toFixed(2) || 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs opacity-50">Current Ratio</p>
+                                            <p className="font-bold">{fundamentals?.financialData?.currentRatio?.toFixed(2) || 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs opacity-50">Book Value</p>
+                                            <p className="font-bold">{fundamentals?.defaultKeyStatistics?.bookValue?.toFixed(2) || 'N/A'}</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <p className="text-xs opacity-50">Return on Assets</p>
-                                        <p className="font-bold">{fundamentals?.financialData?.returnOnAssets ? `${(fundamentals.financialData.returnOnAssets * 100).toFixed(2)}%` : 'N/A'}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs opacity-50">Return on Equity</p>
-                                        <p className="font-bold">{fundamentals?.financialData?.returnOnEquity ? `${(fundamentals.financialData.returnOnEquity * 100).toFixed(2)}%` : 'N/A'}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs opacity-50">Revenue (ttm)</p>
-                                        <p className="font-bold">{fundamentals?.financialData?.totalRevenue ? `$${(fundamentals.financialData.totalRevenue / 1e9).toFixed(2)}B` : 'N/A'}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs opacity-50">Revenue Per Share</p>
-                                        <p className="font-bold">{fundamentals?.financialData?.revenuePerShare?.toFixed(2) || 'N/A'}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs opacity-50">Gross Profit</p>
-                                        <p className="font-bold">{fundamentals?.financialData?.grossProfits ? `$${(fundamentals.financialData.grossProfits / 1e9).toFixed(2)}B` : 'N/A'}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs opacity-50">EBITDA</p>
-                                        <p className="font-bold">{fundamentals?.financialData?.ebitda ? `$${(fundamentals.financialData.ebitda / 1e9).toFixed(2)}B` : 'N/A'}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs opacity-50">Diluted EPS</p>
-                                        <p className="font-bold">{fundamentals?.defaultKeyStatistics?.trailingEps?.toFixed(2) || 'N/A'}</p>
+                                </div>
+
+                                {/* Cash Flow */}
+                                <div>
+                                    <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-3 border-b border-white/10 pb-1">Cash Flow</h4>
+                                    <div className="grid grid-cols-2 gap-y-4 gap-x-8">
+                                        <div>
+                                            <p className="text-xs opacity-50">Operating Cash Flow</p>
+                                            <p className="font-bold">{fundamentals?.financialData?.operatingCashflow ? `$${(fundamentals.financialData.operatingCashflow / 1e9).toFixed(2)}B` : 'N/A'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs opacity-50">Levered Free Cash Flow</p>
+                                            <p className="font-bold">{fundamentals?.financialData?.freeCashflow ? `$${(fundamentals.financialData.freeCashflow / 1e9).toFixed(2)}B` : 'N/A'}</p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-
-                            {/* Balance Sheet */}
-                            <div>
-                                <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-3 border-b border-white/10 pb-1">Balance Sheet</h4>
-                                <div className="grid grid-cols-2 gap-y-4 gap-x-8">
-                                    <div>
-                                        <p className="text-xs opacity-50">Total Cash</p>
-                                        <p className="font-bold">{fundamentals?.financialData?.totalCash ? `$${(fundamentals.financialData.totalCash / 1e9).toFixed(2)}B` : 'N/A'}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs opacity-50">Total Debt</p>
-                                        <p className="font-bold">{fundamentals?.financialData?.totalDebt ? `$${(fundamentals.financialData.totalDebt / 1e9).toFixed(2)}B` : 'N/A'}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs opacity-50">Debt/Equity</p>
-                                        <p className="font-bold">{fundamentals?.financialData?.debtToEquity?.toFixed(2) || 'N/A'}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs opacity-50">Current Ratio</p>
-                                        <p className="font-bold">{fundamentals?.financialData?.currentRatio?.toFixed(2) || 'N/A'}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs opacity-50">Book Value</p>
-                                        <p className="font-bold">{fundamentals?.defaultKeyStatistics?.bookValue?.toFixed(2) || 'N/A'}</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Cash Flow */}
-                            <div>
-                                <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-3 border-b border-white/10 pb-1">Cash Flow</h4>
-                                <div className="grid grid-cols-2 gap-y-4 gap-x-8">
-                                    <div>
-                                        <p className="text-xs opacity-50">Operating Cash Flow</p>
-                                        <p className="font-bold">{fundamentals?.financialData?.operatingCashflow ? `$${(fundamentals.financialData.operatingCashflow / 1e9).toFixed(2)}B` : 'N/A'}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs opacity-50">Levered Free Cash Flow</p>
-                                        <p className="font-bold">{fundamentals?.financialData?.freeCashflow ? `$${(fundamentals.financialData.freeCashflow / 1e9).toFixed(2)}B` : 'N/A'}</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Revenue & Earnings Chart */}
-                            {fundamentals?.earnings?.financialsChart?.yearly && (
-                                <div className="mt-8 pt-6 border-t border-white/10">
-                                    <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-4">Revenue & Earnings (Yearly)</h4>
-                                    <div className="h-40 w-full flex items-end gap-2">
-                                        {fundamentals.earnings.financialsChart.yearly.map((item: any) => {
-                                            const maxVal = Math.max(...fundamentals.earnings.financialsChart.yearly.map((i: any) => Math.max(i.revenue, i.earnings)));
-                                            return (
-                                                <div key={item.date} className="flex-1 flex flex-col justify-end gap-2 h-full">
-                                                    <div className="flex items-end justify-center gap-1 h-full relative group">
-                                                        {/* Tooltip */}
-                                                        <div className="absolute bottom-full mb-2 hidden group-hover:block bg-black/90 text-white text-[10px] p-2 rounded z-10 whitespace-nowrap border border-white/10 shadow-xl">
-                                                            <div className="font-bold mb-1">{item.date}</div>
-                                                            <div className="text-blue-400">Rev: ${(item.revenue / 1e9).toFixed(2)}B</div>
-                                                            <div className="text-green-400">Earn: ${(item.earnings / 1e9).toFixed(2)}B</div>
-                                                        </div>
-
-                                                        {/* Revenue */}
-                                                        <div className="w-2 sm:w-4 bg-blue-500/50 rounded-t hover:bg-blue-500 transition-colors" style={{ height: `${Math.max(4, (item.revenue / maxVal) * 100)}%` }}></div>
-                                                        {/* Earnings */}
-                                                        <div className="w-2 sm:w-4 bg-green-500/50 rounded-t hover:bg-green-500 transition-colors" style={{ height: `${Math.max(4, (item.earnings / maxVal) * 100)}%` }}></div>
+                        )}      {/* Revenue & Earnings Chart */}
+                        {fundamentals?.earnings?.financialsChart?.yearly && (
+                            <div className="mt-8 pt-6 border-t border-white/10">
+                                <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-4">Revenue & Earnings (Yearly)</h4>
+                                <div className="h-40 w-full flex items-end gap-2">
+                                    {fundamentals.earnings.financialsChart.yearly.map((item: any) => {
+                                        const maxVal = Math.max(...fundamentals.earnings.financialsChart.yearly.map((i: any) => Math.max(i.revenue, i.earnings)));
+                                        return (
+                                            <div key={item.date} className="flex-1 flex flex-col justify-end gap-2 h-full">
+                                                <div className="flex items-end justify-center gap-1 h-full relative group">
+                                                    {/* Tooltip */}
+                                                    <div className="absolute bottom-full mb-2 hidden group-hover:block bg-black/90 text-white text-[10px] p-2 rounded z-10 whitespace-nowrap border border-white/10 shadow-xl">
+                                                        <div className="font-bold mb-1">{item.date}</div>
+                                                        <div className="text-blue-400">Rev: ${(item.revenue / 1e9).toFixed(2)}B</div>
+                                                        <div className="text-green-400">Earn: ${(item.earnings / 1e9).toFixed(2)}B</div>
                                                     </div>
-                                                    <div className="text-[10px] opacity-50 text-center">{item.date}</div>
+
+                                                    {/* Revenue */}
+                                                    <div className="w-2 sm:w-4 bg-blue-500/50 rounded-t hover:bg-blue-500 transition-colors" style={{ height: `${Math.max(4, (item.revenue / maxVal) * 100)}%` }}></div>
+                                                    {/* Earnings */}
+                                                    <div className="w-2 sm:w-4 bg-green-500/50 rounded-t hover:bg-green-500 transition-colors" style={{ height: `${Math.max(4, (item.earnings / maxVal) * 100)}%` }}></div>
                                                 </div>
-                                            );
-                                        })}
-                                    </div>
-                                    <div className="flex justify-center gap-4 mt-4 text-[10px] font-bold uppercase tracking-wider">
-                                        <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-blue-500"></div> Revenue</div>
-                                        <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-green-500"></div> Earnings</div>
-                                    </div>
+                                                <div className="text-[10px] opacity-50 text-center">{item.date}</div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
-                            )}
-                        </div>
+                                <div className="flex justify-center gap-4 mt-4 text-[10px] font-bold uppercase tracking-wider">
+                                    <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-blue-500"></div> Revenue</div>
+                                    <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-green-500"></div> Earnings</div>
+                                </div>
+                            </div>
+                        )}
+
                     </Card>
 
                     {/* About */}
@@ -927,173 +975,178 @@ export const StockDetail: React.FC = () => {
                         </p>
                     </Card>
                 </>
-            )}
+            )
+            }
 
-            {activeTab === 'news' && (
-                <div className="space-y-4">
-                    {newsLoading ? (
-                        <div className="flex justify-center p-8">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-                        </div>
-                    ) : companyNews.length > 0 ? (
-                        companyNews.map((item) => (
-                            <a
-                                key={item.id}
-                                href={item.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="block group"
-                            >
-                                <div className="p-5 rounded-2xl shadow-sm border hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
-                                    style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
-                                    <div className="flex items-start justify-between mb-3">
-                                        <div className="flex items-center gap-2">
-                                            {item.favicon_url ? (
-                                                <img src={item.favicon_url} alt="" className="w-5 h-5 rounded-full" />
-                                            ) : (
-                                                <div className="w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--bg-primary)' }}>
-                                                    <span className="text-[10px] opacity-60">NEWS</span>
-                                                </div>
-                                            )}
-                                            <span className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{item.site}</span>
-                                            <span className="text-xs opacity-60" style={{ color: 'var(--text-primary)' }}>• {new Date(item.time || item.date).toLocaleDateString()}</span>
+            {
+                activeTab === 'news' && (
+                    <div className="space-y-4">
+                        {newsLoading ? (
+                            <div className="flex justify-center p-8">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                            </div>
+                        ) : companyNews.length > 0 ? (
+                            companyNews.map((item) => (
+                                <a
+                                    key={item.id}
+                                    href={item.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="block group"
+                                >
+                                    <div className="p-5 rounded-2xl shadow-sm border hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+                                        style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
+                                        <div className="flex items-start justify-between mb-3">
+                                            <div className="flex items-center gap-2">
+                                                {item.favicon_url ? (
+                                                    <img src={item.favicon_url} alt="" className="w-5 h-5 rounded-full" />
+                                                ) : (
+                                                    <div className="w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--bg-primary)' }}>
+                                                        <span className="text-[10px] opacity-60">NEWS</span>
+                                                    </div>
+                                                )}
+                                                <span className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{item.site}</span>
+                                                <span className="text-xs opacity-60" style={{ color: 'var(--text-primary)' }}>• {new Date(item.time || item.date).toLocaleDateString()}</span>
+                                            </div>
                                         </div>
+
+                                        <h3 className="font-bold text-lg leading-snug mb-3 group-hover:text-blue-600 transition-colors" style={{ color: 'var(--text-primary)' }}>
+                                            {item.title}
+                                        </h3>
                                     </div>
-
-                                    <h3 className="font-bold text-lg leading-snug mb-3 group-hover:text-blue-600 transition-colors" style={{ color: 'var(--text-primary)' }}>
-                                        {item.title}
-                                    </h3>
-                                </div>
-                            </a>
-                        ))
-                    ) : (
-                        <div className="text-center p-8 opacity-50">
-                            {t('no_news_found', 'No recent news found for this asset.')}
-                        </div>
-                    )}
-                </div>
-            )}
-            {activeTab === 'comments' && (
-                <div className="relative h-[75vh] -mx-5 border-t mt-4 flex flex-col" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--card-border)' }}>
-
-                    {/* Input Area - Moved to Top */}
-                    <div className="p-4 border-b" style={{ borderColor: 'var(--card-border)', backgroundColor: 'var(--bg-primary)' }}>
-                        <div className="relative flex items-end gap-2 rounded-2xl p-2 pl-4 border focus-within:ring-1 transition-all shadow-sm"
-                            style={{
-                                backgroundColor: 'var(--card-bg)',
-                                borderColor: 'var(--card-border)',
-                                '--tw-ring-color': 'var(--accent-color)'
-                            } as React.CSSProperties}
-                        >
-                            <textarea
-                                value={commentInput}
-                                onChange={(e) => setCommentInput(e.target.value)}
-                                placeholder={t('write_comment', 'Leave your comment...')}
-                                className="flex-1 bg-transparent text-sm outline-none resize-none scrollbar-hide py-3 max-h-[100px]"
-                                rows={1}
-                                style={{ color: 'var(--text-primary)' }}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && !e.shiftKey) {
-                                        e.preventDefault();
-                                        handlePostComment();
-                                    }
-                                }}
-                                onInput={(e) => {
-                                    const target = e.target as HTMLTextAreaElement;
-                                    target.style.height = 'auto';
-                                    target.style.height = Math.min(target.scrollHeight, 100) + 'px';
-                                }}
-                            />
-                            <button
-                                onClick={handlePostComment}
-                                disabled={!commentInput.trim()}
-                                className="p-2.5 rounded-full text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95 shrink-0 mb-[2px]"
-                                style={{ backgroundColor: 'var(--accent-color)' }}
-                            >
-                                <Send size={18} />
-                            </button>
-                        </div>
-                    </div>
-
-                    {/* Comments List - Reversed Order */}
-                    <div className="flex-1 overflow-y-auto px-5 py-4 space-y-6 scrollbar-thin scrollbar-thumb-black/10 scrollbar-track-transparent">
-                        {comments.length > 0 ? (
-                            [...comments].reverse().map((comment) => {
-                                return (
-                                    <div key={comment.id} className="flex gap-3 animate-fade-in">
-                                        {/* Avatar */}
-                                        <div
-                                            className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0 shadow-sm"
-                                            style={{
-                                                backgroundColor: `hsl(${comment.username.length * 40}, 70%, 50%)`,
-                                                color: '#fff'
-                                            }}
-                                        >
-                                            {comment.username.substring(0, 2).toUpperCase()}
-                                        </div>
-
-                                        {/* Content */}
-                                        <div className="flex-1">
-                                            <div className="flex justify-between items-start mb-1">
-                                                <div className="flex items-baseline gap-2">
-                                                    <span className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>{comment.username}</span>
-                                                    <span className="text-xs opacity-40" style={{ color: 'var(--text-primary)' }}>{new Date(comment.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                                                </div>
-                                                <button className="opacity-30 hover:opacity-100 transition-opacity">
-                                                    <MoreHorizontal size={16} style={{ color: 'var(--text-primary)' }} />
-                                                </button>
-                                            </div>
-
-                                            <div
-                                                className="text-sm leading-relaxed whitespace-pre-wrap break-words mb-3"
-                                                style={{ color: 'var(--text-primary)' }}
-                                            >
-                                                {comment.content}
-                                            </div>
-
-                                            {/* Actions */}
-                                            <div className="flex items-center gap-6">
-                                                <button
-                                                    onClick={() => handleReply(comment.username)}
-                                                    className="flex items-center gap-1.5 text-xs font-medium opacity-60 hover:opacity-100 transition-opacity"
-                                                    style={{ color: 'var(--text-primary)' }}
-                                                >
-                                                    <MessageCircle size={16} />
-                                                    <span>{t('reply', 'Reply')}</span>
-                                                </button>
-                                                <div className="flex items-center gap-4">
-                                                    <button
-                                                        onClick={() => handleLike(comment.id)}
-                                                        className={`flex items-center gap-1.5 text-xs font-medium transition-all ${comment.likes.includes(user?.username || '') ? 'opacity-100 text-blue-500' : 'opacity-60 hover:opacity-100'}`}
-                                                        style={{ color: comment.likes.includes(user?.username || '') ? '#3b82f6' : 'var(--text-primary)' }}
-                                                    >
-                                                        <ThumbsUp size={16} fill={comment.likes.includes(user?.username || '') ? 'currentColor' : 'none'} />
-                                                        <span>{comment.likes.length}</span>
-                                                    </button>
-                                                    <button className="flex items-center gap-1.5 text-xs font-medium opacity-60 hover:opacity-100 transition-opacity" style={{ color: 'var(--text-primary)' }}>
-                                                        <ThumbsDown size={16} />
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })
+                                </a>
+                            ))
                         ) : (
-                            <div className="flex flex-col items-center justify-center h-full opacity-40 gap-4">
-                                <div className="w-20 h-20 rounded-full flex items-center justify-center animate-pulse" style={{ backgroundColor: 'var(--card-bg)' }}>
-                                    <span className="text-4xl">💬</span>
-                                </div>
-                                <div className="text-center">
-                                    <p className="text-base font-bold mb-1" style={{ color: 'var(--text-primary)' }}>{t('no_comments', 'Start the conversation!')}</p>
-                                    <p className="text-xs opacity-50" style={{ color: 'var(--text-primary)' }}>{t('be_first', 'Be the first to share your thoughts on this asset.')}</p>
-                                </div>
+                            <div className="text-center p-8 opacity-50">
+                                {t('no_news_found', 'No recent news found for this asset.')}
                             </div>
                         )}
-                        <div ref={commentsEndRef} />
                     </div>
-                </div>
-            )}
+                )
+            }
+            {
+                activeTab === 'comments' && (
+                    <div className="relative h-[75vh] -mx-5 border-t mt-4 flex flex-col" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--card-border)' }}>
+
+                        {/* Input Area - Moved to Top */}
+                        <div className="p-4 border-b" style={{ borderColor: 'var(--card-border)', backgroundColor: 'var(--bg-primary)' }}>
+                            <div className="relative flex items-end gap-2 rounded-2xl p-2 pl-4 border focus-within:ring-1 transition-all shadow-sm"
+                                style={{
+                                    backgroundColor: 'var(--card-bg)',
+                                    borderColor: 'var(--card-border)',
+                                    '--tw-ring-color': 'var(--accent-color)'
+                                } as React.CSSProperties}
+                            >
+                                <textarea
+                                    value={commentInput}
+                                    onChange={(e) => setCommentInput(e.target.value)}
+                                    placeholder={t('write_comment', 'Leave your comment...')}
+                                    className="flex-1 bg-transparent text-sm outline-none resize-none scrollbar-hide py-3 max-h-[100px]"
+                                    rows={1}
+                                    style={{ color: 'var(--text-primary)' }}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && !e.shiftKey) {
+                                            e.preventDefault();
+                                            handlePostComment();
+                                        }
+                                    }}
+                                    onInput={(e) => {
+                                        const target = e.target as HTMLTextAreaElement;
+                                        target.style.height = 'auto';
+                                        target.style.height = Math.min(target.scrollHeight, 100) + 'px';
+                                    }}
+                                />
+                                <button
+                                    onClick={handlePostComment}
+                                    disabled={!commentInput.trim()}
+                                    className="p-2.5 rounded-full text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all active:scale-95 shrink-0 mb-[2px]"
+                                    style={{ backgroundColor: 'var(--accent-color)' }}
+                                >
+                                    <Send size={18} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Comments List - Reversed Order */}
+                        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-6 scrollbar-thin scrollbar-thumb-black/10 scrollbar-track-transparent">
+                            {comments.length > 0 ? (
+                                [...comments].reverse().map((comment) => {
+                                    return (
+                                        <div key={comment.id} className="flex gap-3 animate-fade-in">
+                                            {/* Avatar */}
+                                            <div
+                                                className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0 shadow-sm"
+                                                style={{
+                                                    backgroundColor: `hsl(${comment.username.length * 40}, 70%, 50%)`,
+                                                    color: '#fff'
+                                                }}
+                                            >
+                                                {comment.username.substring(0, 2).toUpperCase()}
+                                            </div>
+
+                                            {/* Content */}
+                                            <div className="flex-1">
+                                                <div className="flex justify-between items-start mb-1">
+                                                    <div className="flex items-baseline gap-2">
+                                                        <span className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>{comment.username}</span>
+                                                        <span className="text-xs opacity-40" style={{ color: 'var(--text-primary)' }}>{new Date(comment.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                    </div>
+                                                    <button className="opacity-30 hover:opacity-100 transition-opacity">
+                                                        <MoreHorizontal size={16} style={{ color: 'var(--text-primary)' }} />
+                                                    </button>
+                                                </div>
+
+                                                <div
+                                                    className="text-sm leading-relaxed whitespace-pre-wrap break-words mb-3"
+                                                    style={{ color: 'var(--text-primary)' }}
+                                                >
+                                                    {comment.content}
+                                                </div>
+
+                                                {/* Actions */}
+                                                <div className="flex items-center gap-6">
+                                                    <button
+                                                        onClick={() => handleReply(comment.username)}
+                                                        className="flex items-center gap-1.5 text-xs font-medium opacity-60 hover:opacity-100 transition-opacity"
+                                                        style={{ color: 'var(--text-primary)' }}
+                                                    >
+                                                        <MessageCircle size={16} />
+                                                        <span>{t('reply', 'Reply')}</span>
+                                                    </button>
+                                                    <div className="flex items-center gap-4">
+                                                        <button
+                                                            onClick={() => handleLike(comment.id)}
+                                                            className={`flex items-center gap-1.5 text-xs font-medium transition-all ${comment.likes.includes(user?.username || '') ? 'opacity-100 text-blue-500' : 'opacity-60 hover:opacity-100'}`}
+                                                            style={{ color: comment.likes.includes(user?.username || '') ? '#3b82f6' : 'var(--text-primary)' }}
+                                                        >
+                                                            <ThumbsUp size={16} fill={comment.likes.includes(user?.username || '') ? 'currentColor' : 'none'} />
+                                                            <span>{comment.likes.length}</span>
+                                                        </button>
+                                                        <button className="flex items-center gap-1.5 text-xs font-medium opacity-60 hover:opacity-100 transition-opacity" style={{ color: 'var(--text-primary)' }}>
+                                                            <ThumbsDown size={16} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            ) : (
+                                <div className="flex flex-col items-center justify-center h-full opacity-40 gap-4">
+                                    <div className="w-20 h-20 rounded-full flex items-center justify-center animate-pulse" style={{ backgroundColor: 'var(--card-bg)' }}>
+                                        <span className="text-4xl">💬</span>
+                                    </div>
+                                    <div className="text-center">
+                                        <p className="text-base font-bold mb-1" style={{ color: 'var(--text-primary)' }}>{t('no_comments', 'Start the conversation!')}</p>
+                                        <p className="text-xs opacity-50" style={{ color: 'var(--text-primary)' }}>{t('be_first', 'Be the first to share your thoughts on this asset.')}</p>
+                                    </div>
+                                </div>
+                            )}
+                            <div ref={commentsEndRef} />
+                        </div>
+                    </div>
+                )
+            }
 
             {
                 activeTab !== 'comments' && createPortal(
