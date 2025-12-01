@@ -568,14 +568,21 @@ export const StockDetail: React.FC = () => {
                         </div>
                     </div>
 
-                    {indicators && (
-                        <>
-                            <div className="flex justify-end mb-2 px-1">
-                                <span className="text-[10px] opacity-50 uppercase tracking-wider font-bold">
-                                    Interval: {indicatorInterval === '1d' ? 'Daily (24h)' : indicatorInterval}
-                                </span>
-                            </div>
 
+                    <div className="flex justify-end mb-2 px-1">
+                        <span className="text-[10px] opacity-50 uppercase tracking-wider font-bold">
+                            Interval: {indicatorInterval === '1d' ? 'Daily (24h)' : indicatorInterval}
+                        </span>
+                    </div>
+
+                    {/* Loading or No Data State */}
+                    {!indicators ? (
+                        <div className="flex flex-col items-center justify-center py-12">
+                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
+                            <p className="text-sm opacity-50">Loading technical indicators...</p>
+                        </div>
+                    ) : (
+                        <>
                             {/* Summary */}
                             <Card className="p-4" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
                                 <div className="flex justify-between items-center mb-4">
