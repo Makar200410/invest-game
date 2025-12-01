@@ -31,12 +31,10 @@ export const updateFundamentals = async () => {
                         'financialData',
                         'defaultKeyStatistics',
                         'assetProfile',
-                        'incomeStatementHistory',
-                        'balanceSheetHistory',
-                        'cashflowStatementHistory',
+                        'fundamentalsTimeSeries',
                         'earnings',
                         'recommendationTrend'
-                    ]
+                    ] as any
                 });
 
                 if (result) {
@@ -70,12 +68,10 @@ export const fetchYahooAnalysis = async (symbol: string) => {
                 'financialData',
                 'defaultKeyStatistics',
                 'assetProfile',
-                'incomeStatementHistory',
-                'balanceSheetHistory',
-                'cashflowStatementHistory',
+                'fundamentalsTimeSeries',
                 'earnings',
                 'recommendationTrend'
-            ]
+            ] as any
         });
 
         if (result) {
@@ -93,6 +89,7 @@ const __dirname = path.dirname(__filename);
 
 // Create Yahoo Finance instance
 const yahooFinance = new YahooFinance();
+(yahooFinance as any).suppressNotices(['validation']);
 const SYMBOLS = [
     // --- Crypto (10) ---
     'BTC-USD', 'ETH-USD', 'SOL-USD', 'BNB-USD', 'XRP-USD',

@@ -61,10 +61,11 @@ export const StockDetail: React.FC = () => {
     const assetShorts = shortPositions.filter(p => p.assetId === asset?.id);
 
     // Fetch Data
+    // Fetch Data
     useEffect(() => {
-        const loadData = async () => {
+        const loadData = async (isBackground = false) => {
             if (!id) return;
-            setLoading(true);
+            if (!isBackground) setLoading(true);
             try {
                 // 1. Fetch Asset Details (using crypto market for now as generic)
                 const marketData = await fetchCryptoMarket();
@@ -74,9 +75,8 @@ export const StockDetail: React.FC = () => {
                     setAsset(foundAsset);
 
                     // 2. Fetch Chart Data
-                    console.log(`Fetching chart data for ${id} with interval ${interval}`);
+                    if (!isBackground) console.log(`Fetching chart data for ${id} with interval ${interval}`);
                     const chartData = await fetchMarketChartByInterval(id, interval);
-                    console.log(`Received ${chartData.length} data points for ${id}`);
                     setHistory(chartData);
 
                     // 3. Fetch Additional Data based on skills/tabs
@@ -91,7 +91,7 @@ export const StockDetail: React.FC = () => {
                     }
 
                     if (skills.newsAlert) {
-                        setNewsLoading(true);
+                        if (!isBackground) setNewsLoading(true);
                         fetchCompanyNews(foundAsset.symbol).then(news => {
                             setCompanyNews(news);
                             setNewsLoading(false);
@@ -104,14 +104,14 @@ export const StockDetail: React.FC = () => {
             } catch (error) {
                 console.error('Failed to load asset data:', error);
             } finally {
-                setLoading(false);
+                if (!isBackground) setLoading(false);
             }
         };
 
         loadData();
 
         // Polling for price updates
-        const pollInterval = setInterval(loadData, 60000); // 60s polling
+        const pollInterval = setInterval(() => loadData(true), 60000); // 60s polling
         return () => clearInterval(pollInterval);
     }, [id, interval, indicatorInterval, skills]);
 
@@ -1134,7 +1134,8 @@ export const StockDetail: React.FC = () => {
                                                     {user?.username === comment.username && (
                                                         <button
                                                             onClick={() => handleDeleteComment(comment.id)}
-                                                            className="opacity-30 hover:opacity-100 hover:text-red-500 transition-all"
+                                                            className="opacity-60 hover:opacity-100 text-red-500/50 hover:text-red-500 transition-all p-1"
+                                                            title={t('delete_comment', 'Delete comment')}
                                                         >
                                                             <Trash2 size={14} />
                                                         </button>
@@ -1196,7 +1197,8 @@ export const StockDetail: React.FC = () => {
                                                         {user?.username === reply.username && (
                                                             <button
                                                                 onClick={() => handleDeleteComment(reply.id)}
-                                                                className="opacity-30 hover:opacity-100 hover:text-red-500 transition-all"
+                                                                className="opacity-60 hover:opacity-100 text-red-500/50 hover:text-red-500 transition-all p-1"
+                                                                title={t('delete_comment', 'Delete comment')}
                                                             >
                                                                 <Trash2 size={12} />
                                                             </button>
