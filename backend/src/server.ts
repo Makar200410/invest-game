@@ -18,7 +18,8 @@ import {
     getMarketItems,
     getMarketHistory,
     getInsiderTips,
-    addInsiderTip
+    addInsiderTip,
+    deleteAssetComment
 } from './services/storage.js';
 import { updateMarketData, fetchHistory, fetchYahooAnalysis, updateDailyCandles, updateMonthlyCandles, updateFundamentals } from './services/fetcher.js';
 import {
@@ -418,7 +419,7 @@ app.get('/api/comments/:symbol', async (req, res) => {
 });
 
 app.post('/api/comments', async (req, res) => {
-    const { symbol, username, content } = req.body;
+    const { symbol, username, content, parentId } = req.body;
     if (!symbol || !username || !content) {
         return res.status(400).json({ error: 'Symbol, username, and content are required' });
     }
@@ -428,7 +429,8 @@ app.post('/api/comments', async (req, res) => {
         symbol,
         username,
         content,
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        parentId
     };
 
     try {
@@ -437,6 +439,23 @@ app.post('/api/comments', async (req, res) => {
     } catch (error) {
         console.error('Error adding comment:', error);
         res.status(500).json({ error: 'Failed to add comment' });
+    }
+});
+
+app.delete('/api/comments/:id', async (req, res) => {
+    const { id } = req.params;
+    const { username } = req.body; // User requesting deletion
+
+    if (!username) {
+        return res.status(400).json({ error: 'Username is required' });
+    }
+
+    try {
+        await deleteAssetComment(id, username);
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error deleting comment:', error);
+        res.status(500).json({ error: 'Failed to delete comment' });
     }
 });
 

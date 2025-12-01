@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, TrendingUp, Lock, Target, MessageCircle, ThumbsUp, ThumbsDown, MoreHorizontal, Send } from 'lucide-react';
+import { ArrowLeft, TrendingUp, Lock, Target, MessageCircle, ThumbsUp, Send, Trash2, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Card } from '../../components/ui/Card';
 import { useGameStore } from '../../store/gameStore';
@@ -16,6 +16,7 @@ import {
     fetchAssetComments,
     postAssetComment,
     likeAssetComment,
+    deleteAssetComment,
     type MarketItem,
     type Comment
 } from '../../services/api';
@@ -32,6 +33,7 @@ export const StockDetail: React.FC = () => {
     const [newsLoading, setNewsLoading] = useState(false);
     const [comments, setComments] = useState<Comment[]>([]);
     const [commentInput, setCommentInput] = useState('');
+    const [replyTo, setReplyTo] = useState<Comment | null>(null);
     const commentsEndRef = useRef<HTMLDivElement>(null);
     const [history, setHistory] = useState<{ price: number; date: string; open?: number; high?: number; low?: number; close?: number; volume?: number }[]>([]);
     const [loading, setLoading] = useState(true);
@@ -117,8 +119,9 @@ export const StockDetail: React.FC = () => {
     const handlePostComment = async () => {
         if (!id || !commentInput.trim() || !user) return;
         try {
-            await postAssetComment(id, commentInput, user.username);
+            await postAssetComment(id, commentInput, user.username, replyTo?.id);
             setCommentInput('');
+            setReplyTo(null);
             const updatedComments = await fetchAssetComments(id);
             setComments(updatedComments);
             // Scroll to bottom
@@ -127,6 +130,18 @@ export const StockDetail: React.FC = () => {
             }, 100);
         } catch (error) {
             console.error('Failed to post comment:', error);
+        }
+    };
+
+    const handleDeleteComment = async (commentId: string) => {
+        if (!user || !id) return;
+        if (!confirm(t('confirm_delete_comment', 'Are you sure you want to delete this comment?'))) return;
+        try {
+            await deleteAssetComment(commentId, user.username);
+            const updatedComments = await fetchAssetComments(id);
+            setComments(updatedComments);
+        } catch (error) {
+            console.error('Failed to delete comment:', error);
         }
     };
 
@@ -156,8 +171,8 @@ export const StockDetail: React.FC = () => {
         }
     };
 
-    const handleReply = (username: string) => {
-        setCommentInput(`@${username} `);
+    const handleReply = (comment: Comment) => {
+        setReplyTo(comment);
         const textarea = document.querySelector('textarea');
         if (textarea) {
             textarea.focus();
@@ -556,7 +571,12 @@ export const StockDetail: React.FC = () => {
                                     key={t}
                                     onClick={() => skills.technicalAnalyst && setIndicatorInterval(t)}
                                     disabled={!skills.technicalAnalyst}
-                                    className={`px-3 py-1 rounded text-xs font-bold transition-all ${indicatorInterval === t ? 'bg-white/20 text-white' : 'text-white/40 hover:text-white/70'} disabled:cursor-not-allowed`}
+                                    className={`px-3 py-1 rounded text-xs font-bold transition-all disabled:cursor-not-allowed`}
+                                    style={{
+                                        color: indicatorInterval === t ? 'var(--text-primary)' : 'var(--text-secondary)',
+                                        backgroundColor: indicatorInterval === t ? 'var(--card-bg)' : 'transparent',
+                                        opacity: indicatorInterval === t ? 1 : 0.6
+                                    }}
                                 >
                                     {t}
                                 </button>
@@ -1034,6 +1054,21 @@ export const StockDetail: React.FC = () => {
 
                         {/* Input Area - Moved to Top */}
                         <div className="p-4 border-b" style={{ borderColor: 'var(--card-border)', backgroundColor: 'var(--bg-primary)' }}>
+                            {replyTo && (
+                                <div className="flex items-center justify-between mb-2 px-2 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                                    <div className="flex items-center gap-2 text-xs text-blue-400">
+                                        <MessageCircle size={12} />
+                                        <span>{t('replying_to', 'Replying to')} <span className="font-bold">{replyTo.username}</span></span>
+                                    </div>
+                                    <button
+                                        onClick={() => setReplyTo(null)}
+                                        className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors"
+                                        title={t('cancel_reply', 'Cancel reply')}
+                                    >
+                                        <X size={14} style={{ color: 'var(--text-primary)', opacity: 0.6 }} />
+                                    </button>
+                                </div>
+                            )}
                             <div className="relative flex items-end gap-2 rounded-2xl p-2 pl-4 border focus-within:ring-1 transition-all shadow-sm"
                                 style={{
                                     backgroundColor: 'var(--card-bg)',
@@ -1071,12 +1106,13 @@ export const StockDetail: React.FC = () => {
                             </div>
                         </div>
 
-                        {/* Comments List - Reversed Order */}
+                        {/* Comments List */}
                         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-6 scrollbar-thin scrollbar-thumb-black/10 scrollbar-track-transparent">
                             {comments.length > 0 ? (
-                                [...comments].reverse().map((comment) => {
-                                    return (
-                                        <div key={comment.id} className="flex gap-3 animate-fade-in">
+                                comments.filter(c => !c.parentId).sort((a, b) => b.timestamp - a.timestamp).map((comment) => (
+                                    <div key={comment.id} className="animate-fade-in">
+                                        {/* Parent Comment */}
+                                        <div className="flex gap-3">
                                             {/* Avatar */}
                                             <div
                                                 className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0 shadow-sm"
@@ -1095,9 +1131,14 @@ export const StockDetail: React.FC = () => {
                                                         <span className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>{comment.username}</span>
                                                         <span className="text-xs opacity-40" style={{ color: 'var(--text-primary)' }}>{new Date(comment.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                                     </div>
-                                                    <button className="opacity-30 hover:opacity-100 transition-opacity">
-                                                        <MoreHorizontal size={16} style={{ color: 'var(--text-primary)' }} />
-                                                    </button>
+                                                    {user?.username === comment.username && (
+                                                        <button
+                                                            onClick={() => handleDeleteComment(comment.id)}
+                                                            className="opacity-30 hover:opacity-100 hover:text-red-500 transition-all"
+                                                        >
+                                                            <Trash2 size={14} />
+                                                        </button>
+                                                    )}
                                                 </div>
 
                                                 <div
@@ -1110,7 +1151,7 @@ export const StockDetail: React.FC = () => {
                                                 {/* Actions */}
                                                 <div className="flex items-center gap-6">
                                                     <button
-                                                        onClick={() => handleReply(comment.username)}
+                                                        onClick={() => handleReply(comment)}
                                                         className="flex items-center gap-1.5 text-xs font-medium opacity-60 hover:opacity-100 transition-opacity"
                                                         style={{ color: 'var(--text-primary)' }}
                                                     >
@@ -1126,15 +1167,65 @@ export const StockDetail: React.FC = () => {
                                                             <ThumbsUp size={16} fill={comment.likes.includes(user?.username || '') ? 'currentColor' : 'none'} />
                                                             <span>{comment.likes.length}</span>
                                                         </button>
-                                                        <button className="flex items-center gap-1.5 text-xs font-medium opacity-60 hover:opacity-100 transition-opacity" style={{ color: 'var(--text-primary)' }}>
-                                                            <ThumbsDown size={16} />
-                                                        </button>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    );
-                                })
+
+                                        {/* Replies */}
+                                        {comments.filter(r => r.parentId === comment.id).sort((a, b) => a.timestamp - b.timestamp).map(reply => (
+                                            <div key={reply.id} className="flex gap-3 mt-4 ml-10 pl-4 border-l-2 border-white/5">
+                                                {/* Avatar */}
+                                                <div
+                                                    className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 shadow-sm"
+                                                    style={{
+                                                        backgroundColor: `hsl(${reply.username.length * 40}, 70%, 50%)`,
+                                                        color: '#fff'
+                                                    }}
+                                                >
+                                                    {reply.username.substring(0, 2).toUpperCase()}
+                                                </div>
+
+                                                {/* Content */}
+                                                <div className="flex-1">
+                                                    <div className="flex justify-between items-start mb-1">
+                                                        <div className="flex items-baseline gap-2">
+                                                            <span className="font-bold text-xs" style={{ color: 'var(--text-primary)' }}>{reply.username}</span>
+                                                            <span className="text-[10px] opacity-40" style={{ color: 'var(--text-primary)' }}>{new Date(reply.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                        </div>
+                                                        {user?.username === reply.username && (
+                                                            <button
+                                                                onClick={() => handleDeleteComment(reply.id)}
+                                                                className="opacity-30 hover:opacity-100 hover:text-red-500 transition-all"
+                                                            >
+                                                                <Trash2 size={12} />
+                                                            </button>
+                                                        )}
+                                                    </div>
+
+                                                    <div
+                                                        className="text-sm leading-relaxed whitespace-pre-wrap break-words mb-2"
+                                                        style={{ color: 'var(--text-primary)' }}
+                                                    >
+                                                        {reply.content}
+                                                    </div>
+
+                                                    {/* Actions for Reply */}
+                                                    <div className="flex items-center gap-4">
+                                                        <button
+                                                            onClick={() => handleLike(reply.id)}
+                                                            className={`flex items-center gap-1.5 text-[10px] font-medium transition-all ${reply.likes.includes(user?.username || '') ? 'opacity-100 text-blue-500' : 'opacity-60 hover:opacity-100'}`}
+                                                            style={{ color: reply.likes.includes(user?.username || '') ? '#3b82f6' : 'var(--text-primary)' }}
+                                                        >
+                                                            <ThumbsUp size={12} fill={reply.likes.includes(user?.username || '') ? 'currentColor' : 'none'} />
+                                                            <span>{reply.likes.length}</span>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ))
                             ) : (
                                 <div className="flex flex-col items-center justify-center h-full opacity-40 gap-4">
                                     <div className="w-20 h-20 rounded-full flex items-center justify-center animate-pulse" style={{ backgroundColor: 'var(--card-bg)' }}>

@@ -163,6 +163,7 @@ export interface Comment {
     content: string;
     timestamp: number;
     likes: string[];
+    parentId?: string;
 }
 
 export const fetchAssetComments = async (symbol: string): Promise<Comment[]> => {
@@ -175,12 +176,22 @@ export const fetchAssetComments = async (symbol: string): Promise<Comment[]> => 
     }
 };
 
-export const postAssetComment = async (symbol: string, content: string, username: string) => {
+export const postAssetComment = async (symbol: string, content: string, username: string, parentId?: string) => {
     try {
-        const response = await api.post('/comments', { symbol, content, username });
+        const response = await api.post('/comments', { symbol, content, username, parentId });
         return response.data;
     } catch (error) {
         console.error('Error posting comment:', error);
+        throw error;
+    }
+};
+
+export const deleteAssetComment = async (commentId: string, username: string) => {
+    try {
+        const response = await api.delete(`/comments/${commentId}`, { data: { username } });
+        return response.data;
+    } catch (error) {
+        console.error('Error deleting comment:', error);
         throw error;
     }
 };

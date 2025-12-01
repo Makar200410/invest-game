@@ -101,6 +101,13 @@ export const initDB = async () => {
             console.log('Migration note: likes column might already exist or error ignored');
         }
 
+        // Migration: Ensure parent_id column exists for nested comments
+        try {
+            await query(`ALTER TABLE asset_comments ADD COLUMN IF NOT EXISTS parent_id VARCHAR(255)`);
+        } catch (e) {
+            console.log('Migration note: parent_id column might already exist or error ignored');
+        }
+
         console.log('Database initialized successfully.');
     } catch (error) {
         console.error('Error initializing database:', error);
@@ -323,15 +330,28 @@ export const getInsiderTips = async (): Promise<any[]> => {
 };
 
 // Asset Comments Functions
-export const addAssetComment = async (comment: { id: string, symbol: string, username: string, content: string, timestamp: number }) => {
+export const addAssetComment = async (comment: { id: string, symbol: string, username: string, content: string, timestamp: number, parentId?: string }) => {
     try {
         await query(
-            `INSERT INTO asset_comments (id, symbol, username, content, timestamp, likes)
-             VALUES ($1, $2, $3, $4, $5, '[]'::jsonb)`,
-            [comment.id, comment.symbol, comment.username, comment.content, comment.timestamp]
+            `INSERT INTO asset_comments (id, symbol, username, content, timestamp, likes, parent_id)
+             VALUES ($1, $2, $3, $4, $5, '[]'::jsonb, $6)`,
+            [comment.id, comment.symbol, comment.username, comment.content, comment.timestamp, comment.parentId || null]
         );
     } catch (error) {
         console.error('Error adding asset comment:', error);
+        throw error;
+    }
+};
+
+export const deleteAssetComment = async (commentId: string, username: string) => {
+    try {
+        // Only allow deleting own comments
+        const res = await query('DELETE FROM asset_comments WHERE id = $1 AND username = $2', [commentId, username]);
+        if (res.rowCount === 0) {
+            throw new Error('Comment not found or unauthorized');
+        }
+    } catch (error) {
+        console.error('Error deleting asset comment:', error);
         throw error;
     }
 };
@@ -345,7 +365,8 @@ export const getAssetComments = async (symbol: string): Promise<any[]> => {
             username: row.username,
             content: row.content,
             timestamp: Number(row.timestamp),
-            likes: row.likes || []
+            likes: row.likes || [],
+            parentId: row.parent_id
         }));
     } catch (error) {
         console.error('Error fetching asset comments:', error);
