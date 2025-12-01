@@ -262,12 +262,11 @@ export const StockDetail: React.FC = () => {
                     {t('overview', 'Overview')}
                 </button>
                 <button
-                    onClick={() => skills.technicalAnalyst ? setActiveTab('indicators') : navigate('/skills')}
-                    className={`px-4 py-1.5 rounded-full hover:bg-white/5 text-sm font-bold whitespace-nowrap flex items-center gap-1 transition-colors ${activeTab === 'indicators' ? 'bg-white/10' : (!skills.technicalAnalyst ? 'opacity-50 cursor-pointer' : 'opacity-60')}`}
+                    onClick={() => setActiveTab('indicators')}
+                    className={`px-4 py-1.5 rounded-full hover:bg-white/5 text-sm font-bold whitespace-nowrap flex items-center gap-1 transition-colors ${activeTab === 'indicators' ? 'bg-white/10' : 'opacity-60'}`}
                     style={{ color: 'var(--text-primary)' }}
                 >
                     {t('indicators', 'Indicators')}
-                    {!skills.technicalAnalyst && <Lock size={12} />}
                 </button>
                 <button
                     onClick={() => skills.newsAlert ? setActiveTab('news') : navigate('/skills')}
@@ -547,20 +546,6 @@ export const StockDetail: React.FC = () => {
 
             {activeTab === 'indicators' && (
                 <div className="space-y-6 mb-6 relative">
-                    {/* Lock Overlay */}
-                    {!skills.technicalAnalyst && (
-                        <div
-                            onClick={() => navigate('/skills')}
-                            className="absolute inset-0 backdrop-blur-sm bg-black/40 rounded-2xl z-10 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-black/50 transition-colors"
-                            style={{ height: '100%' }}
-                        >
-                            <Lock size={48} className="text-white/90" />
-                            <div className="text-center">
-                                <p className="text-white font-bold text-lg">{t('skill_locked')}</p>
-                                <p className="text-white/70 text-sm mt-1">{t('unlock_technical_analyst')}</p>
-                            </div>
-                        </div>
-                    )}
 
                     {/* Indicator Interval Selector */}
                     <div className="flex justify-between items-center px-1">
@@ -569,9 +554,8 @@ export const StockDetail: React.FC = () => {
                             {['5m', '15m', '1h', '3h', '1d'].map((t) => (
                                 <button
                                     key={t}
-                                    onClick={() => skills.technicalAnalyst && setIndicatorInterval(t)}
-                                    disabled={!skills.technicalAnalyst}
-                                    className={`px-3 py-1 rounded text-xs font-bold transition-all disabled:cursor-not-allowed`}
+                                    onClick={() => setIndicatorInterval(t)}
+                                    className={`px-3 py-1 rounded text-xs font-bold transition-all`}
                                     style={{
                                         color: indicatorInterval === t ? 'var(--text-primary)' : 'var(--text-secondary)',
                                         backgroundColor: indicatorInterval === t ? 'var(--card-bg)' : 'transparent',
