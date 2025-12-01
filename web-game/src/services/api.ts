@@ -79,7 +79,7 @@ export const fetchIndicators = async (symbol: string, interval: string = '1d') =
         return response.data;
     } catch (e) {
         console.error('Error fetching indicators:', e);
-        return [];
+        return null;
     }
 };
 

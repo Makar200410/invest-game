@@ -170,7 +170,7 @@ export const BatchClosePage: React.FC = () => {
                         ${formatPrice(summary.totalValue)}
                     </p>
                     <div className="flex items-center gap-2 text-sm font-bold bg-black/20 w-fit px-3 py-1.5 rounded-lg backdrop-blur-sm">
-                        <span>Total PnL:</span>
+                        <span>{t('total_pnl')}:</span>
                         <span className={summary.totalPnL >= 0 ? 'text-green-300' : 'text-red-300'}>
                             {summary.totalPnL >= 0 ? '+' : ''}{formatPrice(summary.totalPnL)}
                         </span>
@@ -230,8 +230,8 @@ export const BatchClosePage: React.FC = () => {
                             onClick={handleConfirm}
                             disabled={type === 'short' && summary.totalValue > balance}
                             className={`w-full py-4 rounded-2xl font-black text-lg shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 ${type === 'long'
-                                    ? 'bg-violet-500 hover:bg-violet-400 text-white shadow-violet-500/20'
-                                    : 'bg-blue-500 hover:bg-blue-400 text-white shadow-blue-500/20'
+                                ? 'bg-violet-500 hover:bg-violet-400 text-white shadow-violet-500/20'
+                                : 'bg-blue-500 hover:bg-blue-400 text-white shadow-blue-500/20'
                                 } disabled:opacity-50 disabled:cursor-not-allowed`}
                         >
                             {type === 'long' ? t('confirm_sell_all', 'Confirm Sell All') : t('confirm_cover_all', 'Confirm Cover All')}

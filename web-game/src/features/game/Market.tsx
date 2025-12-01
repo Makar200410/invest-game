@@ -261,24 +261,34 @@ export const Market: React.FC = () => {
         <div className="space-y-4 pb-24"> {/* Removed extra top padding, AppLayout handles it */}
             {/* Balance Card - Scrollable */}
             <div className="px-4 pt-0 pb-2">
-                <div id="tutorial-balance-card" className="rounded-3xl overflow-hidden shadow-2xl shadow-blue-900/20 relative">
-                    <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700"></div>
-                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500/60 via-purple-600/60 to-indigo-700/60"></div>
-                    <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10"></div>
+                <div id="tutorial-balance-card" className="rounded-3xl overflow-hidden relative shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] border border-white/10">
+                    {/* Strict 3D Background */}
+                    <div className="absolute inset-0 bg-[#0f172a]"></div>
+                    <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent opacity-50"></div>
+                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-500/20 via-transparent to-transparent"></div>
 
-                    <div className="relative p-5 text-white">
-                        <div className="flex justify-between items-start mb-3">
+                    {/* 3D Glass Effect Overlay */}
+                    <div className="absolute inset-0 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.2)] rounded-3xl pointer-events-none"></div>
+
+                    <div className="relative p-6 text-white">
+                        <div className="flex justify-between items-start mb-6">
                             <div>
-                                <h2 className="text-blue-100 text-xs font-bold uppercase tracking-widest mb-1">{t('net_worth')}</h2>
-                                <p className="text-3xl font-black tracking-tight">
+                                <h2 className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em] mb-1 flex items-center gap-2">
+                                    <div className="w-1 h-1 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.8)]"></div>
+                                    {t('net_worth')}
+                                </h2>
+                                <p className="text-4xl font-black tracking-tight text-white drop-shadow-lg">
                                     ${totalNetWorth.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </p>
-                                <div className="flex items-center gap-2 mt-1">
-                                    <span className={`text-sm font-bold ${totalPnL >= 0 ? 'text-green-300' : 'text-red-300'}`}>
-                                        {totalPnL >= 0 ? '+' : ''}{totalPnL.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ({totalPnLPercent.toFixed(2)}%)
+                                <div className="flex items-center gap-3 mt-2">
+                                    <div className={`px-2 py-1 rounded-md text-xs font-bold border ${totalPnL >= 0 ? 'bg-green-500/10 border-green-500/20 text-green-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
+                                        {totalPnL >= 0 ? '+' : ''}{totalPnL.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </div>
+                                    <span className={`text-xs font-bold ${totalPnL >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                        ({totalPnLPercent.toFixed(2)}%)
                                     </span>
                                     {loan > 0 && (
-                                        <span className="text-sm font-bold text-red-200 opacity-80 border-l border-white/20 pl-2">
+                                        <span className="text-xs font-bold text-red-300/80 border-l border-white/10 pl-3">
                                             Loan: ${loan.toLocaleString(undefined, { minimumFractionDigits: 0 })}
                                         </span>
                                     )}
@@ -286,9 +296,9 @@ export const Market: React.FC = () => {
                             </div>
                             <button
                                 onClick={loadFullData}
-                                className="p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors backdrop-blur-sm"
+                                className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all active:scale-95 shadow-lg"
                             >
-                                <RefreshCcw size={18} className="text-white/80" />
+                                <RefreshCcw size={16} className="text-white/70" />
                             </button>
                         </div>
 
@@ -296,11 +306,14 @@ export const Market: React.FC = () => {
                             {/* Portfolio Manager Badge */}
                             <div
                                 onClick={() => !skills.portfolioManager && navigate('/skills')}
-                                className={`px-3 py-1.5 rounded-xl backdrop-blur-md border text-xs font-bold flex items-center gap-1.5 ${skills.portfolioManager ? 'bg-white/10 border-white/10 text-green-100' : 'bg-black/20 border-white/5 text-white/40 cursor-pointer hover:bg-white/5 transition-colors'}`}
+                                className={`px-3 py-2 rounded-lg border text-[10px] font-bold uppercase tracking-wide flex items-center gap-2 transition-all cursor-pointer select-none
+                                    ${skills.portfolioManager
+                                        ? 'bg-gradient-to-b from-emerald-500/10 to-emerald-900/20 border-emerald-500/20 text-emerald-400 shadow-[0_4px_12px_rgba(16,185,129,0.1)]'
+                                        : 'bg-slate-800/50 border-white/5 text-slate-500 hover:bg-slate-800 hover:border-white/10'}`}
                             >
                                 {skills.portfolioManager ? (
                                     <>
-                                        <div className="w-1.5 h-1.5 rounded-full bg-green-400"></div>
+                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]"></div>
                                         {getDiversificationBonus() > 1 ? t('diversity_bonus') : t('diversity_active')}
                                     </>
                                 ) : (
@@ -314,11 +327,14 @@ export const Market: React.FC = () => {
                             {/* Day Trader Badge */}
                             <div
                                 onClick={() => !skills.dayTrader && navigate('/skills')}
-                                className={`px-3 py-1.5 rounded-xl backdrop-blur-md border text-xs font-bold flex items-center gap-1.5 ${skills.dayTrader ? 'bg-white/10 border-white/10 text-blue-100' : 'bg-black/20 border-white/5 text-white/40 cursor-pointer hover:bg-white/5 transition-colors'}`}
+                                className={`px-3 py-2 rounded-lg border text-[10px] font-bold uppercase tracking-wide flex items-center gap-2 transition-all cursor-pointer select-none
+                                    ${skills.dayTrader
+                                        ? 'bg-gradient-to-b from-blue-500/10 to-blue-900/20 border-blue-500/20 text-blue-400 shadow-[0_4px_12px_rgba(59,130,246,0.1)]'
+                                        : 'bg-slate-800/50 border-white/5 text-slate-500 hover:bg-slate-800 hover:border-white/10'}`}
                             >
                                 {skills.dayTrader ? (
                                     <>
-                                        <div className="w-1.5 h-1.5 rounded-full bg-blue-400"></div>
+                                        <div className="w-1.5 h-1.5 rounded-full bg-blue-400 shadow-[0_0_8px_rgba(96,165,250,0.8)]"></div>
                                         {tradesToday} {t('trades')}
                                     </>
                                 ) : (
@@ -332,11 +348,14 @@ export const Market: React.FC = () => {
                             {/* Risk Manager Badge */}
                             <div
                                 onClick={() => !skills.riskManager && navigate('/skills')}
-                                className={`px-3 py-1.5 rounded-xl backdrop-blur-md border text-xs font-bold flex items-center gap-1.5 ${skills.riskManager ? 'bg-white/10 border-white/10 text-purple-100' : 'bg-black/20 border-white/5 text-white/40 cursor-pointer hover:bg-white/5 transition-colors'}`}
+                                className={`px-3 py-2 rounded-lg border text-[10px] font-bold uppercase tracking-wide flex items-center gap-2 transition-all cursor-pointer select-none
+                                    ${skills.riskManager
+                                        ? 'bg-gradient-to-b from-purple-500/10 to-purple-900/20 border-purple-500/20 text-purple-400 shadow-[0_4px_12px_rgba(168,85,247,0.1)]'
+                                        : 'bg-slate-800/50 border-white/5 text-slate-500 hover:bg-slate-800 hover:border-white/10'}`}
                             >
                                 {skills.riskManager ? (
                                     <>
-                                        <div className="w-1.5 h-1.5 rounded-full bg-purple-400"></div>
+                                        <div className="w-1.5 h-1.5 rounded-full bg-purple-400 shadow-[0_0_8px_rgba(192,132,252,0.8)]"></div>
                                         {t('risk_protected')}
                                     </>
                                 ) : (
@@ -361,7 +380,7 @@ export const Market: React.FC = () => {
                                 onClick={() => navigate('/trade/batch?type=long')}
                                 className="flex-1 py-2 rounded-xl bg-violet-500/10 text-violet-500 font-bold text-xs hover:bg-violet-500/20 transition-colors"
                             >
-                                {t('close_all_longs', 'Close All Longs')}
+                                {t('close_all_longs')}
                             </button>
                         )}
                         {allPositions.some(p => p.type === 'short') && (
@@ -369,7 +388,7 @@ export const Market: React.FC = () => {
                                 onClick={() => navigate('/trade/batch?type=short')}
                                 className="flex-1 py-2 rounded-xl bg-blue-500/10 text-blue-500 font-bold text-xs hover:bg-blue-500/20 transition-colors"
                             >
-                                {t('close_all_shorts', 'Close All Shorts')}
+                                {t('close_all_shorts')}
                             </button>
                         )}
                     </div>
@@ -421,7 +440,7 @@ export const Market: React.FC = () => {
                                         <div className="text-right">
                                             <div className={`text-sm font-bold flex items-center justify-end gap-1 ${pnl >= 0 ? 'text-green-500' : 'text-orange-500'}`}>
                                                 {pnl >= 0 ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-                                                {pnl >= 0 ? '+' : ''}{formatPrice(pnl)}
+                                                {pnl >= 0 ? '+' : '-'}${item.price >= 1 ? Math.abs(pnl).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : formatPrice(Math.abs(pnl))}
                                             </div>
                                             <div className={`text-xs font-medium ${pnl >= 0 ? 'text-green-500/70' : 'text-orange-500/70'}`}>
                                                 ({pnlPercent.toFixed(2)}%)
@@ -443,7 +462,7 @@ export const Market: React.FC = () => {
                                             : 'bg-violet-500/10 hover:bg-violet-500/20 text-violet-500'
                                             }`}
                                     >
-                                        {pos.type === 'short' ? 'Close Short' : 'Sell Position'}
+                                        {pos.type === 'short' ? t('close_short') : t('sell_position')}
                                     </button>
                                 </div>
                             );

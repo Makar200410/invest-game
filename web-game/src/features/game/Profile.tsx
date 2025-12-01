@@ -60,9 +60,9 @@ export const Profile = () => {
                 <div className="w-20 h-20 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center">
                     <User size={40} className="opacity-50" />
                 </div>
-                <h2 className="text-xl font-bold">{t('guest_user', 'Guest User')}</h2>
+                <h2 className="text-xl font-bold">{t('guest_user')}</h2>
                 <p className="text-sm opacity-60 max-w-xs mx-auto">
-                    {t('login_prompt', 'Please log in to access your profile and save your progress.')}
+                    {t('login_prompt')}
                 </p>
             </div>
         );
@@ -72,7 +72,7 @@ export const Profile = () => {
         <div className="space-y-6 pb-20">
             {/* Header */}
             <header className="flex items-center justify-between mb-6">
-                <h1 className="text-2xl font-bold">{t('profile', 'Profile')}</h1>
+                <h1 className="text-2xl font-bold">{t('profile')}</h1>
             </header>
 
             {/* User Card */}
@@ -97,18 +97,18 @@ export const Profile = () => {
                         <h2 className="text-2xl font-bold">{user.username}</h2>
                         <p className="opacity-80 text-sm flex items-center gap-1">
                             <Award size={14} />
-                            {t('investor_level', 'Novice Investor')}
+                            {t('investor_level')}
                         </p>
                     </div>
                 </div>
 
                 <div className="mt-6 flex gap-4">
                     <div className="bg-white/10 rounded-xl p-3 flex-1 backdrop-blur-sm">
-                        <p className="text-xs opacity-70 uppercase tracking-wider">{t('balance', 'Balance')}</p>
+                        <p className="text-xs opacity-70 uppercase tracking-wider">{t('balance')}</p>
                         <p className="text-lg font-bold">${balance?.toLocaleString() || '0'}</p>
                     </div>
                     <div className="bg-white/10 rounded-xl p-3 flex-1 backdrop-blur-sm">
-                        <p className="text-xs opacity-70 uppercase tracking-wider">{t('joined', 'Joined')}</p>
+                        <p className="text-xs opacity-70 uppercase tracking-wider">{t('joined')}</p>
                         <p className="text-lg font-bold">{new Date().toLocaleDateString()}</p>
                     </div>
                 </div>
@@ -116,7 +116,7 @@ export const Profile = () => {
 
             {/* Settings Section */}
             <div className="space-y-4">
-                <h3 className="text-sm font-bold opacity-50 uppercase tracking-wider px-2">{t('settings', 'Settings')}</h3>
+                <h3 className="text-sm font-bold opacity-50 uppercase tracking-wider px-2">{t('settings')}</h3>
 
                 {/* Theme Toggle */}
                 <Card className="!p-0 overflow-hidden">
@@ -129,8 +129,8 @@ export const Profile = () => {
                                 {theme === 'dark' ? <Moon size={20} /> : <Sun size={20} />}
                             </div>
                             <div className="text-left">
-                                <p className="font-bold text-sm">{t('appearance', 'Appearance')}</p>
-                                <p className="text-xs opacity-50">{theme === 'dark' ? t('dark_mode', 'Dark Mode') : t('light_mode', 'Light Mode')}</p>
+                                <p className="font-bold text-sm">{t('appearance')}</p>
+                                <p className="text-xs opacity-50">{theme === 'dark' ? t('dark_mode') : t('light_mode')}</p>
                             </div>
                         </div>
                         <div className={`w-12 h-6 rounded-full p-1 transition-colors ${theme === 'dark' ? 'bg-purple-500' : 'bg-slate-300'}`}>
@@ -150,7 +150,7 @@ export const Profile = () => {
                                 <Globe size={20} />
                             </div>
                             <div className="text-left">
-                                <p className="font-bold text-sm">{t('language', 'Language')}</p>
+                                <p className="font-bold text-sm">{t('language')}</p>
                                 <p className="text-xs opacity-50">
                                     {LANGUAGES.find(l => l.code === i18n.language)?.label || 'English'}
                                 </p>
@@ -189,7 +189,7 @@ export const Profile = () => {
 
             {/* General Section */}
             <div className="space-y-4">
-                <h3 className="text-sm font-bold opacity-50 uppercase tracking-wider px-2">{t('general', 'General')}</h3>
+                <h3 className="text-sm font-bold opacity-50 uppercase tracking-wider px-2">{t('general')}</h3>
 
                 <Card className="!p-0 overflow-hidden">
                     <button
@@ -201,8 +201,8 @@ export const Profile = () => {
                                 <RotateCcw size={20} />
                             </div>
                             <div className="text-left">
-                                <p className="font-bold text-sm">{t('restart_tutorial', 'Restart Tutorial')}</p>
-                                <p className="text-xs opacity-50">{t('restart_tutorial_desc', 'Replay the introductory guide')}</p>
+                                <p className="font-bold text-sm">{t('restart_tutorial')}</p>
+                                <p className="text-xs opacity-50">{t('restart_tutorial_desc')}</p>
                             </div>
                         </div>
                         <ChevronRight size={20} className="opacity-40" />
@@ -219,8 +219,8 @@ export const Profile = () => {
                                 <LogOut size={20} />
                             </div>
                             <div className="text-left">
-                                <p className="font-bold text-sm">{t('logout', 'Log Out')}</p>
-                                <p className="text-xs opacity-50 group-hover:text-red-500/70">{t('switch_account', 'Switch to another account')}</p>
+                                <p className="font-bold text-sm">{t('logout')}</p>
+                                <p className="text-xs opacity-50 group-hover:text-red-500/70">{t('switch_account')}</p>
                             </div>
                         </div>
                     </button>

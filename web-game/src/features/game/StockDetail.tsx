@@ -90,13 +90,12 @@ export const StockDetail: React.FC = () => {
                         setFundamentals(fundData);
                     }
 
-                    if (skills.newsAlert) {
-                        if (!isBackground) setNewsLoading(true);
-                        fetchCompanyNews(foundAsset.symbol).then(news => {
-                            setCompanyNews(news);
-                            setNewsLoading(false);
-                        });
-                    }
+                    // Always fetch news for the News tab (blurred if locked)
+                    if (!isBackground) setNewsLoading(true);
+                    fetchCompanyNews(foundAsset.symbol).then(news => {
+                        setCompanyNews(news);
+                        setNewsLoading(false);
+                    });
 
                     // Fetch Comments
                     fetchAssetComments(id).then(setComments);
@@ -135,7 +134,7 @@ export const StockDetail: React.FC = () => {
 
     const handleDeleteComment = async (commentId: string) => {
         if (!user || !id) return;
-        if (!confirm(t('confirm_delete_comment', 'Are you sure you want to delete this comment?'))) return;
+        if (!confirm(t('confirm_delete_comment'))) return;
         try {
             await deleteAssetComment(commentId, user.username);
             const updatedComments = await fetchAssetComments(id);
@@ -267,10 +266,11 @@ export const StockDetail: React.FC = () => {
                     style={{ color: 'var(--text-primary)' }}
                 >
                     {t('indicators', 'Indicators')}
+                    {!skills.technicalAnalyst && <Lock size={12} />}
                 </button>
                 <button
-                    onClick={() => skills.newsAlert ? setActiveTab('news') : navigate('/skills')}
-                    className={`px-4 py-1.5 rounded-full hover:bg-white/5 text-sm font-bold whitespace-nowrap flex items-center gap-1 transition-colors ${activeTab === 'news' ? 'bg-white/10' : (!skills.newsAlert ? 'opacity-50 cursor-pointer' : 'opacity-60')}`}
+                    onClick={() => setActiveTab('news')}
+                    className={`px-4 py-1.5 rounded-full hover:bg-white/5 text-sm font-bold whitespace-nowrap flex items-center gap-1 transition-colors ${activeTab === 'news' ? 'bg-white/10' : 'opacity-60'}`}
                     style={{ color: 'var(--text-primary)' }}
                 >
                     {t('news', 'News')}
@@ -466,7 +466,7 @@ export const StockDetail: React.FC = () => {
                                     )}
                                 </svg>
                             ) : (
-                                <div className="flex items-center justify-center h-full text-sm opacity-50">Loading chart...</div>
+                                <div className="flex items-center justify-center h-full text-sm opacity-50">{t('loading_chart')}</div>
                             )}
                         </div>
 
@@ -546,6 +546,20 @@ export const StockDetail: React.FC = () => {
 
             {activeTab === 'indicators' && (
                 <div className="space-y-6 mb-6 relative">
+                    {/* Lock Overlay */}
+                    {!skills.technicalAnalyst && (
+                        <div
+                            onClick={() => navigate('/skills')}
+                            className="absolute inset-0 backdrop-blur-sm bg-black/40 rounded-2xl z-10 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-black/50 transition-colors"
+                            style={{ height: '100%', zIndex: 50 }}
+                        >
+                            <Lock size={48} className="text-white/90" />
+                            <div className="text-center">
+                                <p className="text-white font-bold text-lg">{t('skill_locked')}</p>
+                                <p className="text-white/70 text-sm mt-1">{t('unlock_technical_analyst')}</p>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Indicator Interval Selector */}
                     <div className="flex justify-between items-center px-1">
@@ -554,8 +568,9 @@ export const StockDetail: React.FC = () => {
                             {['5m', '15m', '1h', '3h', '1d'].map((t) => (
                                 <button
                                     key={t}
-                                    onClick={() => setIndicatorInterval(t)}
-                                    className={`px-3 py-1 rounded text-xs font-bold transition-all`}
+                                    onClick={() => skills.technicalAnalyst && setIndicatorInterval(t)}
+                                    disabled={!skills.technicalAnalyst}
+                                    className={`px-3 py-1 rounded text-xs font-bold transition-all disabled:cursor-not-allowed`}
                                     style={{
                                         color: indicatorInterval === t ? 'var(--text-primary)' : 'var(--text-secondary)',
                                         backgroundColor: indicatorInterval === t ? 'var(--card-bg)' : 'transparent',
@@ -569,127 +584,128 @@ export const StockDetail: React.FC = () => {
                     </div>
 
 
-                    <div className="flex justify-end mb-2 px-1">
-                        <span className="text-[10px] opacity-50 uppercase tracking-wider font-bold">
-                            Interval: {indicatorInterval === '1d' ? 'Daily (24h)' : indicatorInterval}
-                        </span>
-                    </div>
+                    <span className="text-[10px] opacity-50 uppercase tracking-wider font-bold">
+                        {indicatorInterval === '1d' ? t('interval_daily') : `${t('interval')}: ${indicatorInterval}`}
+                    </span>
 
                     {/* Loading or No Data State */}
                     {!indicators ? (
                         <div className="flex flex-col items-center justify-center py-12">
-                            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
-                            <p className="text-sm opacity-50">Loading technical indicators...</p>
+                            <p className="text-sm opacity-50">{t('no_data_available', 'No data available')}</p>
                         </div>
                     ) : (
                         <>
                             {/* Summary */}
                             <Card className="p-4" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
                                 <div className="flex justify-between items-center mb-4">
-                                    <h4 className="font-bold text-lg">Technical Summary</h4>
+                                    <h4 className="font-bold text-lg">{t('technical_summary')}</h4>
                                     <div className={`px-4 py-1.5 rounded text-sm font-bold ${indicators.summary?.recommendation.includes('Buy') ? 'bg-green-500 text-white' :
                                         indicators.summary?.recommendation.includes('Sell') ? 'bg-red-500 text-white' :
                                             'bg-gray-500 text-white'
                                         }`}>
-                                        {indicators.summary?.recommendation || 'Neutral'}
+                                        {t((indicators.summary?.recommendation || 'Neutral').toLowerCase().replace(/ /g, '_'), indicators.summary?.recommendation || 'Neutral') as string}
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-3 gap-2 text-center text-xs font-bold">
                                     <div className="p-3 rounded bg-white/5 border border-white/10">
-                                        <div className="opacity-50 mb-1 uppercase tracking-wider">Buy</div>
+                                        <div className="opacity-50 mb-1 uppercase tracking-wider">{t('buy')}</div>
                                         <div className="text-green-400 text-xl">{indicators.summary?.buy || 0}</div>
                                     </div>
                                     <div className="p-3 rounded bg-white/5 border border-white/10">
-                                        <div className="opacity-50 mb-1 uppercase tracking-wider">Sell</div>
+                                        <div className="opacity-50 mb-1 uppercase tracking-wider">{t('sell')}</div>
                                         <div className="text-red-400 text-xl">{indicators.summary?.sell || 0}</div>
                                     </div>
                                     <div className="p-3 rounded bg-white/5 border border-white/10">
-                                        <div className="opacity-50 mb-1 uppercase tracking-wider">Neutral</div>
+                                        <div className="opacity-50 mb-1 uppercase tracking-wider">{t('neutral')}</div>
                                         <div className="text-gray-400 text-xl">{indicators.summary?.neutral || 0}</div>
                                     </div>
                                 </div>
                             </Card>
 
-                            {/* Pivot Points */}
-                            <Card className="p-4" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
-                                <h4 className="font-bold mb-4 text-lg">Pivot Points</h4>
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-xs">
-                                        <thead>
-                                            <tr className="opacity-50 border-b border-white/10">
-                                                <th className="text-left py-2">Level</th>
-                                                <th className="text-right py-2">Classic</th>
-                                                <th className="text-right py-2">Fibonacci</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="font-mono">
-                                            {['r3', 'r2', 'r1', 'p', 's1', 's2', 's3'].map((level) => (
-                                                <tr key={level} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
-                                                    <td className="py-2.5 font-bold uppercase text-blue-400">{level}</td>
-                                                    <td className="py-2.5 text-right">{formatPrice(indicators.pivotPoints?.classic[level] || 0)}</td>
-                                                    <td className="py-2.5 text-right">{formatPrice(indicators.pivotPoints?.fibonacci[level] || 0)}</td>
+                            {/* Pivot Points - Hidden for Stocks */}
+                            {asset.type !== 'stock' && (
+                                <Card className="p-4" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
+                                    <h4 className="font-bold mb-4 text-lg">{t('pivot_points')}</h4>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-xs">
+                                            <thead>
+                                                <tr className="opacity-50 border-b border-white/10">
+                                                    <th className="text-left py-2">{t('level')}</th>
+                                                    <th className="text-right py-2">{t('classic')}</th>
+                                                    <th className="text-right py-2">{t('fibonacci')}</th>
                                                 </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </Card>
+                                            </thead>
+                                            <tbody className="font-mono">
+                                                {['r3', 'r2', 'r1', 'p', 's1', 's2', 's3'].map((level) => (
+                                                    <tr key={level} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+                                                        <td className="py-2.5 font-bold uppercase text-blue-400">{level}</td>
+                                                        <td className="py-2.5 text-right">{formatPrice(indicators.pivotPoints?.classic[level] || 0)}</td>
+                                                        <td className="py-2.5 text-right">{formatPrice(indicators.pivotPoints?.fibonacci[level] || 0)}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </Card>
+                            )}
 
-                            {/* Moving Averages */}
-                            <Card className="p-4" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
-                                <h4 className="font-bold mb-4 text-lg">Moving Averages</h4>
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-xs">
-                                        <thead>
-                                            <tr className="opacity-50 border-b border-white/10">
-                                                <th className="text-left py-2">Period</th>
-                                                <th className="text-right py-2">Simple</th>
-                                                <th className="text-right py-2">Exponential</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {indicators.movingAverages?.map((ma: any) => (
-                                                <tr key={ma.period} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
-                                                    <td className="py-2.5 font-bold text-blue-400">MA{ma.period}</td>
-                                                    <td className="py-2.5 text-right">
-                                                        <div className="flex justify-end items-center gap-2">
-                                                            <span className="font-mono opacity-80">{formatPrice(ma.simple || 0)}</span>
-                                                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${ma.simpleAction === 'Buy' ? 'bg-green-500/20 text-green-500' :
-                                                                ma.simpleAction === 'Sell' ? 'bg-red-500/20 text-red-500' :
-                                                                    'bg-gray-500/20 text-gray-500'
-                                                                }`}>
-                                                                {ma.simpleAction || 'Neutral'}
-                                                            </span>
-                                                        </div>
-                                                    </td>
-                                                    <td className="py-2.5 text-right">
-                                                        <div className="flex justify-end items-center gap-2">
-                                                            <span className="font-mono opacity-80">{formatPrice(ma.exponential || 0)}</span>
-                                                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${ma.exponentialAction === 'Buy' ? 'bg-green-500/20 text-green-500' :
-                                                                ma.exponentialAction === 'Sell' ? 'bg-red-500/20 text-red-500' :
-                                                                    'bg-gray-500/20 text-gray-500'
-                                                                }`}>
-                                                                {ma.exponentialAction || 'Neutral'}
-                                                            </span>
-                                                        </div>
-                                                    </td>
+                            {/* Moving Averages - Hidden for Stocks */}
+                            {asset.type !== 'stock' && (
+                                <Card className="p-4" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
+                                    <h4 className="font-bold mb-4 text-lg">{t('moving_averages')}</h4>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-xs">
+                                            <thead>
+                                                <tr className="opacity-50 border-b border-white/10">
+                                                    <th className="text-left py-2">{t('period')}</th>
+                                                    <th className="text-right py-2">{t('simple')}</th>
+                                                    <th className="text-right py-2">{t('exponential')}</th>
                                                 </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </Card>
+                                            </thead>
+                                            <tbody>
+                                                {indicators.movingAverages?.map((ma: any) => (
+                                                    <tr key={ma.period} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+                                                        <td className="py-2.5 font-bold text-blue-400">MA{ma.period}</td>
+                                                        <td className="py-2.5 text-right">
+                                                            <div className="flex justify-end items-center gap-2">
+                                                                <span className="font-mono opacity-80">{formatPrice(ma.simple || 0)}</span>
+                                                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${ma.simpleAction === 'Buy' ? 'bg-green-500/20 text-green-500' :
+                                                                    ma.simpleAction === 'Sell' ? 'bg-red-500/20 text-red-500' :
+                                                                        'bg-gray-500/20 text-gray-500'
+                                                                    }`}>
+                                                                    {t((ma.simpleAction || 'Neutral').toLowerCase().replace(/ /g, '_'), ma.simpleAction || 'Neutral') as string}
+                                                                </span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="py-2.5 text-right">
+                                                            <div className="flex justify-end items-center gap-2">
+                                                                <span className="font-mono opacity-80">{formatPrice(ma.exponential || 0)}</span>
+                                                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${ma.exponentialAction === 'Buy' ? 'bg-green-500/20 text-green-500' :
+                                                                    ma.exponentialAction === 'Sell' ? 'bg-red-500/20 text-red-500' :
+                                                                        'bg-gray-500/20 text-gray-500'
+                                                                    }`}>
+                                                                    {t((ma.exponentialAction || 'Neutral').toLowerCase().replace(/ /g, '_'), ma.exponentialAction || 'Neutral') as string}
+                                                                </span>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </Card>
+                            )}
 
                             {/* Technical Indicators */}
                             <Card className="p-4" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
-                                <h4 className="font-bold mb-4 text-lg">Technical Indicators</h4>
+                                <h4 className="font-bold mb-4 text-lg">{t('technical_indicators')}</h4>
                                 <div className="overflow-x-auto">
                                     <table className="w-full text-xs">
                                         <thead>
                                             <tr className="opacity-50 border-b border-white/10">
-                                                <th className="text-left py-2">Indicator</th>
-                                                <th className="text-right py-2">Value</th>
-                                                <th className="text-right py-2">Action</th>
+                                                <th className="text-left py-2">{t('indicator')}</th>
+                                                <th className="text-right py-2">{t('value')}</th>
+                                                <th className="text-right py-2">{t('action')}</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -703,7 +719,7 @@ export const StockDetail: React.FC = () => {
                                                                 ['Overbought', 'High Volatility'].includes(ind.action) ? 'bg-orange-500 text-white' :
                                                                     'bg-gray-500 text-white'
                                                             }`}>
-                                                            {ind.action?.replace('_', ' ') || 'Neutral'}
+                                                            {t((ind.action || 'Neutral').replace('_', ' ').toLowerCase().replace(/ /g, '_'), ind.action?.replace('_', ' ') || 'Neutral') as string}
                                                         </span>
                                                     </td>
                                                 </tr>
@@ -781,43 +797,43 @@ export const StockDetail: React.FC = () => {
                             /* Crypto / Alternative View */
                             <div className="space-y-8">
                                 <div>
-                                    <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-3 border-b border-white/10 pb-1">Market Statistics</h4>
+                                    <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-3 border-b border-white/10 pb-1">{t('market_statistics')}</h4>
                                     <div className="grid grid-cols-2 gap-y-4 gap-x-8">
                                         <div>
-                                            <p className="text-xs opacity-50">Market Cap</p>
+                                            <p className="text-xs opacity-50">{t('market_cap')}</p>
                                             <p className="font-bold">{fundamentals.summaryDetail.marketCap ? `$${(fundamentals.summaryDetail.marketCap / 1e9).toFixed(2)}B` : 'N/A'}</p>
                                         </div>
                                         <div>
-                                            <p className="text-xs opacity-50">Volume (24h)</p>
+                                            <p className="text-xs opacity-50">{t('volume_24h')}</p>
                                             <p className="font-bold">{fundamentals.summaryDetail.volume ? `$${(fundamentals.summaryDetail.volume / 1e9).toFixed(2)}B` : 'N/A'}</p>
                                         </div>
                                         <div>
-                                            <p className="text-xs opacity-50">Circulating Supply</p>
+                                            <p className="text-xs opacity-50">{t('circulating_supply')}</p>
                                             <p className="font-bold">{fundamentals.summaryDetail.circulatingSupply ? `${(fundamentals.summaryDetail.circulatingSupply / 1e6).toFixed(2)}M` : 'N/A'}</p>
                                         </div>
                                         <div>
-                                            <p className="text-xs opacity-50">Max Supply</p>
+                                            <p className="text-xs opacity-50">{t('max_supply')}</p>
                                             <p className="font-bold">{fundamentals.summaryDetail.maxSupply ? `${(fundamentals.summaryDetail.maxSupply / 1e6).toFixed(2)}M` : '∞'}</p>
                                         </div>
                                     </div>
                                 </div>
                                 <div>
-                                    <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-3 border-b border-white/10 pb-1">Price Statistics</h4>
+                                    <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-3 border-b border-white/10 pb-1">{t('price_statistics')}</h4>
                                     <div className="grid grid-cols-2 gap-y-4 gap-x-8">
                                         <div>
-                                            <p className="text-xs opacity-50">52 Week High</p>
+                                            <p className="text-xs opacity-50">{t('52_week_high')}</p>
                                             <p className="font-bold">{fundamentals.summaryDetail.fiftyTwoWeekHigh ? `$${fundamentals.summaryDetail.fiftyTwoWeekHigh.toLocaleString()}` : 'N/A'}</p>
                                         </div>
                                         <div>
-                                            <p className="text-xs opacity-50">52 Week Low</p>
+                                            <p className="text-xs opacity-50">{t('52_week_low')}</p>
                                             <p className="font-bold">{fundamentals.summaryDetail.fiftyTwoWeekLow ? `$${fundamentals.summaryDetail.fiftyTwoWeekLow.toLocaleString()}` : 'N/A'}</p>
                                         </div>
                                         <div>
-                                            <p className="text-xs opacity-50">Day High</p>
+                                            <p className="text-xs opacity-50">{t('day_high')}</p>
                                             <p className="font-bold">{fundamentals.summaryDetail.dayHigh ? `$${fundamentals.summaryDetail.dayHigh.toLocaleString()}` : 'N/A'}</p>
                                         </div>
                                         <div>
-                                            <p className="text-xs opacity-50">Day Low</p>
+                                            <p className="text-xs opacity-50">{t('day_low')}</p>
                                             <p className="font-bold">{fundamentals.summaryDetail.dayLow ? `$${fundamentals.summaryDetail.dayLow.toLocaleString()}` : 'N/A'}</p>
                                         </div>
                                     </div>
@@ -828,34 +844,34 @@ export const StockDetail: React.FC = () => {
                             <div className="space-y-8">
                                 {/* Valuation Measures */}
                                 <div>
-                                    <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-3 border-b border-white/10 pb-1">Valuation Measures</h4>
+                                    <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-3 border-b border-white/10 pb-1">{t('valuation_measures')}</h4>
                                     <div className="grid grid-cols-2 gap-y-4 gap-x-8">
                                         <div>
-                                            <p className="text-xs opacity-50">Market Cap</p>
+                                            <p className="text-xs opacity-50">{t('market_cap')}</p>
                                             <p className="font-bold">{fundamentals?.summaryDetail?.marketCap ? `$${(fundamentals.summaryDetail.marketCap / 1e9).toFixed(2)}B` : 'N/A'}</p>
                                         </div>
                                         <div>
-                                            <p className="text-xs opacity-50">Enterprise Value</p>
+                                            <p className="text-xs opacity-50">{t('enterprise_value')}</p>
                                             <p className="font-bold">{fundamentals?.defaultKeyStatistics?.enterpriseValue ? `$${(fundamentals.defaultKeyStatistics.enterpriseValue / 1e9).toFixed(2)}B` : 'N/A'}</p>
                                         </div>
                                         <div>
-                                            <p className="text-xs opacity-50">Trailing P/E</p>
+                                            <p className="text-xs opacity-50">{t('trailing_pe')}</p>
                                             <p className="font-bold">{fundamentals?.summaryDetail?.trailingPE?.toFixed(2) || 'N/A'}</p>
                                         </div>
                                         <div>
-                                            <p className="text-xs opacity-50">Forward P/E</p>
+                                            <p className="text-xs opacity-50">{t('forward_pe')}</p>
                                             <p className="font-bold">{fundamentals?.summaryDetail?.forwardPE?.toFixed(2) || 'N/A'}</p>
                                         </div>
                                         <div>
-                                            <p className="text-xs opacity-50">PEG Ratio</p>
+                                            <p className="text-xs opacity-50">{t('peg_ratio')}</p>
                                             <p className="font-bold">{fundamentals?.defaultKeyStatistics?.pegRatio?.toFixed(2) || 'N/A'}</p>
                                         </div>
                                         <div>
-                                            <p className="text-xs opacity-50">Price/Sales</p>
+                                            <p className="text-xs opacity-50">{t('price_sales')}</p>
                                             <p className="font-bold">{fundamentals?.summaryDetail?.priceToSalesTrailing12Months?.toFixed(2) || 'N/A'}</p>
                                         </div>
                                         <div>
-                                            <p className="text-xs opacity-50">Price/Book</p>
+                                            <p className="text-xs opacity-50">{t('price_book')}</p>
                                             <p className="font-bold">{fundamentals?.defaultKeyStatistics?.priceToBook?.toFixed(2) || 'N/A'}</p>
                                         </div>
                                     </div>
@@ -863,42 +879,42 @@ export const StockDetail: React.FC = () => {
 
                                 {/* Financial Highlights */}
                                 <div>
-                                    <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-3 border-b border-white/10 pb-1">Financial Highlights</h4>
+                                    <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-3 border-b border-white/10 pb-1">{t('financial_highlights')}</h4>
                                     <div className="grid grid-cols-2 gap-y-4 gap-x-8">
                                         <div>
-                                            <p className="text-xs opacity-50">Profit Margin</p>
+                                            <p className="text-xs opacity-50">{t('profit_margin')}</p>
                                             <p className="font-bold">{fundamentals?.defaultKeyStatistics?.profitMargins ? `${(fundamentals.defaultKeyStatistics.profitMargins * 100).toFixed(2)}%` : 'N/A'}</p>
                                         </div>
                                         <div>
-                                            <p className="text-xs opacity-50">Operating Margin</p>
+                                            <p className="text-xs opacity-50">{t('operating_margin')}</p>
                                             <p className="font-bold">{fundamentals?.financialData?.operatingMargins ? `${(fundamentals.financialData.operatingMargins * 100).toFixed(2)}%` : 'N/A'}</p>
                                         </div>
                                         <div>
-                                            <p className="text-xs opacity-50">Return on Assets</p>
+                                            <p className="text-xs opacity-50">{t('return_on_assets')}</p>
                                             <p className="font-bold">{fundamentals?.financialData?.returnOnAssets ? `${(fundamentals.financialData.returnOnAssets * 100).toFixed(2)}%` : 'N/A'}</p>
                                         </div>
                                         <div>
-                                            <p className="text-xs opacity-50">Return on Equity</p>
+                                            <p className="text-xs opacity-50">{t('return_on_equity')}</p>
                                             <p className="font-bold">{fundamentals?.financialData?.returnOnEquity ? `${(fundamentals.financialData.returnOnEquity * 100).toFixed(2)}%` : 'N/A'}</p>
                                         </div>
                                         <div>
-                                            <p className="text-xs opacity-50">Revenue (ttm)</p>
+                                            <p className="text-xs opacity-50">{t('revenue_ttm')}</p>
                                             <p className="font-bold">{fundamentals?.financialData?.totalRevenue ? `$${(fundamentals.financialData.totalRevenue / 1e9).toFixed(2)}B` : 'N/A'}</p>
                                         </div>
                                         <div>
-                                            <p className="text-xs opacity-50">Revenue Per Share</p>
+                                            <p className="text-xs opacity-50">{t('revenue_per_share')}</p>
                                             <p className="font-bold">{fundamentals?.financialData?.revenuePerShare?.toFixed(2) || 'N/A'}</p>
                                         </div>
                                         <div>
-                                            <p className="text-xs opacity-50">Gross Profit</p>
+                                            <p className="text-xs opacity-50">{t('gross_profit')}</p>
                                             <p className="font-bold">{fundamentals?.financialData?.grossProfits ? `$${(fundamentals.financialData.grossProfits / 1e9).toFixed(2)}B` : 'N/A'}</p>
                                         </div>
                                         <div>
-                                            <p className="text-xs opacity-50">EBITDA</p>
+                                            <p className="text-xs opacity-50">{t('ebitda')}</p>
                                             <p className="font-bold">{fundamentals?.financialData?.ebitda ? `$${(fundamentals.financialData.ebitda / 1e9).toFixed(2)}B` : 'N/A'}</p>
                                         </div>
                                         <div>
-                                            <p className="text-xs opacity-50">Diluted EPS</p>
+                                            <p className="text-xs opacity-50">{t('diluted_eps')}</p>
                                             <p className="font-bold">{fundamentals?.defaultKeyStatistics?.trailingEps?.toFixed(2) || 'N/A'}</p>
                                         </div>
                                     </div>
@@ -906,26 +922,26 @@ export const StockDetail: React.FC = () => {
 
                                 {/* Balance Sheet */}
                                 <div>
-                                    <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-3 border-b border-white/10 pb-1">Balance Sheet</h4>
+                                    <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-3 border-b border-white/10 pb-1">{t('balance_sheet')}</h4>
                                     <div className="grid grid-cols-2 gap-y-4 gap-x-8">
                                         <div>
-                                            <p className="text-xs opacity-50">Total Cash</p>
+                                            <p className="text-xs opacity-50">{t('total_cash')}</p>
                                             <p className="font-bold">{fundamentals?.financialData?.totalCash ? `$${(fundamentals.financialData.totalCash / 1e9).toFixed(2)}B` : 'N/A'}</p>
                                         </div>
                                         <div>
-                                            <p className="text-xs opacity-50">Total Debt</p>
+                                            <p className="text-xs opacity-50">{t('total_debt')}</p>
                                             <p className="font-bold">{fundamentals?.financialData?.totalDebt ? `$${(fundamentals.financialData.totalDebt / 1e9).toFixed(2)}B` : 'N/A'}</p>
                                         </div>
                                         <div>
-                                            <p className="text-xs opacity-50">Debt/Equity</p>
+                                            <p className="text-xs opacity-50">{t('debt_equity')}</p>
                                             <p className="font-bold">{fundamentals?.financialData?.debtToEquity?.toFixed(2) || 'N/A'}</p>
                                         </div>
                                         <div>
-                                            <p className="text-xs opacity-50">Current Ratio</p>
+                                            <p className="text-xs opacity-50">{t('current_ratio')}</p>
                                             <p className="font-bold">{fundamentals?.financialData?.currentRatio?.toFixed(2) || 'N/A'}</p>
                                         </div>
                                         <div>
-                                            <p className="text-xs opacity-50">Book Value</p>
+                                            <p className="text-xs opacity-50">{t('book_value')}</p>
                                             <p className="font-bold">{fundamentals?.defaultKeyStatistics?.bookValue?.toFixed(2) || 'N/A'}</p>
                                         </div>
                                     </div>
@@ -933,14 +949,14 @@ export const StockDetail: React.FC = () => {
 
                                 {/* Cash Flow */}
                                 <div>
-                                    <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-3 border-b border-white/10 pb-1">Cash Flow</h4>
+                                    <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-3 border-b border-white/10 pb-1">{t('cash_flow')}</h4>
                                     <div className="grid grid-cols-2 gap-y-4 gap-x-8">
                                         <div>
-                                            <p className="text-xs opacity-50">Operating Cash Flow</p>
+                                            <p className="text-xs opacity-50">{t('operating_cash_flow')}</p>
                                             <p className="font-bold">{fundamentals?.financialData?.operatingCashflow ? `$${(fundamentals.financialData.operatingCashflow / 1e9).toFixed(2)}B` : 'N/A'}</p>
                                         </div>
                                         <div>
-                                            <p className="text-xs opacity-50">Levered Free Cash Flow</p>
+                                            <p className="text-xs opacity-50">{t('levered_free_cash_flow')}</p>
                                             <p className="font-bold">{fundamentals?.financialData?.freeCashflow ? `$${(fundamentals.financialData.freeCashflow / 1e9).toFixed(2)}B` : 'N/A'}</p>
                                         </div>
                                     </div>
@@ -949,7 +965,7 @@ export const StockDetail: React.FC = () => {
                         )}      {/* Revenue & Earnings Chart */}
                         {fundamentals?.earnings?.financialsChart?.yearly && (
                             <div className="mt-8 pt-6 border-t border-white/10">
-                                <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-4">Revenue & Earnings (Yearly)</h4>
+                                <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-4">{t('revenue_earnings_yearly')}</h4>
                                 <div className="h-40 w-full flex items-end gap-2">
                                     {fundamentals.earnings.financialsChart.yearly.map((item: any) => {
                                         const maxVal = Math.max(...fundamentals.earnings.financialsChart.yearly.map((i: any) => Math.max(i.revenue, i.earnings)));
@@ -974,8 +990,8 @@ export const StockDetail: React.FC = () => {
                                     })}
                                 </div>
                                 <div className="flex justify-center gap-4 mt-4 text-[10px] font-bold uppercase tracking-wider">
-                                    <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-blue-500"></div> Revenue</div>
-                                    <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-green-500"></div> Earnings</div>
+                                    <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-blue-500"></div> {t('revenue')}</div>
+                                    <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-green-500"></div> {t('earnings')}</div>
                                 </div>
                             </div>
                         )}
@@ -995,7 +1011,21 @@ export const StockDetail: React.FC = () => {
 
             {
                 activeTab === 'news' && (
-                    <div className="space-y-4">
+                    <div className="space-y-4 relative">
+                        {/* Lock Overlay */}
+                        {!skills.newsAlert && (
+                            <div
+                                onClick={() => navigate('/skills')}
+                                className="absolute inset-0 backdrop-blur-sm bg-black/40 rounded-2xl z-10 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-black/50 transition-colors"
+                                style={{ height: '100%', minHeight: '300px', zIndex: 50 }}
+                            >
+                                <Lock size={48} className="text-white/90" />
+                                <div className="text-center">
+                                    <p className="text-white font-bold text-lg">{t('skill_locked')}</p>
+                                    <p className="text-white/70 text-sm mt-1">{t('unlock_news_alert')}</p>
+                                </div>
+                            </div>
+                        )}
                         {newsLoading ? (
                             <div className="flex justify-center p-8">
                                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
@@ -1033,7 +1063,7 @@ export const StockDetail: React.FC = () => {
                             ))
                         ) : (
                             <div className="text-center p-8 opacity-50">
-                                {t('no_news_found', 'No recent news found for this asset.')}
+                                {t('no_news_found')}
                             </div>
                         )}
                     </div>
@@ -1049,12 +1079,12 @@ export const StockDetail: React.FC = () => {
                                 <div className="flex items-center justify-between mb-2 px-2 py-1.5 rounded-lg bg-blue-500/10 border border-blue-500/20">
                                     <div className="flex items-center gap-2 text-xs text-blue-400">
                                         <MessageCircle size={12} />
-                                        <span>{t('replying_to', 'Replying to')} <span className="font-bold">{replyTo.username}</span></span>
+                                        <span>{t('replying_to')} <span className="font-bold">{replyTo.username}</span></span>
                                     </div>
                                     <button
                                         onClick={() => setReplyTo(null)}
                                         className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded-full transition-colors"
-                                        title={t('cancel_reply', 'Cancel reply')}
+                                        title={t('cancel_reply')}
                                     >
                                         <X size={14} style={{ color: 'var(--text-primary)', opacity: 0.6 }} />
                                     </button>
@@ -1070,7 +1100,7 @@ export const StockDetail: React.FC = () => {
                                 <textarea
                                     value={commentInput}
                                     onChange={(e) => setCommentInput(e.target.value)}
-                                    placeholder={t('write_comment', 'Leave your comment...')}
+                                    placeholder={t('write_comment')}
                                     className="flex-1 bg-transparent text-sm outline-none resize-none scrollbar-hide py-3 max-h-[100px]"
                                     rows={1}
                                     style={{ color: 'var(--text-primary)' }}
@@ -1126,7 +1156,7 @@ export const StockDetail: React.FC = () => {
                                                         <button
                                                             onClick={() => handleDeleteComment(comment.id)}
                                                             className="opacity-60 hover:opacity-100 text-red-500/50 hover:text-red-500 transition-all p-1"
-                                                            title={t('delete_comment', 'Delete comment')}
+                                                            title={t('delete_comment')}
                                                         >
                                                             <Trash2 size={14} />
                                                         </button>
@@ -1148,7 +1178,7 @@ export const StockDetail: React.FC = () => {
                                                         style={{ color: 'var(--text-primary)' }}
                                                     >
                                                         <MessageCircle size={16} />
-                                                        <span>{t('reply', 'Reply')}</span>
+                                                        <span>{t('reply')}</span>
                                                     </button>
                                                     <div className="flex items-center gap-4">
                                                         <button
@@ -1189,7 +1219,7 @@ export const StockDetail: React.FC = () => {
                                                             <button
                                                                 onClick={() => handleDeleteComment(reply.id)}
                                                                 className="opacity-60 hover:opacity-100 text-red-500/50 hover:text-red-500 transition-all p-1"
-                                                                title={t('delete_comment', 'Delete comment')}
+                                                                title={t('delete_comment')}
                                                             >
                                                                 <Trash2 size={12} />
                                                             </button>
@@ -1225,8 +1255,8 @@ export const StockDetail: React.FC = () => {
                                         <span className="text-4xl">💬</span>
                                     </div>
                                     <div className="text-center">
-                                        <p className="text-base font-bold mb-1" style={{ color: 'var(--text-primary)' }}>{t('no_comments', 'Start the conversation!')}</p>
-                                        <p className="text-xs opacity-50" style={{ color: 'var(--text-primary)' }}>{t('be_first', 'Be the first to share your thoughts on this asset.')}</p>
+                                        <p className="text-base font-bold mb-1" style={{ color: 'var(--text-primary)' }}>{t('no_comments')}</p>
+                                        <p className="text-xs opacity-50" style={{ color: 'var(--text-primary)' }}>{t('be_first')}</p>
                                     </div>
                                 </div>
                             )}
