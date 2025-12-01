@@ -463,9 +463,13 @@ export const StockDetail: React.FC = () => {
                             >
                                 {(() => {
                                     const date = new Date(hoverData.date);
-                                    const dateStr = ['1d', '1w', '1mo', 'All'].includes(interval)
-                                        ? date.toLocaleDateString([], { month: 'short', day: 'numeric', year: interval === 'All' ? 'numeric' : undefined })
-                                        : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                                    let dateStr;
+                                    if (['1d', '1w', '1mo', 'All'].includes(interval)) {
+                                        dateStr = date.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+                                    } else {
+                                        // For short intervals, show Date AND Time
+                                        dateStr = `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })} ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+                                    }
                                     return `${dateStr} • $${formatPrice(hoverData.price)}`;
                                 })()}
                             </div>

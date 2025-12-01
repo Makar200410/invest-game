@@ -201,7 +201,8 @@ app.get('/api/history/:symbol', async (req, res) => {
         history = await fetchHistory(yahooSymbol);
     }
 
-    res.json(history);
+    // Slice to 120 for chart display
+    res.json(history.slice(-120));
 });
 
 app.get('/api/history/:symbol/:interval', async (req, res) => {
@@ -211,7 +212,8 @@ app.get('/api/history/:symbol/:interval', async (req, res) => {
 
     try {
         const history = await fetchHistory(yahooSymbol, interval);
-        res.json(history);
+        // Slice to 120 for chart display
+        res.json(history.slice(-120));
     } catch (error) {
         console.error(`Error fetching history for ${symbol}:`, error);
         res.json([]);
