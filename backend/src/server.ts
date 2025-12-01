@@ -20,7 +20,7 @@ import {
     getInsiderTips,
     addInsiderTip
 } from './services/storage.js';
-import { updateMarketData, fetchHistory, fetchYahooAnalysis } from './services/fetcher.js';
+import { updateMarketData, fetchHistory, fetchYahooAnalysis, updateDailyCandles, updateMonthlyCandles, updateFundamentals } from './services/fetcher.js';
 import {
     calculateRSI, calculateStoch, calculateStochRSI, calculateMACDValue, calculateATR,
     calculateADX, calculateCCI, calculateHighsLows, calculateROC, calculateWilliamsR,
@@ -116,6 +116,21 @@ updateMarketData();
 // Schedule updates every 1 minute
 cron.schedule('* * * * *', () => {
     updateMarketData();
+});
+
+// Schedule daily history update at midnight (00:00)
+cron.schedule('0 0 * * *', () => {
+    updateDailyCandles();
+});
+
+// Schedule monthly history update at midnight on the 1st of every month
+cron.schedule('0 0 1 * *', () => {
+    updateMonthlyCandles();
+});
+
+// Schedule fundamentals update every 30 minutes
+cron.schedule('*/30 * * * *', () => {
+    updateFundamentals();
 });
 
 // Endpoints
@@ -338,19 +353,13 @@ app.get('/api/fundamentals/:symbol', async (req, res) => {
     const yahooSymbol = symbol;
 
     try {
-        const yf = new yahooFinance();
-        const summary = await yf.quoteSummary(yahooSymbol, {
-            modules: [
-                'summaryDetail',
-                'financialData',
-                'defaultKeyStatistics',
-                'assetProfile',
-                'incomeStatementHistory',
-                'balanceSheetHistory',
-                'cashflowStatementHistory',
-                'earnings'
-            ]
-        });
+        // Use the fetcher service which handles caching/DB
+        const summary = await fetchYahooAnalysis(yahooSymbol);
+
+        if (!summary) {
+            return res.status(404).json({ error: 'Fundamentals not found' });
+        }
+
         res.json(summary);
     } catch (error: any) {
         console.error(`Error fetching fundamentals for ${symbol}:`, error);

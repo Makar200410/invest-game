@@ -85,6 +85,15 @@ export const initDB = async () => {
             );
         `);
 
+        // Market Fundamentals Table
+        await query(`
+            CREATE TABLE IF NOT EXISTS market_fundamentals (
+                symbol VARCHAR(50) PRIMARY KEY,
+                data JSONB,
+                last_updated TIMESTAMP
+            );
+        `);
+
         // Migration: Ensure likes column exists
         try {
             await query(`ALTER TABLE asset_comments ADD COLUMN IF NOT EXISTS likes JSONB DEFAULT '[]'::jsonb`);
@@ -369,5 +378,32 @@ export const toggleLikeComment = async (commentId: string, username: string): Pr
     } catch (error) {
         console.error('Error toggling like:', error);
         throw error;
+    }
+};
+
+// Market Fundamentals Functions
+export const saveMarketFundamentals = async (symbol: string, data: any) => {
+    try {
+        await query(
+            `INSERT INTO market_fundamentals (symbol, data, last_updated)
+             VALUES ($1, $2, NOW())
+             ON CONFLICT (symbol) DO UPDATE SET data = $2, last_updated = NOW()`,
+            [symbol, data]
+        );
+    } catch (error) {
+        console.error('Error saving market fundamentals:', error);
+    }
+};
+
+export const getMarketFundamentals = async (symbol: string): Promise<any | null> => {
+    try {
+        const res = await query('SELECT data FROM market_fundamentals WHERE symbol = $1', [symbol]);
+        if (res.rows.length > 0) {
+            return res.rows[0].data;
+        }
+        return null;
+    } catch (error) {
+        console.error('Error fetching market fundamentals:', error);
+        return null;
     }
 };

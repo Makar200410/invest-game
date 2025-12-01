@@ -1,5 +1,95 @@
 import YahooFinance from 'yahoo-finance2';
-import { getMarketHistory, saveMarketHistory, saveMarketItems, getMarketHistoryWithMeta } from './storage.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { getMarketHistory, saveMarketHistory, saveMarketItems, getMarketHistoryWithMeta, saveMarketFundamentals, getMarketFundamentals } from './storage.js';
+
+// ... (imports remain the same, just updating the storage import line above)
+
+// ... (existing code)
+
+export const updateFundamentals = async () => {
+    console.log(`[${new Date().toISOString()}] Running Fundamentals Update...`);
+
+    // Process in chunks to avoid rate limiting
+    const CHUNK_SIZE = 5;
+    const chunks = [];
+    for (let i = 0; i < SYMBOLS.length; i += CHUNK_SIZE) {
+        chunks.push(SYMBOLS.slice(i, i + CHUNK_SIZE));
+    }
+
+    for (const chunk of chunks) {
+        await Promise.all(chunk.map(async (symbol) => {
+            try {
+                // Skip crypto for detailed fundamentals if Yahoo doesn't support them well, 
+                // but usually Yahoo has some data for major crypto.
+                // We'll try for all.
+
+                const result = await yahooFinance.quoteSummary(symbol, {
+                    modules: [
+                        'summaryDetail',
+                        'financialData',
+                        'defaultKeyStatistics',
+                        'assetProfile',
+                        'incomeStatementHistory',
+                        'balanceSheetHistory',
+                        'cashflowStatementHistory',
+                        'earnings',
+                        'recommendationTrend'
+                    ]
+                });
+
+                if (result) {
+                    await saveMarketFundamentals(symbol, result);
+                    // console.log(`Updated fundamentals for ${symbol}`);
+                }
+            } catch (error) {
+                // console.error(`Failed to update fundamentals for ${symbol}:`, error);
+            }
+        }));
+
+        // Small delay between chunks
+        await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+    console.log(`[${new Date().toISOString()}] Fundamentals Update Complete.`);
+};
+
+export const fetchYahooAnalysis = async (symbol: string) => {
+    // Try to get from DB first
+    const data = await getMarketFundamentals(symbol);
+    if (data) {
+        return data;
+    }
+
+    // Fallback to fresh fetch if not in DB (e.g. first run)
+    try {
+        console.log(`Fetching fresh Yahoo analysis for ${symbol} (Fallback)...`);
+        const result = await yahooFinance.quoteSummary(symbol, {
+            modules: [
+                'summaryDetail',
+                'financialData',
+                'defaultKeyStatistics',
+                'assetProfile',
+                'incomeStatementHistory',
+                'balanceSheetHistory',
+                'cashflowStatementHistory',
+                'earnings',
+                'recommendationTrend'
+            ]
+        });
+
+        if (result) {
+            await saveMarketFundamentals(symbol, result);
+        }
+        return result;
+    } catch (error) {
+        console.error(`Failed to fetch Yahoo analysis for ${symbol}:`, error);
+        return null;
+    }
+};
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Create Yahoo Finance instance
 const yahooFinance = new YahooFinance();
@@ -75,6 +165,7 @@ const fetchCryptoHistory = async (symbol: string, interval: string): Promise<any
         // Map intervals: 1m, 5m, 15m, 1h, 1d are same. 3h -> 4h (Binance doesn't have 3h)
         let binanceInterval = interval;
         if (interval === '3h') binanceInterval = '4h';
+        else if (interval === '1mo') binanceInterval = '1M'; // Binance uses '1M' for monthly
 
         const limit = 500; // Fetch enough candles
         const response = await fetch(`https://api.binance.com/api/v3/klines?symbol=${binanceSymbol}&interval=${binanceInterval}&limit=${limit}`);
@@ -98,25 +189,73 @@ const fetchCryptoHistory = async (symbol: string, interval: string): Promise<any
     }
 };
 
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+// Helper to update candle history for a specific interval
+const updateCandleHistory = async (symbol: string, interval: string, price: number, volume: number, marketTime: number) => {
+    try {
+        let history = await getMarketHistory(symbol, interval);
+        if (!Array.isArray(history)) history = [];
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+        // Determine candle size in ms
+        let candleSize = 0;
+        if (interval === '1m') candleSize = 60 * 1000;
+        else if (interval === '5m') candleSize = 5 * 60 * 1000;
+        else if (interval === '1h') candleSize = 60 * 60 * 1000;
+        else return; // Should not happen for this helper
+
+        const timestamp = marketTime;
+        const candleStart = Math.floor(timestamp / candleSize) * candleSize;
+        const candleStartDate = new Date(candleStart).toISOString();
+
+        const lastPoint = history[history.length - 1];
+        let lastPointTime = 0;
+        if (lastPoint && lastPoint.date) {
+            lastPointTime = new Date(lastPoint.date).getTime();
+        }
+
+        const isSameCandle = lastPoint && lastPointTime >= candleStart;
+
+        if (isSameCandle) {
+            // Update existing candle
+            lastPoint.close = price;
+            lastPoint.price = price;
+            if (price > lastPoint.high) lastPoint.high = price;
+            if (price < lastPoint.low) lastPoint.low = price;
+            // Accumulate volume? Yahoo gives total volume for the day usually, or for the candle.
+            // If we are streaming, we might want to just take the latest volume if it's cumulative, or add if it's tick.
+            // For simplicity, we'll update it if provided (Yahoo usually provides cumulative for the period).
+            if (volume) lastPoint.volume = volume;
+
+            await saveMarketHistory(symbol, interval, history);
+        } else {
+            // Start new candle
+            const newDataPoint = {
+                date: candleStartDate,
+                open: price,
+                high: price,
+                low: price,
+                close: price,
+                volume: volume || 0,
+                price: price
+            };
+
+            history.push(newDataPoint);
+            // Limit to 120 values as requested
+            if (history.length > 120) history = history.slice(-120);
+            await saveMarketHistory(symbol, interval, history);
+        }
+    } catch (error) {
+        console.error(`Error updating ${interval} history for ${symbol}:`, error);
+    }
+};
 
 export const updateMarketData = async () => {
     console.log('====================================');
-    console.log(`[${new Date().toISOString()}] Fetching fresh market data from Yahoo Finance...`);
+    console.log(`[${new Date().toISOString()}] Fetching fresh market data...`);
 
     let items = [];
 
-    // ALWAYS fetch fresh data from Yahoo Finance
     try {
-        console.log(`Symbols to fetch: ${SYMBOLS.length} items`);
-
-
-        // Process in chunks to avoid rate limiting
+        // Process in chunks
         const CHUNK_SIZE = 5;
         const chunks = [];
         for (let i = 0; i < SYMBOLS.length; i += CHUNK_SIZE) {
@@ -125,12 +264,11 @@ export const updateMarketData = async () => {
 
         const results = [];
         for (const chunk of chunks) {
-            // console.log(`Processing chunk of ${chunk.length} symbols...`);
             const chunkResults = await Promise.all(chunk.map(async (symbol) => {
                 try {
-                    // console.log(`Fetching ${symbol}...`); // Reduce logging
                     let price = 0;
                     let marketTime = 0;
+                    let volume = 0;
                     let quoteResult: any = null;
 
                     // Try Binance for Crypto first
@@ -139,91 +277,32 @@ export const updateMarketData = async () => {
                         if (binanceData) {
                             price = binanceData.price;
                             marketTime = binanceData.time;
-                            // console.log(`✓ ${symbol} (Binance): $${price}`);
                         }
                     }
 
-                    // Fallback to Yahoo or if it's a Stock
+                    // Fallback to Yahoo
                     if (price === 0) {
                         try {
                             quoteResult = await yahooFinance.quote(symbol);
                             if (quoteResult && quoteResult.regularMarketPrice) {
                                 price = quoteResult.regularMarketPrice;
                                 marketTime = quoteResult.regularMarketTime ? new Date(quoteResult.regularMarketTime).getTime() : Date.now();
-                                // console.log(`✓ ${symbol} (Yahoo): $${price}`);
+                                volume = quoteResult.regularMarketVolume || 0;
                             }
                         } catch (yError) {
-                            console.warn(`Yahoo quote failed for ${symbol}: ${yError instanceof Error ? yError.message : String(yError)}`);
+                            // console.warn(`Yahoo quote failed for ${symbol}`);
                         }
                     }
 
-                    if (price === 0) {
-                        console.warn(`No price data for ${symbol}, skipping...`);
-                        return null;
-                    }
+                    if (price === 0) return null;
 
-                    // Update 5m history with new data point
-                    let history5m = await getMarketHistory(symbol, '5m');
-                    if (!Array.isArray(history5m)) {
-                        console.warn(`Invalid history data for ${symbol}, resetting to empty array.`);
-                        history5m = [];
-                    }
+                    // Update 1m, 5m, 1h databases
+                    await updateCandleHistory(symbol, '1m', price, volume, marketTime);
+                    await updateCandleHistory(symbol, '5m', price, volume, marketTime);
+                    await updateCandleHistory(symbol, '1h', price, volume, marketTime);
 
-                    try {
-                        // Calculate 5m candle start time to ensure we aggregate into 5m buckets
-                        const timestamp = new Date(marketTime).getTime();
-                        const candleSize = 5 * 60 * 1000;
-                        const candleStart = Math.floor(timestamp / candleSize) * candleSize;
-                        const candleStartDate = new Date(candleStart).toISOString();
-
-                        const lastPoint = history5m[history5m.length - 1];
-
-                        // Check if last point belongs to the current 5m candle
-                        let lastPointTime = 0;
-                        if (lastPoint && lastPoint.date) {
-                            lastPointTime = new Date(lastPoint.date).getTime();
-                        }
-
-                        // If last point is within the same candle window (or very close), update it
-                        const isSameCandle = lastPoint && lastPointTime >= candleStart;
-
-                        if (isSameCandle) {
-                            // Update existing candle
-                            lastPoint.close = price;
-                            lastPoint.price = price;
-                            if (price > lastPoint.high) lastPoint.high = price;
-                            if (price < lastPoint.low) lastPoint.low = price;
-
-                            // Update volume
-                            if (quoteResult?.regularMarketVolume) {
-                                lastPoint.volume = quoteResult.regularMarketVolume;
-                            }
-
-                            await saveMarketHistory(symbol, '5m', history5m);
-                        } else {
-                            // Start new candle
-                            const newDataPoint = {
-                                date: candleStartDate,
-                                open: price,
-                                high: price,
-                                low: price,
-                                close: price,
-                                volume: quoteResult?.regularMarketVolume || 0,
-                                price: price
-                            };
-
-                            history5m.push(newDataPoint);
-                            // Keep last 120 points for 5m
-                            if (history5m.length > 120) history5m = history5m.slice(-120);
-                            await saveMarketHistory(symbol, '5m', history5m);
-                        }
-                    } catch (updateError) {
-                        console.error(`Error updating 5m history for ${symbol}:`, updateError);
-                        // Don't fail the whole item if history update fails
-                    }
-
-                    // Update or fetch 1d history for Sparkline (Main Page)
-                    // fetchHistory now handles caching and staleness checks
+                    // Fetch 1d history for Sparkline (Main Page)
+                    // We use '1d' history which is updated daily
                     const history1d = await fetchHistory(symbol, '1d');
 
                     // Determine Type
@@ -241,7 +320,7 @@ export const updateMarketData = async () => {
                         price: price,
                         change24h: quoteResult?.regularMarketChangePercent || 0,
                         type: type,
-                        sparkline: history1d // Use 1d data for main page sparklines
+                        sparkline: history1d
                     };
                 } catch (err) {
                     console.error(`Error fetching ${symbol}:`, err);
@@ -250,13 +329,12 @@ export const updateMarketData = async () => {
             }));
 
             results.push(...chunkResults);
-            // Small delay between chunks to be nice to the API
             await new Promise(resolve => setTimeout(resolve, 1000));
         }
 
         items = results.filter(item => item !== null);
     } catch (error) {
-        console.error("Yahoo Finance fetch failed:", error);
+        console.error("Fetch failed:", error);
     }
 
     // If Yahoo Finance failed completely, load from repository as last resort
@@ -286,7 +364,7 @@ export const updateMarketData = async () => {
 
     if (items.length > 0) {
         await saveMarketItems(items);
-        console.log(`✓ Market data updated successfully. Total items: ${items.length}`);
+        console.log(`✓ Market data updated. Total: ${items.length}`);
     } else {
         console.error("Failed to update market data from any source.");
     }
@@ -296,8 +374,8 @@ export const updateMarketData = async () => {
 
 export const fetchHistory = async (symbol: string, interval: string = '5m') => {
     try {
-        // Check DB for '5m' and '1d' to avoid re-fetching
-        if (interval === '5m' || interval === '1d') {
+        // Check DB for all supported intervals
+        if (['1m', '5m', '1h', '1d', '1mo'].includes(interval)) {
             const cached = await getMarketHistoryWithMeta(symbol, interval);
 
             if (cached && cached.data.length > 0) {
@@ -305,55 +383,40 @@ export const fetchHistory = async (symbol: string, interval: string = '5m') => {
                 const lastUpdated = new Date(cached.lastUpdated);
                 const diffMs = now.getTime() - lastUpdated.getTime();
 
-                // Define staleness thresholds
-                // 5m: 5 minutes
-                // 1d: 1 hour (to keep daily charts somewhat fresh during the day)
-                const staleThreshold = interval === '5m' ? 5 * 60 * 1000 : 60 * 60 * 1000;
+                // Staleness thresholds
+                let staleThreshold = 0;
+                if (interval === '1m') staleThreshold = 60 * 1000; // 1 min
+                else if (interval === '5m') staleThreshold = 5 * 60 * 1000; // 5 min
+                else if (interval === '1h') staleThreshold = 60 * 60 * 1000; // 1 hour
+                else if (interval === '1d') staleThreshold = 60 * 60 * 1000; // 1 hour (daily updates are scheduled, but we allow 1h staleness for reads)
+                else if (interval === '1mo') staleThreshold = 24 * 60 * 60 * 1000; // 1 day
 
                 if (diffMs < staleThreshold) {
-                    console.log(`Using cached data for ${symbol} (${interval}): ${cached.data.length} points`);
+                    // console.log(`Using cached data for ${symbol} (${interval})`);
                     return cached.data;
                 }
-                console.log(`Cache stale for ${symbol} (${interval}). Age: ${Math.round(diffMs / 1000)}s. Fetching fresh...`);
-            } else {
-                console.log(`No cache found for ${symbol} (${interval}). Fetching fresh data...`);
+                // If stale, we might want to fetch fresh, BUT for 1m/5m/1h/1d/1mo we rely on the CRON jobs to keep them updated.
+                // However, if the DB is empty or very old, we should probably do an initial fetch.
+                // For now, if it's stale, we'll try to fetch fresh from Yahoo just in case the cron isn't running or it's a new symbol.
             }
         }
 
-        // Map interval to appropriate range/period with correct Yahoo Finance limits
+        // ... (Existing fetch logic for fallback/initial population) ...
+        // Map interval
         let periodDays = 1;
         let queryInterval: any = interval;
 
         switch (interval) {
-            case '1m':
-                periodDays = 7; // 1m data is only available for last 7 days
-                break;
-            case '5m':
-                periodDays = 5; // Get 5 days to have enough data
-                break;
-            case '15m':
-                periodDays = 10;
-                break;
-            case '1h':
-                periodDays = 60; // Get 60 days for hourly to ensure enough candles
-                break;
-            case '3h':
-                periodDays = 90;
-                queryInterval = '1h'; // Yahoo doesn't have 3h, use 1h and aggregate later
-                break;
-            case '1d':
-                periodDays = 730; // 2 years for daily charts
-                break;
-            case '1w':
-                periodDays = 3650; // 10 years for weekly charts (more history)
-                queryInterval = '1wk'; // Yahoo Finance uses '1wk' for weekly
-                break;
-            case 'All':
-                periodDays = 3650; // 10 years for "All" timeframe
-                queryInterval = '1wk'; // Use weekly data for "All" to avoid overload
-                break;
-            default:
-                periodDays = 1;
+            case '1m': periodDays = 7; break;
+            case '5m': periodDays = 5; break;
+            case '15m': periodDays = 10; break;
+            case '1h': periodDays = 60; break;
+            case '3h': periodDays = 90; queryInterval = '1h'; break;
+            case '1d': periodDays = 730; break;
+            case '1w': periodDays = 3650; queryInterval = '1wk'; break;
+            case '1mo': periodDays = 3650; queryInterval = '1mo'; break; // Monthly
+            case 'All': periodDays = 3650; queryInterval = '1mo'; break; // Use Monthly for All
+            default: periodDays = 1;
         }
 
         let queryOptions: any = {
@@ -361,110 +424,118 @@ export const fetchHistory = async (symbol: string, interval: string = '5m') => {
             interval: queryInterval
         };
 
-        console.log(`Fetching ${symbol} with interval ${queryInterval}, period: ${periodDays} days`);
-
         let historyData: any[] = [];
 
-        // Try Binance for Crypto History
         if (symbol.includes('-USD')) {
             historyData = await fetchCryptoHistory(symbol, interval);
-            if (historyData.length > 0) {
-                console.log(`✓ Fetched ${historyData.length} candles from Binance for ${symbol}`);
-            }
         }
 
-        // Fallback to Yahoo if Binance failed or it's not crypto
         if (historyData.length === 0) {
             let result: any = await yahooFinance.chart(symbol, queryOptions);
-
-            // Fallback logic for empty data (e.g. weekend/closed market)
             if (!result.quotes || result.quotes.length === 0) {
-                console.log(`No data for ${symbol} with interval ${interval}, extending range...`);
-                // Extend range significantly to capture last trading session (e.g. 60 days for safety)
                 queryOptions.period1 = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
                 result = await yahooFinance.chart(symbol, queryOptions);
             }
-
-            historyData = result.quotes
-                .filter((q: any) => q.close !== null && q.close !== undefined)
-                .map((q: any) => ({
-                    date: q.date.toISOString(),
-                    open: q.open,
-                    high: q.high,
-                    low: q.low,
-                    close: q.close,
-                    volume: q.volume,
-                    price: q.close // Keep price for backward compatibility
-                }));
+            if (result && result.quotes) {
+                historyData = result.quotes
+                    .filter((q: any) => q.close !== null)
+                    .map((q: any) => ({
+                        date: q.date.toISOString(),
+                        open: q.open, high: q.high, low: q.low, close: q.close, volume: q.volume, price: q.close
+                    }));
+            }
         }
 
-        // If we got no data, return empty
-        if (historyData.length === 0) {
-            console.log(`Warning: No history data found for ${symbol} (${interval})`);
-            return [];
+        if (historyData.length === 0) return [];
+
+        // Limit to 120 values for ALL intervals as requested
+        if (historyData.length > 120) historyData = historyData.slice(-120);
+
+        // Save to DB
+        if (['1m', '5m', '1h', '1d', '1mo'].includes(interval)) {
+            await saveMarketHistory(symbol, interval, historyData);
         }
 
-        console.log(`Successfully fetched ${historyData.length} data points for ${symbol} (${interval})`);
-
-        // Limit data points for short intervals to avoid overcrowding charts
-        // Keep last 120 points for minute/hourly data as requested
-        const shouldLimit = ['1m', '5m', '15m', '1h'].includes(interval);
-        let finalData = shouldLimit ? historyData.slice(-120) : historyData;
-
-        //For default 5m and 1d, update cache
-        if (interval === '5m') {
-            await saveMarketHistory(symbol, '5m', finalData);
-        } else if (interval === '1d') {
-            await saveMarketHistory(symbol, '1d', finalData);
-        }
-
-        return finalData;
+        return historyData;
     } catch (error) {
         console.error(`Error fetching history for ${symbol} (${interval}):`, error);
         return [];
     }
 };
 
-// Cache for Yahoo Analysis to respect 30 min update rule
-const analysisCache: Record<string, { data: any; timestamp: number }> = {};
+export const updateDailyCandles = async () => {
+    console.log(`[${new Date().toISOString()}] Running Daily Candle Update...`);
+    await updateLongTermCandles('1d', 7); // Check last 7 days
+};
 
-export const fetchYahooAnalysis = async (symbol: string) => {
-    const now = Date.now();
-    const cacheKey = symbol;
+export const updateMonthlyCandles = async () => {
+    console.log(`[${new Date().toISOString()}] Running Monthly Candle Update...`);
+    await updateLongTermCandles('1mo', 365); // Check last year
+};
 
-    // Check cache (30 minutes = 30 * 60 * 1000 ms)
-    if (analysisCache[cacheKey] && (now - analysisCache[cacheKey].timestamp < 30 * 60 * 1000)) {
-        console.log(`Using cached Yahoo analysis for ${symbol}`);
-        return analysisCache[cacheKey].data;
+// Helper for Daily/Monthly updates
+const updateLongTermCandles = async (interval: string, daysBack: number) => {
+    for (const symbol of SYMBOLS) {
+        try {
+            let history = await getMarketHistory(symbol, interval);
+            if (!Array.isArray(history)) history = [];
+
+            const queryOptions: any = {
+                period1: new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000),
+                interval: interval === '1mo' ? '1mo' : '1d'
+            };
+
+            let newCandles: any[] = [];
+
+            if (symbol.includes('-USD')) {
+                const cryptoHistory = await fetchCryptoHistory(symbol, interval);
+                newCandles = cryptoHistory.slice(-10);
+            } else {
+                try {
+                    const result = await yahooFinance.chart(symbol, queryOptions);
+                    if (result && result.quotes && Array.isArray(result.quotes)) {
+                        newCandles = (result.quotes as any[])
+                            .filter((q: any) => q.close !== null)
+                            .map((q: any) => ({
+                                date: q.date.toISOString(),
+                                open: q.open, high: q.high, low: q.low, close: q.close, volume: q.volume, price: q.close
+                            }));
+                    }
+                } catch (yError) {
+                    // console.warn(`Yahoo fetch failed for ${symbol} ${interval}`);
+                }
+            }
+
+            if (newCandles.length === 0) continue;
+
+            let updated = false;
+            for (const candle of newCandles) {
+                if (!candle.date) continue;
+                const candleDate = candle.date.split('T')[0]; // YYYY-MM-DD
+                // For monthly, we might want to check YYYY-MM
+                const compareLen = interval === '1mo' ? 7 : 10; // 2023-01 vs 2023-01-01
+
+                const existingIndex = history.findIndex((h: any) => h.date && h.date.substring(0, compareLen) === candleDate.substring(0, compareLen));
+
+                if (existingIndex !== -1) {
+                    const existing = history[existingIndex];
+                    if (existing.close !== candle.close || existing.high !== candle.high || existing.low !== candle.low) {
+                        history[existingIndex] = candle;
+                        updated = true;
+                    }
+                } else {
+                    history.push(candle);
+                    updated = true;
+                }
+            }
+
+            if (updated) {
+                if (history.length > 120) history = history.slice(-120);
+                await saveMarketHistory(symbol, interval, history);
+            }
+        } catch (error) {
+            console.error(`Error updating ${interval} candles for ${symbol}:`, error);
+        }
     }
-
-    try {
-        console.log(`Fetching fresh Yahoo analysis for ${symbol}...`);
-        const result = await yahooFinance.quoteSummary(symbol, {
-            modules: [
-                'financialData',
-                'defaultKeyStatistics',
-                'summaryDetail',
-                'recommendationTrend'
-            ]
-        });
-
-        const data = {
-            financialData: result.financialData,
-            defaultKeyStatistics: result.defaultKeyStatistics,
-            summaryDetail: result.summaryDetail,
-            recommendationTrend: result.recommendationTrend
-        };
-
-        // Update cache
-        analysisCache[cacheKey] = {
-            data,
-            timestamp: now
-        };
-
-        return data;
-    } catch (error) {
-        console.error(`Failed to fetch Yahoo analysis for ${symbol}:`, error);
-        return null;
-    }
+    console.log(`[${new Date().toISOString()}] ${interval} Update Complete.`);
 };

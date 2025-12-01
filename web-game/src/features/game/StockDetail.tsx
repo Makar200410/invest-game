@@ -461,9 +461,21 @@ export const StockDetail: React.FC = () => {
                             <div
                                 className="absolute top-0 left-1/2 transform -translate-x-1/2 bg-black/80 text-white text-xs px-2 py-1 rounded pointer-events-none"
                             >
-                                {new Date(hoverData.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • ${formatPrice(hoverData.price)}
+                                {(() => {
+                                    const date = new Date(hoverData.date);
+                                    const dateStr = ['1d', '1w', '1mo', 'All'].includes(interval)
+                                        ? date.toLocaleDateString([], { month: 'short', day: 'numeric', year: interval === 'All' ? 'numeric' : undefined })
+                                        : date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                                    return `${dateStr} • $${formatPrice(hoverData.price)}`;
+                                })()}
                             </div>
                         )}
+                    </div>
+
+                    {/* X-Axis Labels */}
+                    <div className="flex justify-between text-[10px] opacity-50 px-1 mt-1 font-mono">
+                        <span>{history.length > 0 ? (['1d', '1w', '1mo', 'All'].includes(interval) ? new Date(history[0].date).toLocaleDateString() : new Date(history[0].date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })) : ''}</span>
+                        <span>{history.length > 0 ? (['1d', '1w', '1mo', 'All'].includes(interval) ? new Date(history[history.length - 1].date).toLocaleDateString() : new Date(history[history.length - 1].date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })) : ''}</span>
                     </div>
 
                     {/* Timeframe Selector */}
@@ -870,6 +882,40 @@ export const StockDetail: React.FC = () => {
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Revenue & Earnings Chart */}
+                            {fundamentals?.earnings?.financialsChart?.yearly && (
+                                <div className="mt-8 pt-6 border-t border-white/10">
+                                    <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-4">Revenue & Earnings (Yearly)</h4>
+                                    <div className="h-40 w-full flex items-end gap-2">
+                                        {fundamentals.earnings.financialsChart.yearly.map((item: any) => {
+                                            const maxVal = Math.max(...fundamentals.earnings.financialsChart.yearly.map((i: any) => Math.max(i.revenue, i.earnings)));
+                                            return (
+                                                <div key={item.date} className="flex-1 flex flex-col justify-end gap-2 h-full">
+                                                    <div className="flex items-end justify-center gap-1 h-full relative group">
+                                                        {/* Tooltip */}
+                                                        <div className="absolute bottom-full mb-2 hidden group-hover:block bg-black/90 text-white text-[10px] p-2 rounded z-10 whitespace-nowrap border border-white/10 shadow-xl">
+                                                            <div className="font-bold mb-1">{item.date}</div>
+                                                            <div className="text-blue-400">Rev: ${(item.revenue / 1e9).toFixed(2)}B</div>
+                                                            <div className="text-green-400">Earn: ${(item.earnings / 1e9).toFixed(2)}B</div>
+                                                        </div>
+
+                                                        {/* Revenue */}
+                                                        <div className="w-2 sm:w-4 bg-blue-500/50 rounded-t hover:bg-blue-500 transition-colors" style={{ height: `${Math.max(4, (item.revenue / maxVal) * 100)}%` }}></div>
+                                                        {/* Earnings */}
+                                                        <div className="w-2 sm:w-4 bg-green-500/50 rounded-t hover:bg-green-500 transition-colors" style={{ height: `${Math.max(4, (item.earnings / maxVal) * 100)}%` }}></div>
+                                                    </div>
+                                                    <div className="text-[10px] opacity-50 text-center">{item.date}</div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                    <div className="flex justify-center gap-4 mt-4 text-[10px] font-bold uppercase tracking-wider">
+                                        <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-blue-500"></div> Revenue</div>
+                                        <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-green-500"></div> Earnings</div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </Card>
 
