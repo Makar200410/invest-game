@@ -5,6 +5,7 @@ import { Lock, Search, ArrowUpDown } from 'lucide-react';
 import { useGameStore } from '../../store/gameStore';
 import { fetchCryptoMarket, fetchMarketChartByInterval, type MarketItem } from '../../services/api';
 import { formatPrice } from '../../utils/format';
+import { AssetIcon } from '../../components/ui/AssetIcon';
 
 type SortOption = 'popular' | 'price_desc' | 'price_asc' | 'change_desc' | 'change_asc' | 'name_asc';
 
@@ -315,6 +316,7 @@ export const MarketPage: React.FC = () => {
                             >
                                 <div className="flex justify-between items-center">
                                     <div className="flex items-center gap-3 flex-1 min-w-0">
+                                        <AssetIcon symbol={item.symbol} type={item.type} />
                                         <div className="flex-1 min-w-0">
                                             <h3 className="font-bold text-base leading-tight truncate" style={{ color: 'var(--text-primary)' }}>{item.name}</h3>
                                             <p className="text-xs font-medium opacity-60" style={{ color: 'var(--text-primary)' }}>{item.symbol}</p>
@@ -362,11 +364,11 @@ export const MarketPage: React.FC = () => {
                                         {t('buy')}
                                     </button>
                                 </div>
-                            </div>
+                            </div >
                         );
                     })}
-                </div>
+                </div >
             )}
-        </div>
+        </div >
     );
 };

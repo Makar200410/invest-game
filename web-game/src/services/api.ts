@@ -122,7 +122,7 @@ export const updateScore = async (username: string, portfolioValue: number) => {
 };
 
 export const fetchLeaderboard = async () => {
-    const response = await api.get('/leaderboard');
+    const response = await api.get('/tournament/leaderboard');
     return response.data;
 };
 
@@ -223,6 +223,43 @@ export const fetchTournamentStatus = async (username: string) => {
         return response.data;
     } catch (error) {
         console.error('Error fetching tournament status:', error);
+        return null;
+    }
+};
+
+export interface UserProfile {
+    username: string;
+    joinDate: string;
+    rankTier: number;
+    portfolioValue: number;
+    levelName?: string;
+    stats?: {
+        totalTrades: number;
+        winRate: number;
+        bestTrade: number;
+    };
+}
+
+export const fetchUserProfile = async (username: string): Promise<UserProfile | null> => {
+    try {
+        const response = await api.get(`/users/${username}`);
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching user profile:', error);
+        try {
+            const status = await fetchTournamentStatus(username);
+            if (status) {
+                return {
+                    username: username,
+                    joinDate: new Date().toISOString(),
+                    rankTier: status.rankTier,
+                    portfolioValue: status.currentBalance,
+                    levelName: status.levelName
+                };
+            }
+        } catch (e) {
+            console.error('Fallback fetch failed:', e);
+        }
         return null;
     }
 };

@@ -25,6 +25,7 @@ export const LanguageSelectionModal: React.FC<LanguageSelectionModalProps> = ({ 
 
     const handleSelect = (langCode: string) => {
         i18n.changeLanguage(langCode);
+        localStorage.setItem('language', langCode);
         onSelect();
     };
 
@@ -40,8 +41,8 @@ export const LanguageSelectionModal: React.FC<LanguageSelectionModalProps> = ({ 
                             key={lang.code}
                             onClick={() => handleSelect(lang.code)}
                             className={`flex items-center gap-3 p-3 rounded-xl border transition-all ${i18n.language === lang.code
-                                    ? 'bg-blue-600/20 border-blue-500 text-white'
-                                    : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
+                                ? 'bg-blue-600/20 border-blue-500 text-white'
+                                : 'bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700'
                                 }`}
                         >
                             <span className="text-2xl">{lang.flag}</span>

@@ -14,7 +14,7 @@ type OnboardingStep = 'language' | 'intro' | 'auth' | 'tutorial-confirm' | 'tour
 export const AppLayout = () => {
     const { t } = useTranslation();
     const location = useLocation();
-    const { user, login, startTutorial, completeTutorial, hasCompletedTutorial, tutorialActive } = useGameStore();
+    const { user, login, startTutorial, completeTutorial, hasCompletedTutorial, tutorialActive, settings } = useGameStore();
 
     // Onboarding State
     const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>('complete');
@@ -64,6 +64,12 @@ export const AppLayout = () => {
     const handleAuthFinished = (userData: any) => {
         login(userData);
         setIsAuthOpen(false);
+
+        // Request Notification Permission
+        if (settings.notificationsEnabled && 'Notification' in window && Notification.permission !== 'granted') {
+            Notification.requestPermission();
+        }
+
         // Ask for tutorial after login
         if (!hasCompletedTutorial) {
             setOnboardingStep('tutorial-confirm');

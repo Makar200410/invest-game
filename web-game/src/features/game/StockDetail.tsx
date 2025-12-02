@@ -27,7 +27,7 @@ export const StockDetail: React.FC = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const { balance, buyAsset, portfolio, skills, shortPositions, user } = useGameStore();
+    const { balance, buyAsset, portfolio, skills, shortPositions, user, addNotification } = useGameStore();
 
     // State
     const [asset, setAsset] = useState<MarketItem | null>(null);
@@ -39,7 +39,40 @@ export const StockDetail: React.FC = () => {
     const [history, setHistory] = useState<{ price: number; date: string; open?: number; high?: number; low?: number; close?: number; volume?: number }[]>([]);
     const [loading, setLoading] = useState(true);
     const [hoverData, setHoverData] = useState<{ price: number; date: string; index: number; open?: number; high?: number; low?: number; close?: number } | null>(null);
-    const [interval, setIntervalState] = useState(skills.multiTimeframe ? '5m' : '1d');
+    const [interval, setIntervalState] = useState(() => {
+        if (id) {
+            const saved = localStorage.getItem(`chart_interval_${id}`);
+            if (saved && ['1m', '5m', '1h', '1d', 'All'].includes(saved)) {
+                if (skills.multiTimeframe || ['1d', 'All'].includes(saved)) {
+                    return saved;
+                }
+            }
+        }
+        return skills.multiTimeframe ? '5m' : '1d';
+    });
+
+    // Load saved interval when ID changes
+    useEffect(() => {
+        if (id) {
+            const saved = localStorage.getItem(`chart_interval_${id}`);
+            if (saved && ['1m', '5m', '1h', '1d', 'All'].includes(saved)) {
+                if (skills.multiTimeframe || ['1d', 'All'].includes(saved)) {
+                    setIntervalState(saved);
+                } else {
+                    setIntervalState(skills.multiTimeframe ? '5m' : '1d');
+                }
+            } else {
+                setIntervalState(skills.multiTimeframe ? '5m' : '1d');
+            }
+        }
+    }, [id, skills.multiTimeframe]);
+
+    const handleIntervalChange = (newInterval: string) => {
+        setIntervalState(newInterval);
+        if (id) {
+            localStorage.setItem(`chart_interval_${id}`, newInterval);
+        }
+    };
 
     interface TechnicalAnalysisData {
         pivotPoints: any;
@@ -113,6 +146,28 @@ export const StockDetail: React.FC = () => {
         const pollInterval = setInterval(() => loadData(true), 60000); // 60s polling
         return () => clearInterval(pollInterval);
     }, [id, interval, indicatorInterval, skills]);
+
+    // Poll for comments and check for replies
+    useEffect(() => {
+        if (!id || !user) return;
+        const pollComments = setInterval(async () => {
+            const newComments = await fetchAssetComments(id);
+            setComments(prev => {
+                // Check for new replies to my comments
+                const myCommentIds = new Set(prev.filter(c => c.username === user.username).map(c => c.id));
+                const oldCommentIds = new Set(prev.map(c => c.id));
+
+                newComments.forEach(c => {
+                    if (!oldCommentIds.has(c.id) && c.parentId && myCommentIds.has(c.parentId)) {
+                        // This is a new reply to me!
+                        addNotification(t('new_reply'), t('user_replied_to_comment', { user: c.username, symbol: asset?.symbol || id }), 'info');
+                    }
+                });
+                return newComments;
+            });
+        }, 30000);
+        return () => clearInterval(pollComments);
+    }, [id, user, asset, addNotification, t]);
 
     // Handlers
     const handlePostComment = async () => {
@@ -519,7 +574,7 @@ export const StockDetail: React.FC = () => {
                                 return (
                                     <button
                                         key={t}
-                                        onClick={() => !isLocked ? setIntervalState(t) : navigate('/skills')}
+                                        onClick={() => !isLocked ? handleIntervalChange(t) : navigate('/skills')}
                                         className={`text-sm font-bold transition-colors flex items-center ${interval === t ? 'bg-white/20 px-3 py-1 rounded-full' : 'opacity-40 hover:opacity-100'} ${isLocked ? 'opacity-50 cursor-pointer' : ''}`}
                                         style={{ color: 'var(--text-primary)' }}
                                     >
@@ -1177,7 +1232,13 @@ export const StockDetail: React.FC = () => {
                                             <div className="flex-1">
                                                 <div className="flex justify-between items-start mb-1">
                                                     <div className="flex items-baseline gap-2">
-                                                        <span className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>{comment.username}</span>
+                                                        <span
+                                                            onClick={() => navigate(`/profile/${comment.username}`)}
+                                                            className="font-bold text-sm cursor-pointer hover:underline"
+                                                            style={{ color: 'var(--text-primary)' }}
+                                                        >
+                                                            {comment.username}
+                                                        </span>
                                                         <span className="text-xs opacity-40" style={{ color: 'var(--text-primary)' }}>{new Date(comment.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                                     </div>
                                                     {user?.username === comment.username && (
@@ -1240,7 +1301,13 @@ export const StockDetail: React.FC = () => {
                                                 <div className="flex-1">
                                                     <div className="flex justify-between items-start mb-1">
                                                         <div className="flex items-baseline gap-2">
-                                                            <span className="font-bold text-xs" style={{ color: 'var(--text-primary)' }}>{reply.username}</span>
+                                                            <span
+                                                                onClick={() => navigate(`/profile/${reply.username}`)}
+                                                                className="font-bold text-xs cursor-pointer hover:underline"
+                                                                style={{ color: 'var(--text-primary)' }}
+                                                            >
+                                                                {reply.username}
+                                                            </span>
                                                             <span className="text-[10px] opacity-40" style={{ color: 'var(--text-primary)' }}>{new Date(reply.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                                         </div>
                                                         {user?.username === reply.username && (

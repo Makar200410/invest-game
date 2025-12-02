@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { useGameStore } from '../../store/gameStore';
 import { fetchCryptoMarket, type MarketItem, updateScore } from '../../services/api';
 import { formatPrice } from '../../utils/format';
+import { AssetIcon } from '../../components/ui/AssetIcon';
 
 export const House: React.FC = () => {
     const { t } = useTranslation();
@@ -394,13 +395,12 @@ export const House: React.FC = () => {
                                         <div className="flex justify-between items-center mb-4">
                                             <div className="flex items-center gap-3">
                                                 {/* Asset Icon / Symbol */}
-                                                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-white/10 to-white/5 flex items-center justify-center border border-white/10 shadow-inner">
-                                                    <span className="font-bold text-white text-sm">{item.symbol.substring(0, 2)}</span>
-                                                </div>
+                                                {/* Asset Icon / Symbol */}
+                                                <AssetIcon symbol={item.symbol} type={item.type} className="w-10 h-10 rounded-xl shadow-inner" />
 
                                                 <div>
                                                     <div className="flex items-center gap-2">
-                                                        <span className="font-bold text-base text-white tracking-tight">{item.symbol}</span>
+                                                        <span className="font-bold text-base text-white tracking-tight">{item.name}</span>
                                                         <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${pos.type === 'short' ? 'bg-orange-500/20 text-orange-400 border border-orange-500/20' :
                                                             pos.type === 'leverage' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/20' :
                                                                 'bg-blue-500/20 text-blue-400 border border-blue-500/20'

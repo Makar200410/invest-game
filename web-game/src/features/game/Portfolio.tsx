@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../../store/gameStore';
 import { Card } from '../../components/ui/Card';
 import { PieChart } from 'lucide-react';
+import { AssetIcon } from '../../components/ui/AssetIcon';
 
 export const Portfolio: React.FC = () => {
     const { t } = useTranslation();
@@ -42,9 +43,12 @@ export const Portfolio: React.FC = () => {
                 ) : (
                     portfolio.map((item) => (
                         <Card key={item.id} className="p-2 flex justify-between items-center" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
-                            <div>
-                                <div className="font-bold text-base" style={{ color: 'var(--text-primary)' }}>{item.id}</div>
-                                <div className="text-xs opacity-60" style={{ color: 'var(--text-primary)' }}>{item.amount} {t('shares')}</div>
+                            <div className="flex items-center gap-3">
+                                <AssetIcon symbol={item.id} />
+                                <div>
+                                    <div className="font-bold text-base" style={{ color: 'var(--text-primary)' }}>{item.id}</div>
+                                    <div className="text-xs opacity-60" style={{ color: 'var(--text-primary)' }}>{item.amount} {t('shares')}</div>
+                                </div>
                             </div>
                             <div className="text-right">
                                 <div className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>${(item.amount * item.avgPrice).toLocaleString()}</div>

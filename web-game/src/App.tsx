@@ -13,6 +13,7 @@ import { TradePage } from './features/game/TradePage';
 import { BatchClosePage } from './features/game/BatchClosePage';
 import { Portfolio } from './features/game/Portfolio'; // Assuming Portfolio is a new component
 import { Profile } from './features/game/Profile';
+import { UserProfile } from './features/game/UserProfile';
 
 import { App as CapacitorApp } from '@capacitor/app';
 
@@ -83,6 +84,7 @@ function App() {
             <Route path="/ranking" element={<Ranking />} />
             <Route path="/news" element={<NewsPage />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/profile/:username" element={<UserProfile />} />
           </Route>
         </Routes>
       </AnimatePresence>

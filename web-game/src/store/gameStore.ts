@@ -36,6 +36,9 @@ interface Order {
 interface User {
     id: string;
     username: string;
+    rankTier?: number;
+    weeklyStartBalance?: number;
+    isInTournament?: boolean;
 }
 
 interface Skills {
@@ -124,6 +127,19 @@ const SKILL_DEFINITIONS: Record<SkillKey, SkillDefinition> = {
     }
 };
 
+export interface Notification {
+    id: string;
+    title: string;
+    message: string;
+    type: 'info' | 'success' | 'warning' | 'error';
+    timestamp: number;
+    read: boolean;
+}
+
+export interface GameSettings {
+    notificationsEnabled: boolean;
+}
+
 interface GameState {
     balance: number;
     loan: number;
@@ -163,6 +179,12 @@ interface GameState {
     logout: () => void;
     sync: () => Promise<void>;
     unlockAllSkills: () => void;
+    notifications: Notification[];
+    settings: GameSettings;
+    addNotification: (title: string, message: string, type?: 'info' | 'success' | 'warning' | 'error') => void;
+    markNotificationAsRead: (id: string) => void;
+    clearNotifications: () => void;
+    toggleNotifications: () => void;
 }
 
 export const useGameStore = create<GameState>()(
@@ -196,6 +218,55 @@ export const useGameStore = create<GameState>()(
             user: null,
             tradesToday: 0,
             lastTradeDate: null,
+            notifications: [],
+            settings: {
+                notificationsEnabled: true
+            },
+
+            addNotification: (title, message, type = 'info') => {
+                const state = get();
+                const newNotification: Notification = {
+                    id: Math.random().toString(36).substr(2, 9),
+                    title,
+                    message,
+                    type,
+                    timestamp: Date.now(),
+                    read: false
+                };
+
+                set({ notifications: [newNotification, ...state.notifications] });
+
+                // System Notification
+                if (state.settings.notificationsEnabled && 'Notification' in window && Notification.permission === 'granted') {
+                    new window.Notification(title, { body: message });
+                }
+            },
+
+            markNotificationAsRead: (id) => {
+                const state = get();
+                set({
+                    notifications: state.notifications.map(n =>
+                        n.id === id ? { ...n, read: true } : n
+                    )
+                });
+            },
+
+            clearNotifications: () => set({ notifications: [] }),
+
+            toggleNotifications: () => {
+                const state = get();
+                const newEnabled = !state.settings.notificationsEnabled;
+                set({
+                    settings: {
+                        ...state.settings,
+                        notificationsEnabled: newEnabled
+                    }
+                });
+
+                if (newEnabled && 'Notification' in window && Notification.permission !== 'granted') {
+                    Notification.requestPermission();
+                }
+            },
 
             setTutorialActive: (active) => set({ tutorialActive: active }),
             setTutorialStep: (step) => set({ tutorialStep: step }),
@@ -502,6 +573,13 @@ export const useGameStore = create<GameState>()(
                     const state = get();
                     state.sellAsset(order.assetId, currentPrice, order.amount);
                     state.cancelOrder(order.id);
+
+                    // Add Notification
+                    if (order.type === 'stop-loss') {
+                        state.addNotification('Stop Loss Executed', `Stop-loss for ${order.assetId} executed at $${currentPrice}`, 'warning');
+                    } else {
+                        state.addNotification('Take Profit Executed', `Take-profit for ${order.assetId} executed at $${currentPrice}`, 'success');
+                    }
                 });
             },
 

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
     User, Moon, Sun, Globe, LogOut,
-    RotateCcw, ChevronRight, Shield, Award
+    RotateCcw, ChevronRight, Shield, Award, Bell
 } from 'lucide-react';
 import { useGameStore } from '../../store/gameStore';
 import { Card } from '../../components/ui/Card';
@@ -12,7 +12,7 @@ import { Card } from '../../components/ui/Card';
 export const Profile = () => {
     const { t, i18n } = useTranslation();
     const navigate = useNavigate();
-    const { user, logout, startTutorial, balance } = useGameStore();
+    const { user, logout, startTutorial, balance, settings, toggleNotifications } = useGameStore();
 
     // Theme State
     const [theme, setTheme] = useState<'swiss' | 'dark'>(() => {
@@ -139,6 +139,27 @@ export const Profile = () => {
                     </button>
                 </Card>
 
+                {/* Notifications Toggle */}
+                <Card className="!p-0 overflow-hidden">
+                    <button
+                        onClick={toggleNotifications}
+                        className="w-full flex items-center justify-between p-2 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className={`p-1.5 rounded-full ${settings.notificationsEnabled ? 'bg-green-500/10 text-green-500' : 'bg-slate-500/10 text-slate-500'}`}>
+                                <Bell size={16} />
+                            </div>
+                            <div className="text-left">
+                                <p className="font-bold text-sm">{t('notifications')}</p>
+                                <p className="text-[10px] opacity-50">{settings.notificationsEnabled ? t('enabled') : t('disabled')}</p>
+                            </div>
+                        </div>
+                        <div className={`w-10 h-5 rounded-full p-0.5 transition-colors ${settings.notificationsEnabled ? 'bg-green-500' : 'bg-slate-300'}`}>
+                            <div className={`w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${settings.notificationsEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                        </div>
+                    </button>
+                </Card>
+
                 {/* Language Selector */}
                 <Card className="!p-0 overflow-hidden">
                     <button
@@ -171,6 +192,7 @@ export const Profile = () => {
                                     key={lang.code}
                                     onClick={() => {
                                         i18n.changeLanguage(lang.code);
+                                        localStorage.setItem('language', lang.code);
                                         setShowLanguages(false);
                                     }}
                                     className={`w-full flex items-center justify-between px-4 py-3 text-sm hover:bg-black/5 dark:hover:bg-white/5 transition-colors ${i18n.language === lang.code ? 'text-blue-500 font-bold' : 'opacity-70'}`}
