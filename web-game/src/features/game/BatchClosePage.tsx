@@ -147,29 +147,29 @@ export const BatchClosePage: React.FC = () => {
         <div className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
             {/* Header */}
             <div className="sticky top-0 z-10 backdrop-blur-md border-b border-white/5" style={{ backgroundColor: 'rgba(var(--bg-primary-rgb), 0.8)' }}>
-                <div className="max-w-md mx-auto px-4 h-14 flex items-center justify-between">
+                <div className="max-w-md mx-auto px-4 h-12 flex items-center justify-between">
                     <button
                         onClick={() => navigate(-1)}
                         className="p-2 -ml-2 rounded-full hover:bg-white/10 transition-colors">
                         <ArrowLeft size={20} />
                     </button>
-                    <h1 className="font-bold text-lg">
+                    <h1 className="font-bold text-base">
                         {type === 'long' ? t('close_all_longs', 'Close All Longs') : t('close_all_shorts', 'Close All Shorts')}
                     </h1>
                     <div className="w-9" />
                 </div>
             </div>
 
-            <div className="flex-1 max-w-md mx-auto w-full p-4 pb-32 overflow-y-auto space-y-4">
+            <div className="flex-1 max-w-md mx-auto w-full p-4 pb-32 overflow-y-auto space-y-3">
                 {/* Summary Card */}
-                <div className="p-5 rounded-3xl bg-gradient-to-br from-blue-600 to-purple-700 text-white shadow-xl">
-                    <p className="text-xs font-bold opacity-70 uppercase tracking-wider mb-1">
+                <div className="p-3 rounded-3xl bg-gradient-to-br from-blue-600 to-purple-700 text-white shadow-xl">
+                    <p className="text-[10px] font-bold opacity-70 uppercase tracking-wider mb-1">
                         {type === 'long' ? t('total_proceeds', 'Total Proceeds') : t('total_cost', 'Total Cost')}
                     </p>
-                    <p className="text-3xl font-black mb-4">
+                    <p className="text-2xl font-black mb-3">
                         ${formatPrice(summary.totalValue)}
                     </p>
-                    <div className="flex items-center gap-2 text-sm font-bold bg-black/20 w-fit px-3 py-1.5 rounded-lg backdrop-blur-sm">
+                    <div className="flex items-center gap-2 text-xs font-bold bg-black/20 w-fit px-2 py-1 rounded-lg backdrop-blur-sm">
                         <span>{t('total_pnl')}:</span>
                         <span className={summary.totalPnL >= 0 ? 'text-green-300' : 'text-red-300'}>
                             {summary.totalPnL >= 0 ? '+' : ''}{formatPrice(summary.totalPnL)}
@@ -179,7 +179,7 @@ export const BatchClosePage: React.FC = () => {
 
                 {/* Warning for Shorts */}
                 {type === 'short' && summary.totalValue > balance && (
-                    <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 flex gap-3 items-start">
+                    <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 flex gap-3 items-start">
                         <AlertTriangle className="text-red-500 shrink-0" size={20} />
                         <div>
                             <p className="text-sm font-bold text-red-500">{t('insufficient_balance', 'Insufficient Balance')}</p>
@@ -195,10 +195,10 @@ export const BatchClosePage: React.FC = () => {
                     <h3 className="text-sm font-bold opacity-50 uppercase tracking-wider px-1">{t('assets', 'Assets')}</h3>
                     {summary.items.map((item, idx) => (
                         item && (
-                            <div key={idx} className="p-3 rounded-xl border border-white/5 bg-white/5 flex justify-between items-center">
+                            <div key={idx} className="p-2 rounded-xl border border-white/5 bg-white/5 flex justify-between items-center">
                                 <div>
                                     <div className="flex items-center gap-2">
-                                        <span className="font-bold">{item.marketItem.symbol}</span>
+                                        <span className="font-bold text-sm">{item.marketItem.symbol}</span>
                                         <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${item.type === 'short' ? 'bg-red-500/20 text-red-500' :
                                             item.type === 'leverage' ? 'bg-purple-500/20 text-purple-500' :
                                                 'bg-blue-500/20 text-blue-500'
@@ -206,13 +206,13 @@ export const BatchClosePage: React.FC = () => {
                                             {item.type === 'leverage' ? `${item.leverage}x` : item.type.toUpperCase()}
                                         </span>
                                     </div>
-                                    <p className="text-xs opacity-50 mt-0.5">
+                                    <p className="text-[10px] opacity-50 mt-0.5">
                                         {item.amount} @ ${formatPrice(item.marketItem.price)}
                                     </p>
                                 </div>
                                 <div className="text-right">
                                     <p className="font-bold text-sm">${formatPrice(item.currentVal)}</p>
-                                    <p className={`text-xs font-bold ${item.pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                                    <p className={`text-[10px] font-bold ${item.pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                                         {item.pnl >= 0 ? '+' : ''}{formatPrice(item.pnl)}
                                     </p>
                                 </div>
@@ -229,7 +229,7 @@ export const BatchClosePage: React.FC = () => {
                         <button
                             onClick={handleConfirm}
                             disabled={type === 'short' && summary.totalValue > balance}
-                            className={`w-full py-4 rounded-2xl font-black text-lg shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 ${type === 'long'
+                            className={`w-full py-3 rounded-2xl font-black text-base shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 ${type === 'long'
                                 ? 'bg-violet-500 hover:bg-violet-400 text-white shadow-violet-500/20'
                                 : 'bg-blue-500 hover:bg-blue-400 text-white shadow-blue-500/20'
                                 } disabled:opacity-50 disabled:cursor-not-allowed`}

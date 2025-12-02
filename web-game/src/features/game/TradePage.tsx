@@ -117,7 +117,7 @@ export const TradePage: React.FC = () => {
         <div className="h-screen flex flex-col overflow-hidden" style={{ backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)' }}>
             {/* Header */}
             <div className="shrink-0 sticky top-0 z-10 backdrop-blur-md" style={{ backgroundColor: 'rgba(var(--bg-primary-rgb), 0.8)' }}>
-                <div className="max-w-md mx-auto px-4 h-12 flex items-center justify-between">
+                <div className="max-w-md mx-auto px-4 h-10 flex items-center justify-between">
                     <button
                         onClick={() => navigate(-1)}
                         className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
@@ -133,7 +133,7 @@ export const TradePage: React.FC = () => {
                 </div>
             </div>
 
-            <div className="flex-1 max-w-md mx-auto w-full px-4 pb-4 flex flex-col gap-6 overflow-y-auto">
+            <div className="flex-1 max-w-md mx-auto w-full px-4 pb-3 flex flex-col gap-4 overflow-y-auto">
 
                 <div className="space-y-1">
                     {/* Balance & Owned Pills */}
@@ -192,7 +192,7 @@ export const TradePage: React.FC = () => {
                     {/* Lock Overlay for Short Selling (Existing Longs) */}
                     {tradeType === 'short' && skills.shortSelling && owned > 0 && (
                         <div
-                            className="absolute inset-0 z-20 backdrop-blur-sm bg-black/10 rounded-xl flex flex-col items-center justify-center p-4 text-center"
+                            className="absolute inset-0 z-20 backdrop-blur-sm bg-black/10 rounded-xl flex flex-col items-center justify-center p-3 text-center"
                         >
                             <Briefcase size={32} className="opacity-50 mb-2 text-orange-500" />
                             <p className="text-xs font-bold opacity-70">{t('cannot_short_with_longs')}</p>
@@ -222,7 +222,7 @@ export const TradePage: React.FC = () => {
                                     type="number"
                                     value={amount}
                                     onChange={(e) => setAmount(e.target.value)}
-                                    className="w-full text-center font-black text-4xl outline-none bg-transparent placeholder-opacity-30"
+                                    className="w-full text-center font-black text-3xl outline-none bg-transparent placeholder-opacity-30"
                                     style={{ color: 'var(--text-primary)' }}
                                     placeholder="0"
                                 />
@@ -338,7 +338,7 @@ export const TradePage: React.FC = () => {
                                     tradeType === 'sell' ? (amountToShort > 0 && !canShort) :
                                         (!canShort || owned > 0)
                             }
-                            className={`w-full py-3 rounded-xl font-black text-sm shadow-lg transition-all transform active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed`}
+                            className={`w-full py-2 rounded-xl font-black text-sm shadow-lg transition-all transform active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed`}
                             style={{
                                 backgroundColor: tradeType === 'buy' ? 'var(--text-primary)' : tradeType === 'sell' ? '#8b5cf6' : '#eab308',
                                 color: tradeType === 'buy' ? 'var(--bg-primary)' : '#ffffff'

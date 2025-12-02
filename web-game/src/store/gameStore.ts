@@ -162,6 +162,7 @@ interface GameState {
     login: (user: User) => void;
     logout: () => void;
     sync: () => Promise<void>;
+    unlockAllSkills: () => void;
 }
 
 export const useGameStore = create<GameState>()(
@@ -299,17 +300,37 @@ export const useGameStore = create<GameState>()(
                         // Leveraged buy
                         const borrowedAmount = totalValue - cost;
 
-                        const newPosition: LeveragedPosition = {
-                            id: `lev-${Date.now()}`,
-                            assetId: id,
-                            amount,
-                            entryPrice: price,
-                            leverage
-                        };
+                        // Check if we already have a position with this asset and leverage
+                        const existingPos = leveragedPositions.find(p => p.assetId === id && p.leverage === leverage);
+                        let newPositions;
+
+                        if (existingPos) {
+                            // Merge positions
+                            const totalCost = existingPos.entryPrice * existingPos.amount + price * amount;
+                            const newAmount = existingPos.amount + amount;
+                            const newAvgPrice = totalCost / newAmount;
+
+                            newPositions = leveragedPositions.map(p =>
+                                p.id === existingPos.id
+                                    ? { ...p, amount: newAmount, entryPrice: newAvgPrice }
+                                    : p
+                            );
+                        } else {
+                            // Create new position
+                            const newPosition: LeveragedPosition = {
+                                id: `lev-${Date.now()}`,
+                                assetId: id,
+                                amount,
+                                entryPrice: price,
+                                leverage
+                            };
+                            newPositions = [...leveragedPositions, newPosition];
+                        }
+
                         set({
                             balance: balance - cost,
                             loan: loan + borrowedAmount,
-                            leveragedPositions: [...leveragedPositions, newPosition]
+                            leveragedPositions: newPositions
                         });
                     }
                     state.incrementTrades();
@@ -338,18 +359,38 @@ export const useGameStore = create<GameState>()(
                         return;
                     }
 
-                    const newShort: ShortPosition = {
-                        id: `short-${Date.now()}`,
-                        assetId: id,
-                        amount,
-                        entryPrice: price,
-                        leverage,
-                        marginLocked: marginRequired
-                    };
+                    // Check if we already have a short position with this asset and leverage
+                    const existingShort = shortPositions.find(p => p.assetId === id && p.leverage === leverage);
+                    let newShortPositions;
+
+                    if (existingShort) {
+                        // Merge positions
+                        const totalCost = existingShort.entryPrice * existingShort.amount + price * amount;
+                        const newAmount = existingShort.amount + amount;
+                        const newAvgPrice = totalCost / newAmount;
+                        const newMarginLocked = (existingShort.marginLocked || 0) + marginRequired;
+
+                        newShortPositions = shortPositions.map(p =>
+                            p.id === existingShort.id
+                                ? { ...p, amount: newAmount, entryPrice: newAvgPrice, marginLocked: newMarginLocked }
+                                : p
+                        );
+                    } else {
+                        // Create new position
+                        const newShort: ShortPosition = {
+                            id: `short-${Date.now()}`,
+                            assetId: id,
+                            amount,
+                            entryPrice: price,
+                            leverage,
+                            marginLocked: marginRequired
+                        };
+                        newShortPositions = [...shortPositions, newShort];
+                    }
 
                     set({
                         balance: balance - marginRequired, // Deduct margin
-                        shortPositions: [...shortPositions, newShort]
+                        shortPositions: newShortPositions
                     });
                     state.incrementTrades();
                     get().sync(); // Sync
@@ -592,6 +633,24 @@ export const useGameStore = create<GameState>()(
                         console.error("Failed to sync game state", error);
                     }
                 }
+            },
+            unlockAllSkills: () => {
+                set({
+                    skills: {
+                        stopLossMaster: true,
+                        leverageTrading: true,
+                        shortSelling: true,
+                        multiTimeframe: true,
+                        dayTrader: true,
+                        technicalAnalyst: true,
+                        fundamentalAnalyst: true,
+                        portfolioManager: true,
+                        marketTimer: true,
+                        riskManager: true,
+                        newsAlert: true,
+                        insiderInfo: true
+                    }
+                });
             }
         }),
         {

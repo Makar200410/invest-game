@@ -32,7 +32,7 @@ const STEPS: TutorialStep[] = [
         titleKey: 'tutorial_market_title',
         contentKey: 'tutorial_market_content',
         position: 'top',
-        path: '/',
+        path: '/market',
         offset: 200
     },
     {

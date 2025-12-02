@@ -9,6 +9,9 @@ export interface User {
     gameState: any;
     portfolioValue: number;
     lastActive: string;
+    rankTier: number;
+    weeklyStartBalance: number;
+    isInTournament: boolean;
 }
 
 export interface MarketData {
@@ -36,9 +39,21 @@ export const initDB = async () => {
                 email VARCHAR(255),
                 game_state JSONB,
                 portfolio_value NUMERIC,
-                last_active TIMESTAMP
+                last_active TIMESTAMP,
+                rank_tier INTEGER DEFAULT 1,
+                weekly_start_balance NUMERIC DEFAULT 0,
+                is_in_tournament BOOLEAN DEFAULT FALSE
             );
         `);
+
+        // Migrations for existing tables
+        try {
+            await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS rank_tier INTEGER DEFAULT 1`);
+            await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS weekly_start_balance NUMERIC DEFAULT 0`);
+            await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_in_tournament BOOLEAN DEFAULT FALSE`);
+        } catch (e) {
+            console.log('Migration note: User columns might already exist');
+        }
 
         // Market Items Table (Latest Snapshot)
         await query(`
@@ -94,6 +109,20 @@ export const initDB = async () => {
             );
         `);
 
+        // Market News Table
+        await query(`
+            CREATE TABLE IF NOT EXISTS market_news (
+                id VARCHAR(255) PRIMARY KEY,
+                symbol VARCHAR(50),
+                title VARCHAR(500),
+                url VARCHAR(500),
+                site VARCHAR(255),
+                time BIGINT,
+                image_url VARCHAR(500),
+                summary TEXT
+            );
+        `);
+
         // Migration: Ensure likes column exists
         try {
             await query(`ALTER TABLE asset_comments ADD COLUMN IF NOT EXISTS likes JSONB DEFAULT '[]'::jsonb`);
@@ -127,7 +156,10 @@ export const getUsers = async (): Promise<User[]> => {
             email: row.email,
             gameState: row.game_state,
             portfolioValue: Number(row.portfolio_value),
-            lastActive: row.last_active
+            lastActive: row.last_active,
+            rankTier: row.rank_tier || 1,
+            weeklyStartBalance: Number(row.weekly_start_balance) || 0,
+            isInTournament: row.is_in_tournament || false
         }));
     } catch (error) {
         console.error('Error fetching users:', error);
@@ -152,7 +184,10 @@ export const getUser = async (username: string): Promise<User | undefined> => {
             email: row.email,
             gameState: row.game_state,
             portfolioValue: Number(row.portfolio_value),
-            lastActive: row.last_active
+            lastActive: row.last_active,
+            rankTier: row.rank_tier || 1,
+            weeklyStartBalance: Number(row.weekly_start_balance) || 0,
+            isInTournament: row.is_in_tournament || false
         };
     } catch (error) {
         console.error('Error fetching user:', error);
@@ -171,7 +206,10 @@ export const getUsersByIp = async (ip: string): Promise<User[]> => {
             email: row.email,
             gameState: row.game_state,
             portfolioValue: Number(row.portfolio_value),
-            lastActive: row.last_active
+            lastActive: row.last_active,
+            rankTier: row.rank_tier || 1,
+            weeklyStartBalance: Number(row.weekly_start_balance) || 0,
+            isInTournament: row.is_in_tournament || false
         }));
     } catch (error) {
         console.error('Error fetching users by IP:', error);
@@ -182,9 +220,9 @@ export const getUsersByIp = async (ip: string): Promise<User[]> => {
 export const createUser = async (user: User): Promise<void> => {
     try {
         const res = await query(
-            `INSERT INTO users (id, username, password, ip, email, game_state, portfolio_value, last_active)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
-            [user.id, user.username, user.password, user.ip, user.email, user.gameState, user.portfolioValue, user.lastActive]
+            `INSERT INTO users (id, username, password, ip, email, game_state, portfolio_value, last_active, rank_tier, weekly_start_balance, is_in_tournament)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+            [user.id, user.username, user.password, user.ip, user.email, user.gameState, user.portfolioValue, user.lastActive, user.rankTier || 1, user.weeklyStartBalance || 0, user.isInTournament || false]
         );
         console.log(`createUser: Inserted ${res.rowCount} row(s) for user ${user.username}`);
     } catch (error) {
@@ -205,6 +243,9 @@ export const updateUser = async (username: string, updates: Partial<User>): Prom
         if (updates.gameState) { fields.push(`game_state = $${idx++}`); values.push(updates.gameState); }
         if (updates.portfolioValue !== undefined) { fields.push(`portfolio_value = $${idx++}`); values.push(updates.portfolioValue); }
         if (updates.lastActive) { fields.push(`last_active = $${idx++}`); values.push(updates.lastActive); }
+        if (updates.rankTier !== undefined) { fields.push(`rank_tier = $${idx++}`); values.push(updates.rankTier); }
+        if (updates.weeklyStartBalance !== undefined) { fields.push(`weekly_start_balance = $${idx++}`); values.push(updates.weeklyStartBalance); }
+        if (updates.isInTournament !== undefined) { fields.push(`is_in_tournament = $${idx++}`); values.push(updates.isInTournament); }
 
         if (fields.length === 0) return;
 
@@ -426,5 +467,50 @@ export const getMarketFundamentals = async (symbol: string): Promise<any | null>
     } catch (error) {
         console.error('Error fetching market fundamentals:', error);
         return null;
+    }
+};
+
+// Market News Functions
+export const saveMarketNews = async (newsItems: any[]) => {
+    try {
+        for (const item of newsItems) {
+            await query(
+                `INSERT INTO market_news (id, symbol, title, url, site, time, image_url, summary)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                 ON CONFLICT (id) DO NOTHING`,
+                [item.id, item.symbol, item.title, item.url, item.site, item.time, item.imageUrl || '', item.summary || '']
+            );
+        }
+    } catch (error) {
+        console.error('Error saving market news:', error);
+    }
+};
+
+export const getMarketNews = async (symbol?: string): Promise<any[]> => {
+    try {
+        let queryStr = 'SELECT * FROM market_news';
+        const params: any[] = [];
+
+        if (symbol) {
+            queryStr += ' WHERE symbol = $1';
+            params.push(symbol);
+        }
+
+        queryStr += ' ORDER BY time DESC LIMIT 50';
+
+        const res = await query(queryStr, params);
+        return res.rows.map(row => ({
+            id: row.id,
+            symbol: row.symbol,
+            title: row.title,
+            url: row.url,
+            site: row.site,
+            time: Number(row.time),
+            imageUrl: row.image_url,
+            summary: row.summary
+        }));
+    } catch (error) {
+        console.error('Error fetching market news:', error);
+        return [];
     }
 };

@@ -93,17 +93,17 @@ export const NewsPage: React.FC = () => {
     };
 
     return (
-        <div className="pb-24 space-y-6 pt-20 px-4">
+        <div className="pb-24 space-y-4 pt-20 px-4">
             {/* Header */}
-            <div className="flex flex-col gap-4">
-                <h1 className="text-3xl font-black tracking-tight" style={{ color: 'var(--text-primary)' }}>
+            <div className="flex flex-col gap-3">
+                <h1 className="text-2xl font-black tracking-tight" style={{ color: 'var(--text-primary)' }}>
                     {t('market_news', 'Market News')}
                 </h1>
 
                 <div className="flex p-1 rounded-2xl w-full max-w-md" style={{ backgroundColor: 'var(--card-bg)' }}>
                     <button
                         onClick={() => setActiveTab('general')}
-                        className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${activeTab === 'general'
+                        className={`flex-1 py-2 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${activeTab === 'general'
                             ? 'shadow-sm'
                             : 'opacity-60 hover:opacity-100'
                             }`}
@@ -112,12 +112,12 @@ export const NewsPage: React.FC = () => {
                             color: activeTab === 'general' ? 'var(--text-primary)' : 'var(--text-primary)'
                         }}
                     >
-                        <Globe size={18} />
+                        <Globe size={16} />
                         {t('news')}
                     </button>
                     <button
                         onClick={() => setActiveTab('insider')}
-                        className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${activeTab === 'insider'
+                        className={`flex-1 py-2 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 ${activeTab === 'insider'
                             ? 'shadow-sm'
                             : 'opacity-60 hover:opacity-100'
                             }`}
@@ -126,7 +126,7 @@ export const NewsPage: React.FC = () => {
                             color: activeTab === 'insider' ? '#ef4444' : 'var(--text-primary)'
                         }}
                     >
-                        <ShieldAlert size={18} />
+                        <ShieldAlert size={16} />
                         {t('insider_channel')}
                     </button>
                 </div>
@@ -170,24 +170,24 @@ export const NewsPage: React.FC = () => {
                                             rel="noopener noreferrer"
                                             className="block group"
                                         >
-                                            <div className="p-5 rounded-2xl shadow-sm border hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+                                            <div className="p-2 rounded-2xl shadow-sm border hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
                                                 style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
-                                                <div className="flex items-start justify-between mb-3">
+                                                <div className="flex items-start justify-between mb-2">
                                                     <div className="flex items-center gap-2">
                                                         {item.favicon_url ? (
-                                                            <img src={item.favicon_url} alt="" className="w-5 h-5 rounded-full" />
+                                                            <img src={item.favicon_url} alt="" className="w-4 h-4 rounded-full" />
                                                         ) : (
-                                                            <div className="w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--bg-primary)' }}>
-                                                                <Newspaper size={12} className="opacity-60" style={{ color: 'var(--text-primary)' }} />
+                                                            <div className="w-4 h-4 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--bg-primary)' }}>
+                                                                <Newspaper size={10} className="opacity-60" style={{ color: 'var(--text-primary)' }} />
                                                             </div>
                                                         )}
-                                                        <span className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{item.site}</span>
-                                                        <span className="text-xs opacity-60" style={{ color: 'var(--text-primary)' }}>• {formatDate(item.time)}</span>
+                                                        <span className="text-[10px] font-bold" style={{ color: 'var(--text-primary)' }}>{item.site}</span>
+                                                        <span className="text-[10px] opacity-60" style={{ color: 'var(--text-primary)' }}>• {formatDate(item.time)}</span>
                                                     </div>
-                                                    <ExternalLink size={14} className="opacity-40 group-hover:text-blue-500 transition-colors" style={{ color: 'var(--text-primary)' }} />
+                                                    <ExternalLink size={12} className="opacity-40 group-hover:text-blue-500 transition-colors" style={{ color: 'var(--text-primary)' }} />
                                                 </div>
 
-                                                <h3 className="font-bold text-lg leading-snug mb-3 group-hover:text-blue-600 transition-colors" style={{ color: 'var(--text-primary)' }}>
+                                                <h3 className="font-bold text-base leading-snug mb-2 group-hover:text-blue-600 transition-colors" style={{ color: 'var(--text-primary)' }}>
                                                     {item.title}
                                                 </h3>
 
@@ -243,16 +243,16 @@ export const NewsPage: React.FC = () => {
                                                 {t('confidential')}
                                             </div>
 
-                                            <div className="p-6 relative z-10">
-                                                <div className="flex items-center gap-4 mb-4">
-                                                    <div className="w-12 h-12 rounded-2xl bg-red-500/20 flex items-center justify-center text-red-500 shrink-0">
-                                                        <AlertTriangle size={24} />
+                                            <div className="p-3 relative z-10">
+                                                <div className="flex items-center gap-3 mb-3">
+                                                    <div className="w-10 h-10 rounded-2xl bg-red-500/20 flex items-center justify-center text-red-500 shrink-0">
+                                                        <AlertTriangle size={20} />
                                                     </div>
                                                     <div>
-                                                        <div className="flex items-center gap-2 mb-1">
-                                                            <span className="text-sm font-bold text-red-400 uppercase tracking-wide">{t('high_priority_intel')}</span>
+                                                        <div className="flex items-center gap-2 mb-0.5">
+                                                            <span className="text-xs font-bold text-red-400 uppercase tracking-wide">{t('high_priority_intel')}</span>
                                                         </div>
-                                                        <div className="flex items-center gap-3 text-xs text-gray-400">
+                                                        <div className="flex items-center gap-2 text-[10px] text-gray-400">
                                                             <span>{formatDate(tip.date)}</span>
                                                             <span className="w-1 h-1 rounded-full bg-gray-600"></span>
                                                             <span className="text-green-400 font-bold">Reliability: {tip.reliability}</span>
@@ -260,10 +260,10 @@ export const NewsPage: React.FC = () => {
                                                     </div>
                                                 </div>
 
-                                                <h3 className="text-xl font-bold text-white mb-3 leading-snug">{tip.title}</h3>
+                                                <h3 className="text-lg font-bold text-white mb-2 leading-snug">{tip.title}</h3>
 
-                                                <div className="bg-black/30 p-4 rounded-xl border border-white/5 backdrop-blur-sm">
-                                                    <p className="text-gray-300 text-sm leading-relaxed font-mono">
+                                                <div className="bg-black/30 p-3 rounded-xl border border-white/5 backdrop-blur-sm">
+                                                    <p className="text-gray-300 text-xs leading-relaxed font-mono">
                                                         {tip.content}
                                                     </p>
                                                 </div>

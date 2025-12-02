@@ -229,7 +229,7 @@ export const StockDetail: React.FC = () => {
     const pathData = chartData.length > 0 ? `M ${chartData.map(p => `${p.x} ${p.y}`).join(' L ')}` : '';
 
     return (
-        <div className="space-y-6 pb-40">
+        <div className="space-y-4 pb-40">
             {/* Header */}
             <div className="flex items-center justify-between px-1">
                 <div className="flex items-center gap-4">
@@ -252,42 +252,57 @@ export const StockDetail: React.FC = () => {
             </div>
 
             {/* Tabs */}
-            <div className="flex gap-4 border-b border-white/10 pb-2 overflow-x-auto no-scrollbar">
+            <div className="flex gap-2 border-b border-white/10 pb-1 overflow-x-auto no-scrollbar">
                 <button
                     onClick={() => setActiveTab('overview')}
-                    className={`px-4 py-1.5 rounded-full text-sm font-bold whitespace-nowrap transition-colors ${activeTab === 'overview' ? 'bg-white/10' : 'opacity-60 hover:opacity-100'}`}
+                    className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${activeTab === 'overview' ? 'bg-white/10' : 'opacity-60 hover:opacity-100'}`}
                     style={{ color: 'var(--text-primary)' }}
                 >
                     {t('overview', 'Overview')}
                 </button>
                 <button
                     onClick={() => setActiveTab('indicators')}
-                    className={`px-4 py-1.5 rounded-full hover:bg-white/5 text-sm font-bold whitespace-nowrap flex items-center gap-1 transition-colors ${activeTab === 'indicators' ? 'bg-white/10' : 'opacity-60'}`}
+                    className={`px-3 py-1 rounded-full hover:bg-white/5 text-xs font-bold whitespace-nowrap flex items-center gap-1 transition-colors ${activeTab === 'indicators' ? 'bg-white/10' : 'opacity-60'}`}
                     style={{ color: 'var(--text-primary)' }}
                 >
                     {t('indicators', 'Indicators')}
-                    {!skills.technicalAnalyst && <Lock size={12} />}
+                    {!skills.technicalAnalyst && <Lock size={10} />}
+                </button>
+                <button
+                    onClick={() => setActiveTab('fundamentals')}
+                    className={`px-3 py-1 rounded-full hover:bg-white/5 text-xs font-bold whitespace-nowrap flex items-center gap-1 transition-colors ${activeTab === 'fundamentals' ? 'bg-white/10' : 'opacity-60'}`}
+                    style={{ color: 'var(--text-primary)' }}
+                >
+                    {t('fundamentals', 'Fundamentals')}
+                    {!skills.fundamentalAnalyst && <Lock size={10} />}
                 </button>
                 <button
                     onClick={() => setActiveTab('news')}
-                    className={`px-4 py-1.5 rounded-full hover:bg-white/5 text-sm font-bold whitespace-nowrap flex items-center gap-1 transition-colors ${activeTab === 'news' ? 'bg-white/10' : 'opacity-60'}`}
+                    className={`px-3 py-1 rounded-full hover:bg-white/5 text-xs font-bold whitespace-nowrap flex items-center gap-1 transition-colors ${activeTab === 'news' ? 'bg-white/10' : 'opacity-60'}`}
                     style={{ color: 'var(--text-primary)' }}
                 >
                     {t('news', 'News')}
-                    {!skills.newsAlert && <Lock size={12} />}
+                    {!skills.newsAlert && <Lock size={10} />}
                 </button>
                 <button
                     onClick={() => setActiveTab('comments')}
-                    className={`px-4 py-1.5 rounded-full text-sm font-bold whitespace-nowrap transition-colors ${activeTab === 'comments' ? 'bg-white/10' : 'opacity-60 hover:opacity-100'}`}
+                    className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${activeTab === 'comments' ? 'bg-white/10' : 'opacity-60 hover:opacity-100'}`}
                     style={{ color: 'var(--text-primary)' }}
                 >
                     {t('comments', 'Comments')}
                 </button>
+                <button
+                    onClick={() => setActiveTab('orders')}
+                    className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${activeTab === 'orders' ? 'bg-white/10' : 'opacity-60 hover:opacity-100'}`}
+                    style={{ color: 'var(--text-primary)' }}
+                >
+                    {t('orders', 'Orders')}
+                </button>
             </div>
 
             {/* Main Price Card - Always Visible */}
-            <div className="space-y-1 mb-6">
-                <h2 className="text-4xl font-black tracking-tight" style={{ color: 'var(--text-primary)' }}>
+            <div className="space-y-1 mb-4">
+                <h2 className="text-3xl font-black tracking-tight" style={{ color: 'var(--text-primary)' }}>
                     ${formatPrice(displayPrice)}
                 </h2>
                 <div className={`flex items-center text-sm font-bold ${asset.change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
@@ -299,7 +314,7 @@ export const StockDetail: React.FC = () => {
                 <>
                     {/* Chart Area */}
                     <div id="tutorial-chart-area" className="relative w-full" onMouseLeave={() => setHoverData(null)}>
-                        <div className="h-72 w-full overflow-hidden">
+                        <div className="h-48 w-full overflow-hidden">
                             {history.length > 0 ? (
                                 <svg
                                     viewBox="0 0 100 100"
@@ -530,22 +545,22 @@ export const StockDetail: React.FC = () => {
                     </div>
 
                     {/* Position Info */}
-                    <div className="grid grid-cols-2 gap-4 mb-6">
-                        <Card className="p-4" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
-                            <p className="text-xs opacity-70">{t('your_position')}</p>
-                            <p className="text-xl font-bold">{owned} {asset.symbol}</p>
-                            <p className="text-xs opacity-50">≈ ${formatPrice(owned * asset.price)}</p>
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                        <Card className="p-2" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
+                            <p className="text-[10px] opacity-70">{t('your_position')}</p>
+                            <p className="text-lg font-bold">{owned} {asset.symbol}</p>
+                            <p className="text-[10px] opacity-50">≈ ${formatPrice(owned * asset.price)}</p>
                         </Card>
-                        <Card className="p-4" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
-                            <p className="text-xs opacity-70">{t('available_balance')}</p>
-                            <p className="text-xl font-bold text-green-400">${formatPrice(balance)}</p>
+                        <Card className="p-2" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
+                            <p className="text-[10px] opacity-70">{t('available_balance')}</p>
+                            <p className="text-lg font-bold text-green-400">${formatPrice(balance)}</p>
                         </Card>
                     </div>
                 </>
             )}
 
             {activeTab === 'indicators' && (
-                <div className="space-y-6 mb-6 relative">
+                <div className="space-y-4 mb-4 relative">
                     {/* Lock Overlay */}
                     {!skills.technicalAnalyst && (
                         <div
@@ -596,125 +611,123 @@ export const StockDetail: React.FC = () => {
                     ) : (
                         <>
                             {/* Summary */}
-                            <Card className="p-4" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
-                                <div className="flex justify-between items-center mb-4">
-                                    <h4 className="font-bold text-lg">{t('technical_summary')}</h4>
-                                    <div className={`px-4 py-1.5 rounded text-sm font-bold ${indicators.summary?.recommendation.includes('Buy') ? 'bg-green-500 text-white' :
+                            <Card className="p-2" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
+                                <div className="flex justify-between items-center mb-2">
+                                    <h4 className="font-bold text-base">{t('technical_summary')}</h4>
+                                    <div className={`px-3 py-1 rounded text-xs font-bold ${indicators.summary?.recommendation.includes('Buy') ? 'bg-green-500 text-white' :
                                         indicators.summary?.recommendation.includes('Sell') ? 'bg-red-500 text-white' :
                                             'bg-gray-500 text-white'
                                         }`}>
                                         {t((indicators.summary?.recommendation || 'Neutral').toLowerCase().replace(/ /g, '_'), indicators.summary?.recommendation || 'Neutral') as string}
                                     </div>
                                 </div>
-                                <div className="grid grid-cols-3 gap-2 text-center text-xs font-bold">
-                                    <div className="p-3 rounded bg-white/5 border border-white/10">
-                                        <div className="opacity-50 mb-1 uppercase tracking-wider">{t('buy')}</div>
-                                        <div className="text-green-400 text-xl">{indicators.summary?.buy || 0}</div>
+                                <div className="grid grid-cols-3 gap-2 text-center text-[10px] font-bold">
+                                    <div className="p-2 rounded bg-white/5 border border-white/10">
+                                        <div className="opacity-50 mb-0.5 uppercase tracking-wider">{t('buy')}</div>
+                                        <div className="text-green-400 text-lg">{indicators.summary?.buy || 0}</div>
                                     </div>
-                                    <div className="p-3 rounded bg-white/5 border border-white/10">
-                                        <div className="opacity-50 mb-1 uppercase tracking-wider">{t('sell')}</div>
-                                        <div className="text-red-400 text-xl">{indicators.summary?.sell || 0}</div>
+                                    <div className="p-2 rounded bg-white/5 border border-white/10">
+                                        <div className="opacity-50 mb-0.5 uppercase tracking-wider">{t('sell')}</div>
+                                        <div className="text-red-400 text-lg">{indicators.summary?.sell || 0}</div>
                                     </div>
-                                    <div className="p-3 rounded bg-white/5 border border-white/10">
-                                        <div className="opacity-50 mb-1 uppercase tracking-wider">{t('neutral')}</div>
-                                        <div className="text-gray-400 text-xl">{indicators.summary?.neutral || 0}</div>
+                                    <div className="p-2 rounded bg-white/5 border border-white/10">
+                                        <div className="opacity-50 mb-0.5 uppercase tracking-wider">{t('neutral')}</div>
+                                        <div className="text-gray-400 text-lg">{indicators.summary?.neutral || 0}</div>
                                     </div>
                                 </div>
                             </Card>
 
-                            {/* Pivot Points - Hidden for Stocks */}
-                            {asset.type !== 'stock' && (
-                                <Card className="p-4" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
-                                    <h4 className="font-bold mb-4 text-lg">{t('pivot_points')}</h4>
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full text-xs">
-                                            <thead>
-                                                <tr className="opacity-50 border-b border-white/10">
-                                                    <th className="text-left py-2">{t('level')}</th>
-                                                    <th className="text-right py-2">{t('classic')}</th>
-                                                    <th className="text-right py-2">{t('fibonacci')}</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="font-mono">
-                                                {['r3', 'r2', 'r1', 'p', 's1', 's2', 's3'].map((level) => (
-                                                    <tr key={level} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
-                                                        <td className="py-2.5 font-bold uppercase text-blue-400">{level}</td>
-                                                        <td className="py-2.5 text-right">{formatPrice(indicators.pivotPoints?.classic[level] || 0)}</td>
-                                                        <td className="py-2.5 text-right">{formatPrice(indicators.pivotPoints?.fibonacci[level] || 0)}</td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </Card>
-                            )}
-
-                            {/* Moving Averages - Hidden for Stocks */}
-                            {asset.type !== 'stock' && (
-                                <Card className="p-4" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
-                                    <h4 className="font-bold mb-4 text-lg">{t('moving_averages')}</h4>
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full text-xs">
-                                            <thead>
-                                                <tr className="opacity-50 border-b border-white/10">
-                                                    <th className="text-left py-2">{t('period')}</th>
-                                                    <th className="text-right py-2">{t('simple')}</th>
-                                                    <th className="text-right py-2">{t('exponential')}</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {indicators.movingAverages?.map((ma: any) => (
-                                                    <tr key={ma.period} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
-                                                        <td className="py-2.5 font-bold text-blue-400">MA{ma.period}</td>
-                                                        <td className="py-2.5 text-right">
-                                                            <div className="flex justify-end items-center gap-2">
-                                                                <span className="font-mono opacity-80">{formatPrice(ma.simple || 0)}</span>
-                                                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${ma.simpleAction === 'Buy' ? 'bg-green-500/20 text-green-500' :
-                                                                    ma.simpleAction === 'Sell' ? 'bg-red-500/20 text-red-500' :
-                                                                        'bg-gray-500/20 text-gray-500'
-                                                                    }`}>
-                                                                    {t((ma.simpleAction || 'Neutral').toLowerCase().replace(/ /g, '_'), ma.simpleAction || 'Neutral') as string}
-                                                                </span>
-                                                            </div>
-                                                        </td>
-                                                        <td className="py-2.5 text-right">
-                                                            <div className="flex justify-end items-center gap-2">
-                                                                <span className="font-mono opacity-80">{formatPrice(ma.exponential || 0)}</span>
-                                                                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${ma.exponentialAction === 'Buy' ? 'bg-green-500/20 text-green-500' :
-                                                                    ma.exponentialAction === 'Sell' ? 'bg-red-500/20 text-red-500' :
-                                                                        'bg-gray-500/20 text-gray-500'
-                                                                    }`}>
-                                                                    {t((ma.exponentialAction || 'Neutral').toLowerCase().replace(/ /g, '_'), ma.exponentialAction || 'Neutral') as string}
-                                                                </span>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </Card>
-                            )}
-
-                            {/* Technical Indicators */}
-                            <Card className="p-4" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
-                                <h4 className="font-bold mb-4 text-lg">{t('technical_indicators')}</h4>
+                            {/* Pivot Points */}
+                            <Card className="p-2" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
+                                <h4 className="font-bold mb-2 text-base">{t('pivot_points')}</h4>
                                 <div className="overflow-x-auto">
-                                    <table className="w-full text-xs">
+                                    <table className="w-full text-[10px]">
                                         <thead>
                                             <tr className="opacity-50 border-b border-white/10">
-                                                <th className="text-left py-2">{t('indicator')}</th>
-                                                <th className="text-right py-2">{t('value')}</th>
-                                                <th className="text-right py-2">{t('action')}</th>
+                                                <th className="text-left py-1">{t('level')}</th>
+                                                <th className="text-right py-1">{t('classic')}</th>
+                                                <th className="text-right py-1">{t('fibonacci')}</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="font-mono">
+                                            {['r3', 'r2', 'r1', 'p', 's1', 's2', 's3'].map((level) => (
+                                                <tr key={level} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+                                                    <td className="py-1 font-bold uppercase text-blue-400">{level}</td>
+                                                    <td className="py-1 text-right">{formatPrice(indicators.pivotPoints?.classic[level] || 0)}</td>
+                                                    <td className="py-1 text-right">{formatPrice(indicators.pivotPoints?.fibonacci[level] || 0)}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </Card>
+
+                            {/* Moving Averages */}
+                            <Card className="p-2" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
+                                <h4 className="font-bold mb-2 text-base">{t('moving_averages')}</h4>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-[10px]">
+                                        <thead>
+                                            <tr className="opacity-50 border-b border-white/10">
+                                                <th className="text-left py-1">{t('period')}</th>
+                                                <th className="text-right py-1">{t('simple')}</th>
+                                                <th className="text-right py-1">{t('exponential')}</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {indicators.movingAverages?.map((ma: any) => (
+                                                <tr key={ma.period} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+                                                    <td className="py-1 font-bold text-blue-400">MA{ma.period}</td>
+                                                    <td className="py-1 text-right">
+                                                        <div className="flex justify-end items-center gap-2">
+                                                            <span className="font-mono opacity-80">{formatPrice(ma.simple || 0)}</span>
+                                                            <span className={`px-1 py-0.5 rounded text-[8px] font-bold uppercase ${ma.simpleAction === 'Buy' ? 'bg-green-500/20 text-green-500' :
+                                                                ma.simpleAction === 'Sell' ? 'bg-red-500/20 text-red-500' :
+                                                                    'bg-gray-500/20 text-gray-500'
+                                                                }`}>
+                                                                {t((ma.simpleAction || 'Neutral').toLowerCase().replace(/ /g, '_'), ma.simpleAction || 'Neutral') as string}
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-1 text-right">
+                                                        <div className="flex justify-end items-center gap-2">
+                                                            <span className="font-mono opacity-80">{formatPrice(ma.exponential || 0)}</span>
+                                                            <span className={`px-1 py-0.5 rounded text-[8px] font-bold uppercase ${ma.exponentialAction === 'Buy' ? 'bg-green-500/20 text-green-500' :
+                                                                ma.exponentialAction === 'Sell' ? 'bg-red-500/20 text-red-500' :
+                                                                    'bg-gray-500/20 text-gray-500'
+                                                                }`}>
+                                                                {t((ma.exponentialAction || 'Neutral').toLowerCase().replace(/ /g, '_'), ma.exponentialAction || 'Neutral') as string}
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </Card>
+
+                            {/* Technical Indicators */}
+                            <Card className="p-2" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
+                                <h4 className="font-bold mb-2 text-base">{t('technical_indicators')}</h4>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-[10px]">
+                                        <thead>
+                                            <tr className="opacity-50 border-b border-white/10">
+                                                <th className="text-left py-1">{t('indicator')}</th>
+                                                <th className="text-right py-1">{t('value')}</th>
+                                                <th className="text-right py-1">{t('action')}</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {indicators.indicators?.map((ind: any) => (
                                                 <tr key={ind.name} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
-                                                    <td className="py-2.5 font-bold">{ind.name}</td>
-                                                    <td className="py-2.5 text-right font-mono opacity-80">{ind.value?.toFixed(4) || '-'}</td>
-                                                    <td className="py-2.5 text-right">
-                                                        <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${['Buy', 'Strong Buy'].includes(ind.action) || ind.action?.includes('Upside') ? 'bg-green-500 text-white' :
+                                                    <td className="py-1 font-bold">{ind.name}</td>
+                                                    <td className="py-1 text-right font-mono opacity-80">
+                                                        {typeof ind.value === 'number' ? ind.value.toFixed(4) : (ind.value || '-')}
+                                                    </td>
+                                                    <td className="py-1 text-right">
+                                                        <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${['Buy', 'Strong Buy'].includes(ind.action) || ind.action?.includes('Upside') ? 'bg-green-500 text-white' :
                                                             ['Sell', 'Strong Sell'].includes(ind.action) || ind.action?.includes('Downside') ? 'bg-red-500 text-white' :
                                                                 ['Overbought', 'High Volatility'].includes(ind.action) ? 'bg-orange-500 text-white' :
                                                                     'bg-gray-500 text-white'
@@ -735,7 +748,7 @@ export const StockDetail: React.FC = () => {
             {activeTab === 'overview' && (
                 <>
                     {/* Market Timer */}
-                    <Card id="market-timer" className="p-5 relative mb-6" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
+                    <Card id="market-timer" className="p-2 relative mb-4" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
                         {/* Lock Overlay */}
                         {!skills.marketTimer && (
                             <div
@@ -750,263 +763,278 @@ export const StockDetail: React.FC = () => {
                             </div>
                         )}
 
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="font-bold text-lg flex items-center gap-2">
-                                <Target size={20} className="text-blue-500" />
+                        <div className="flex justify-between items-center mb-2">
+                            <h3 className="font-bold text-base flex items-center gap-2">
+                                <Target size={16} className="text-blue-500" />
                                 {t('market_timer')}
                             </h3>
                             {skills.marketTimer && (
-                                <span className="px-2 py-1 rounded bg-green-500/20 text-green-500 text-xs font-bold">{t('active')}</span>
+                                <span className="px-2 py-0.5 rounded bg-green-500/20 text-green-500 text-[10px] font-bold">{t('active')}</span>
                             )}
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="p-3 rounded-xl bg-black/20 border border-white/5 text-center">
-                                <p className="text-xs opacity-50 uppercase mb-1">{t('signal')}</p>
-                                <p className="font-bold text-lg text-green-400">{t('strong_buy')}</p>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="p-2 rounded-xl bg-black/20 border border-white/5 text-center">
+                                <p className="text-[10px] opacity-50 uppercase mb-0.5">{t('signal')}</p>
+                                <p className="font-bold text-base text-green-400">{t('strong_buy')}</p>
                             </div>
-                            <div className="p-3 rounded-xl bg-black/20 border border-white/5 text-center">
-                                <p className="text-xs opacity-50 uppercase mb-1">{t('confidence')}</p>
-                                <p className="font-bold text-lg">87%</p>
+                            <div className="p-2 rounded-xl bg-black/20 border border-white/5 text-center">
+                                <p className="text-[10px] opacity-50 uppercase mb-0.5">{t('confidence')}</p>
+                                <p className="font-bold text-base">87%</p>
                             </div>
                         </div>
-                        <p className="text-xs opacity-50 mt-3 text-center">
+                        <p className="text-[10px] opacity-50 mt-2 text-center">
                             {t('market_timer_analysis')}
                         </p>
                     </Card>
 
-                    {/* Fundamentals */}
-                    <Card id="fundamentals" className="p-5 relative mb-6" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
-                        {/* Lock Overlay */}
-                        {!skills.fundamentalAnalyst && (
-                            <div
-                                onClick={() => navigate('/skills')}
-                                className="absolute inset-0 backdrop-blur-sm bg-black/40 rounded-2xl z-10 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-black/50 transition-colors"
-                            >
-                                <Lock size={48} className="text-white/90" />
-                                <div className="text-center">
-                                    <p className="text-white font-bold text-lg">{t('skill_locked')}</p>
-                                    <p className="text-white/70 text-sm mt-1">{t('unlock_fundamental_analyst')}</p>
-                                </div>
-                            </div>
-                        )}
 
-                        <h3 className="font-bold text-lg mb-6">{t('fundamentals')}</h3>
-
-                        {(!fundamentals?.financialData && fundamentals?.summaryDetail) ? (
-                            /* Crypto / Alternative View */
-                            <div className="space-y-8">
-                                <div>
-                                    <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-3 border-b border-white/10 pb-1">{t('market_statistics')}</h4>
-                                    <div className="grid grid-cols-2 gap-y-4 gap-x-8">
-                                        <div>
-                                            <p className="text-xs opacity-50">{t('market_cap')}</p>
-                                            <p className="font-bold">{fundamentals.summaryDetail.marketCap ? `$${(fundamentals.summaryDetail.marketCap / 1e9).toFixed(2)}B` : 'N/A'}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs opacity-50">{t('volume_24h')}</p>
-                                            <p className="font-bold">{fundamentals.summaryDetail.volume ? `$${(fundamentals.summaryDetail.volume / 1e9).toFixed(2)}B` : 'N/A'}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs opacity-50">{t('circulating_supply')}</p>
-                                            <p className="font-bold">{fundamentals.summaryDetail.circulatingSupply ? `${(fundamentals.summaryDetail.circulatingSupply / 1e6).toFixed(2)}M` : 'N/A'}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs opacity-50">{t('max_supply')}</p>
-                                            <p className="font-bold">{fundamentals.summaryDetail.maxSupply ? `${(fundamentals.summaryDetail.maxSupply / 1e6).toFixed(2)}M` : '∞'}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div>
-                                    <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-3 border-b border-white/10 pb-1">{t('price_statistics')}</h4>
-                                    <div className="grid grid-cols-2 gap-y-4 gap-x-8">
-                                        <div>
-                                            <p className="text-xs opacity-50">{t('52_week_high')}</p>
-                                            <p className="font-bold">{fundamentals.summaryDetail.fiftyTwoWeekHigh ? `$${fundamentals.summaryDetail.fiftyTwoWeekHigh.toLocaleString()}` : 'N/A'}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs opacity-50">{t('52_week_low')}</p>
-                                            <p className="font-bold">{fundamentals.summaryDetail.fiftyTwoWeekLow ? `$${fundamentals.summaryDetail.fiftyTwoWeekLow.toLocaleString()}` : 'N/A'}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs opacity-50">{t('day_high')}</p>
-                                            <p className="font-bold">{fundamentals.summaryDetail.dayHigh ? `$${fundamentals.summaryDetail.dayHigh.toLocaleString()}` : 'N/A'}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs opacity-50">{t('day_low')}</p>
-                                            <p className="font-bold">{fundamentals.summaryDetail.dayLow ? `$${fundamentals.summaryDetail.dayLow.toLocaleString()}` : 'N/A'}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        ) : (
-                            /* Standard Stock View */
-                            <div className="space-y-8">
-                                {/* Valuation Measures */}
-                                <div>
-                                    <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-3 border-b border-white/10 pb-1">{t('valuation_measures')}</h4>
-                                    <div className="grid grid-cols-2 gap-y-4 gap-x-8">
-                                        <div>
-                                            <p className="text-xs opacity-50">{t('market_cap')}</p>
-                                            <p className="font-bold">{fundamentals?.summaryDetail?.marketCap ? `$${(fundamentals.summaryDetail.marketCap / 1e9).toFixed(2)}B` : 'N/A'}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs opacity-50">{t('enterprise_value')}</p>
-                                            <p className="font-bold">{fundamentals?.defaultKeyStatistics?.enterpriseValue ? `$${(fundamentals.defaultKeyStatistics.enterpriseValue / 1e9).toFixed(2)}B` : 'N/A'}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs opacity-50">{t('trailing_pe')}</p>
-                                            <p className="font-bold">{fundamentals?.summaryDetail?.trailingPE?.toFixed(2) || 'N/A'}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs opacity-50">{t('forward_pe')}</p>
-                                            <p className="font-bold">{fundamentals?.summaryDetail?.forwardPE?.toFixed(2) || 'N/A'}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs opacity-50">{t('peg_ratio')}</p>
-                                            <p className="font-bold">{fundamentals?.defaultKeyStatistics?.pegRatio?.toFixed(2) || 'N/A'}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs opacity-50">{t('price_sales')}</p>
-                                            <p className="font-bold">{fundamentals?.summaryDetail?.priceToSalesTrailing12Months?.toFixed(2) || 'N/A'}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs opacity-50">{t('price_book')}</p>
-                                            <p className="font-bold">{fundamentals?.defaultKeyStatistics?.priceToBook?.toFixed(2) || 'N/A'}</p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Financial Highlights */}
-                                <div>
-                                    <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-3 border-b border-white/10 pb-1">{t('financial_highlights')}</h4>
-                                    <div className="grid grid-cols-2 gap-y-4 gap-x-8">
-                                        <div>
-                                            <p className="text-xs opacity-50">{t('profit_margin')}</p>
-                                            <p className="font-bold">{fundamentals?.defaultKeyStatistics?.profitMargins ? `${(fundamentals.defaultKeyStatistics.profitMargins * 100).toFixed(2)}%` : 'N/A'}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs opacity-50">{t('operating_margin')}</p>
-                                            <p className="font-bold">{fundamentals?.financialData?.operatingMargins ? `${(fundamentals.financialData.operatingMargins * 100).toFixed(2)}%` : 'N/A'}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs opacity-50">{t('return_on_assets')}</p>
-                                            <p className="font-bold">{fundamentals?.financialData?.returnOnAssets ? `${(fundamentals.financialData.returnOnAssets * 100).toFixed(2)}%` : 'N/A'}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs opacity-50">{t('return_on_equity')}</p>
-                                            <p className="font-bold">{fundamentals?.financialData?.returnOnEquity ? `${(fundamentals.financialData.returnOnEquity * 100).toFixed(2)}%` : 'N/A'}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs opacity-50">{t('revenue_ttm')}</p>
-                                            <p className="font-bold">{fundamentals?.financialData?.totalRevenue ? `$${(fundamentals.financialData.totalRevenue / 1e9).toFixed(2)}B` : 'N/A'}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs opacity-50">{t('revenue_per_share')}</p>
-                                            <p className="font-bold">{fundamentals?.financialData?.revenuePerShare?.toFixed(2) || 'N/A'}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs opacity-50">{t('gross_profit')}</p>
-                                            <p className="font-bold">{fundamentals?.financialData?.grossProfits ? `$${(fundamentals.financialData.grossProfits / 1e9).toFixed(2)}B` : 'N/A'}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs opacity-50">{t('ebitda')}</p>
-                                            <p className="font-bold">{fundamentals?.financialData?.ebitda ? `$${(fundamentals.financialData.ebitda / 1e9).toFixed(2)}B` : 'N/A'}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs opacity-50">{t('diluted_eps')}</p>
-                                            <p className="font-bold">{fundamentals?.defaultKeyStatistics?.trailingEps?.toFixed(2) || 'N/A'}</p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Balance Sheet */}
-                                <div>
-                                    <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-3 border-b border-white/10 pb-1">{t('balance_sheet')}</h4>
-                                    <div className="grid grid-cols-2 gap-y-4 gap-x-8">
-                                        <div>
-                                            <p className="text-xs opacity-50">{t('total_cash')}</p>
-                                            <p className="font-bold">{fundamentals?.financialData?.totalCash ? `$${(fundamentals.financialData.totalCash / 1e9).toFixed(2)}B` : 'N/A'}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs opacity-50">{t('total_debt')}</p>
-                                            <p className="font-bold">{fundamentals?.financialData?.totalDebt ? `$${(fundamentals.financialData.totalDebt / 1e9).toFixed(2)}B` : 'N/A'}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs opacity-50">{t('debt_equity')}</p>
-                                            <p className="font-bold">{fundamentals?.financialData?.debtToEquity?.toFixed(2) || 'N/A'}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs opacity-50">{t('current_ratio')}</p>
-                                            <p className="font-bold">{fundamentals?.financialData?.currentRatio?.toFixed(2) || 'N/A'}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs opacity-50">{t('book_value')}</p>
-                                            <p className="font-bold">{fundamentals?.defaultKeyStatistics?.bookValue?.toFixed(2) || 'N/A'}</p>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Cash Flow */}
-                                <div>
-                                    <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-3 border-b border-white/10 pb-1">{t('cash_flow')}</h4>
-                                    <div className="grid grid-cols-2 gap-y-4 gap-x-8">
-                                        <div>
-                                            <p className="text-xs opacity-50">{t('operating_cash_flow')}</p>
-                                            <p className="font-bold">{fundamentals?.financialData?.operatingCashflow ? `$${(fundamentals.financialData.operatingCashflow / 1e9).toFixed(2)}B` : 'N/A'}</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-xs opacity-50">{t('levered_free_cash_flow')}</p>
-                                            <p className="font-bold">{fundamentals?.financialData?.freeCashflow ? `$${(fundamentals.financialData.freeCashflow / 1e9).toFixed(2)}B` : 'N/A'}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}      {/* Revenue & Earnings Chart */}
-                        {fundamentals?.earnings?.financialsChart?.yearly && (
-                            <div className="mt-8 pt-6 border-t border-white/10">
-                                <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-4">{t('revenue_earnings_yearly')}</h4>
-                                <div className="h-40 w-full flex items-end gap-2">
-                                    {fundamentals.earnings.financialsChart.yearly.map((item: any) => {
-                                        const maxVal = Math.max(...fundamentals.earnings.financialsChart.yearly.map((i: any) => Math.max(i.revenue, i.earnings)));
-                                        return (
-                                            <div key={item.date} className="flex-1 flex flex-col justify-end gap-2 h-full">
-                                                <div className="flex items-end justify-center gap-1 h-full relative group">
-                                                    {/* Tooltip */}
-                                                    <div className="absolute bottom-full mb-2 hidden group-hover:block bg-black/90 text-white text-[10px] p-2 rounded z-10 whitespace-nowrap border border-white/10 shadow-xl">
-                                                        <div className="font-bold mb-1">{item.date}</div>
-                                                        <div className="text-blue-400">Rev: ${(item.revenue / 1e9).toFixed(2)}B</div>
-                                                        <div className="text-green-400">Earn: ${(item.earnings / 1e9).toFixed(2)}B</div>
-                                                    </div>
-
-                                                    {/* Revenue */}
-                                                    <div className="w-2 sm:w-4 bg-blue-500/50 rounded-t hover:bg-blue-500 transition-colors" style={{ height: `${Math.max(4, (item.revenue / maxVal) * 100)}%` }}></div>
-                                                    {/* Earnings */}
-                                                    <div className="w-2 sm:w-4 bg-green-500/50 rounded-t hover:bg-green-500 transition-colors" style={{ height: `${Math.max(4, (item.earnings / maxVal) * 100)}%` }}></div>
-                                                </div>
-                                                <div className="text-[10px] opacity-50 text-center">{item.date}</div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                                <div className="flex justify-center gap-4 mt-4 text-[10px] font-bold uppercase tracking-wider">
-                                    <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-blue-500"></div> {t('revenue')}</div>
-                                    <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-green-500"></div> {t('earnings')}</div>
-                                </div>
-                            </div>
-                        )}
-
-                    </Card>
-
-                    {/* About */}
-                    <Card className="p-5" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
-                        <h3 className="font-bold text-lg mb-2">{t('about')} {asset.name}</h3>
-                        <p className="text-sm leading-relaxed opacity-80">
-                            {asset.description}
-                        </p>
-                    </Card>
                 </>
             )
+            }
+
+            {
+                activeTab === 'fundamentals' && (
+                    <>
+                        {/* Fundamentals */}
+                        <Card id="fundamentals" className="p-2 relative mb-4" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
+                            {/* Lock Overlay */}
+                            {!skills.fundamentalAnalyst && (
+                                <div
+                                    onClick={() => navigate('/skills')}
+                                    className="absolute inset-0 backdrop-blur-sm bg-black/40 rounded-2xl z-10 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-black/50 transition-colors"
+                                >
+                                    <Lock size={48} className="text-white/90" />
+                                    <div className="text-center">
+                                        <p className="text-white font-bold text-lg">{t('skill_locked')}</p>
+                                        <p className="text-white/70 text-sm mt-1">{t('unlock_fundamental_analyst')}</p>
+                                    </div>
+                                </div>
+                            )}
+
+                            <h3 className="font-bold text-lg mb-6">{t('fundamentals')}</h3>
+
+                            {(!fundamentals?.financialData && fundamentals?.summaryDetail) ? (
+                                /* Crypto / Alternative View */
+                                <div className="space-y-8">
+                                    <div>
+                                        <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-3 border-b border-white/10 pb-1">{t('market_statistics')}</h4>
+                                        <div className="grid grid-cols-2 gap-y-4 gap-x-8">
+                                            <div>
+                                                <p className="text-xs opacity-50">{t('market_cap')}</p>
+                                                <p className="font-bold">{fundamentals.summaryDetail.marketCap ? `$${(fundamentals.summaryDetail.marketCap / 1e9).toFixed(2)}B` : 'N/A'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs opacity-50">{t('volume_24h')}</p>
+                                                <p className="font-bold">{fundamentals.summaryDetail.volume ? `$${(fundamentals.summaryDetail.volume / 1e9).toFixed(2)}B` : 'N/A'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs opacity-50">{t('circulating_supply')}</p>
+                                                <p className="font-bold">{fundamentals.summaryDetail.circulatingSupply ? `${(fundamentals.summaryDetail.circulatingSupply / 1e6).toFixed(2)}M` : 'N/A'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs opacity-50">{t('max_supply')}</p>
+                                                <p className="font-bold">{fundamentals.summaryDetail.maxSupply ? `${(fundamentals.summaryDetail.maxSupply / 1e6).toFixed(2)}M` : '∞'}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-3 border-b border-white/10 pb-1">{t('price_statistics')}</h4>
+                                        <div className="grid grid-cols-2 gap-y-4 gap-x-8">
+                                            <div>
+                                                <p className="text-xs opacity-50">{t('52_week_high')}</p>
+                                                <p className="font-bold">{fundamentals.summaryDetail.fiftyTwoWeekHigh ? `$${fundamentals.summaryDetail.fiftyTwoWeekHigh.toLocaleString()}` : 'N/A'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs opacity-50">{t('52_week_low')}</p>
+                                                <p className="font-bold">{fundamentals.summaryDetail.fiftyTwoWeekLow ? `$${fundamentals.summaryDetail.fiftyTwoWeekLow.toLocaleString()}` : 'N/A'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs opacity-50">{t('day_high')}</p>
+                                                <p className="font-bold">{fundamentals.summaryDetail.dayHigh ? `$${fundamentals.summaryDetail.dayHigh.toLocaleString()}` : 'N/A'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs opacity-50">{t('day_low')}</p>
+                                                <p className="font-bold">{fundamentals.summaryDetail.dayLow ? `$${fundamentals.summaryDetail.dayLow.toLocaleString()}` : 'N/A'}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                /* Standard Stock View */
+                                <div className="space-y-8">
+                                    {/* Valuation Measures */}
+                                    <div>
+                                        <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-3 border-b border-white/10 pb-1">{t('valuation_measures')}</h4>
+                                        <div className="grid grid-cols-2 gap-y-4 gap-x-8">
+                                            <div>
+                                                <p className="text-xs opacity-50">{t('market_cap')}</p>
+                                                <p className="font-bold">{fundamentals?.summaryDetail?.marketCap ? `$${(fundamentals.summaryDetail.marketCap / 1e9).toFixed(2)}B` : 'N/A'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs opacity-50">{t('enterprise_value')}</p>
+                                                <p className="font-bold">{fundamentals?.defaultKeyStatistics?.enterpriseValue ? `$${(fundamentals.defaultKeyStatistics.enterpriseValue / 1e9).toFixed(2)}B` : 'N/A'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs opacity-50">{t('trailing_pe')}</p>
+                                                <p className="font-bold">{fundamentals?.summaryDetail?.trailingPE?.toFixed(2) || 'N/A'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs opacity-50">{t('forward_pe')}</p>
+                                                <p className="font-bold">{fundamentals?.summaryDetail?.forwardPE?.toFixed(2) || 'N/A'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs opacity-50">{t('peg_ratio')}</p>
+                                                <p className="font-bold">{fundamentals?.defaultKeyStatistics?.pegRatio?.toFixed(2) || 'N/A'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs opacity-50">{t('price_sales')}</p>
+                                                <p className="font-bold">{fundamentals?.summaryDetail?.priceToSalesTrailing12Months?.toFixed(2) || 'N/A'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs opacity-50">{t('price_book')}</p>
+                                                <p className="font-bold">{fundamentals?.defaultKeyStatistics?.priceToBook?.toFixed(2) || 'N/A'}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Financial Highlights */}
+                                    <div>
+                                        <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-3 border-b border-white/10 pb-1">{t('financial_highlights')}</h4>
+                                        <div className="grid grid-cols-2 gap-y-4 gap-x-8">
+                                            <div>
+                                                <p className="text-xs opacity-50">{t('profit_margin')}</p>
+                                                <p className="font-bold">{fundamentals?.defaultKeyStatistics?.profitMargins ? `${(fundamentals.defaultKeyStatistics.profitMargins * 100).toFixed(2)}%` : 'N/A'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs opacity-50">{t('operating_margin')}</p>
+                                                <p className="font-bold">{fundamentals?.financialData?.operatingMargins ? `${(fundamentals.financialData.operatingMargins * 100).toFixed(2)}%` : 'N/A'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs opacity-50">{t('return_on_assets')}</p>
+                                                <p className="font-bold">{fundamentals?.financialData?.returnOnAssets ? `${(fundamentals.financialData.returnOnAssets * 100).toFixed(2)}%` : 'N/A'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs opacity-50">{t('return_on_equity')}</p>
+                                                <p className="font-bold">{fundamentals?.financialData?.returnOnEquity ? `${(fundamentals.financialData.returnOnEquity * 100).toFixed(2)}%` : 'N/A'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs opacity-50">{t('revenue_ttm')}</p>
+                                                <p className="font-bold">{fundamentals?.financialData?.totalRevenue ? `$${(fundamentals.financialData.totalRevenue / 1e9).toFixed(2)}B` : 'N/A'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs opacity-50">{t('revenue_per_share')}</p>
+                                                <p className="font-bold">{fundamentals?.financialData?.revenuePerShare?.toFixed(2) || 'N/A'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs opacity-50">{t('gross_profit')}</p>
+                                                <p className="font-bold">{fundamentals?.financialData?.grossProfits ? `$${(fundamentals.financialData.grossProfits / 1e9).toFixed(2)}B` : 'N/A'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs opacity-50">{t('ebitda')}</p>
+                                                <p className="font-bold">{fundamentals?.financialData?.ebitda ? `$${(fundamentals.financialData.ebitda / 1e9).toFixed(2)}B` : 'N/A'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs opacity-50">{t('diluted_eps')}</p>
+                                                <p className="font-bold">{fundamentals?.defaultKeyStatistics?.trailingEps?.toFixed(2) || 'N/A'}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Balance Sheet */}
+                                    <div>
+                                        <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-3 border-b border-white/10 pb-1">{t('balance_sheet')}</h4>
+                                        <div className="grid grid-cols-2 gap-y-4 gap-x-8">
+                                            <div>
+                                                <p className="text-xs opacity-50">{t('total_cash')}</p>
+                                                <p className="font-bold">{fundamentals?.financialData?.totalCash ? `$${(fundamentals.financialData.totalCash / 1e9).toFixed(2)}B` : 'N/A'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs opacity-50">{t('total_debt')}</p>
+                                                <p className="font-bold">{fundamentals?.financialData?.totalDebt ? `$${(fundamentals.financialData.totalDebt / 1e9).toFixed(2)}B` : 'N/A'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs opacity-50">{t('debt_equity')}</p>
+                                                <p className="font-bold">{fundamentals?.financialData?.debtToEquity?.toFixed(2) || 'N/A'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs opacity-50">{t('current_ratio')}</p>
+                                                <p className="font-bold">{fundamentals?.financialData?.currentRatio?.toFixed(2) || 'N/A'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs opacity-50">{t('book_value')}</p>
+                                                <p className="font-bold">{fundamentals?.defaultKeyStatistics?.bookValue?.toFixed(2) || 'N/A'}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Cash Flow */}
+                                    <div>
+                                        <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-3 border-b border-white/10 pb-1">{t('cash_flow')}</h4>
+                                        <div className="grid grid-cols-2 gap-y-4 gap-x-8">
+                                            <div>
+                                                <p className="text-xs opacity-50">{t('operating_cash_flow')}</p>
+                                                <p className="font-bold">{fundamentals?.financialData?.operatingCashflow ? `$${(fundamentals.financialData.operatingCashflow / 1e9).toFixed(2)}B` : 'N/A'}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs opacity-50">{t('levered_free_cash_flow')}</p>
+                                                <p className="font-bold">{fundamentals?.financialData?.freeCashflow ? `$${(fundamentals.financialData.freeCashflow / 1e9).toFixed(2)}B` : 'N/A'}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}      {/* Revenue & Earnings Chart */}
+                            {fundamentals?.earnings?.financialsChart?.yearly && (
+                                <div className="mt-8 pt-6 border-t border-white/10">
+                                    <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-4">{t('revenue_earnings_yearly')}</h4>
+                                    <div className="h-40 w-full flex items-end gap-2">
+                                        {fundamentals.earnings.financialsChart.yearly.map((item: any) => {
+                                            const maxVal = Math.max(...fundamentals.earnings.financialsChart.yearly.map((i: any) => Math.max(i.revenue, i.earnings)));
+                                            return (
+                                                <div key={item.date} className="flex-1 flex flex-col justify-end gap-2 h-full">
+                                                    <div className="flex items-end justify-center gap-1 h-full relative group">
+                                                        {/* Tooltip */}
+                                                        <div className="absolute bottom-full mb-2 hidden group-hover:block bg-black/90 text-white text-[10px] p-2 rounded z-10 whitespace-nowrap border border-white/10 shadow-xl">
+                                                            <div className="font-bold mb-1">{item.date}</div>
+                                                            <div className="text-blue-400">Rev: ${(item.revenue / 1e9).toFixed(2)}B</div>
+                                                            <div className="text-green-400">Earn: ${(item.earnings / 1e9).toFixed(2)}B</div>
+                                                        </div>
+
+                                                        {/* Revenue */}
+                                                        <div className="w-2 sm:w-4 bg-blue-500/50 rounded-t hover:bg-blue-500 transition-colors" style={{ height: `${Math.max(4, (item.revenue / maxVal) * 100)}%` }}></div>
+                                                        {/* Earnings */}
+                                                        <div className="w-2 sm:w-4 bg-green-500/50 rounded-t hover:bg-green-500 transition-colors" style={{ height: `${Math.max(4, (item.earnings / maxVal) * 100)}%` }}></div>
+                                                    </div>
+                                                    <div className="text-[10px] opacity-50 text-center">{item.date}</div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                    <div className="flex justify-center gap-4 mt-4 text-[10px] font-bold uppercase tracking-wider">
+                                        <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-blue-500"></div> {t('revenue')}</div>
+                                        <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-green-500"></div> {t('earnings')}</div>
+                                    </div>
+                                </div>
+                            )}
+
+                        </Card>
+
+                    </>
+                )
+            }
+
+            {
+                activeTab === 'overview' && (
+                    <>
+                        {/* About */}
+                        <Card className="p-3" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
+                            <h3 className="font-bold text-lg mb-2">{t('about')} {asset.name}</h3>
+                            <p className="text-sm leading-relaxed opacity-80">
+                                {t(`desc_${asset.id.replace(/[^a-zA-Z0-9]/g, '_')}`, { defaultValue: asset.description || '' })}
+                            </p>
+                        </Card>
+                    </>
+                )
             }
 
             {
@@ -1039,7 +1067,7 @@ export const StockDetail: React.FC = () => {
                                     rel="noopener noreferrer"
                                     className="block group"
                                 >
-                                    <div className="p-5 rounded-2xl shadow-sm border hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+                                    <div className="p-3 rounded-2xl shadow-sm border hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
                                         style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
                                         <div className="flex items-start justify-between mb-3">
                                             <div className="flex items-center gap-2">
@@ -1309,7 +1337,7 @@ export const StockDetail: React.FC = () => {
             {/* Active Short Positions */}
             {
                 skills.shortSelling && assetShorts.length > 0 && (
-                    <Card className="p-5" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
+                    <Card className="p-3" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
                         <h3 className="font-bold text-lg mb-4">{t('active_short_positions')}</h3>
                         <div className="space-y-3">
                             {assetShorts.map(short => {
@@ -1345,7 +1373,7 @@ export const StockDetail: React.FC = () => {
 
             {/* Order Form (Stop Loss / Take Profit) */}
             {
-                activeTab === 'overview' && (
+                activeTab === 'orders' && (
                     <div id="order-form">
                         <OrderForm
                             assetId={asset.id}

@@ -2,7 +2,50 @@ import YahooFinance from 'yahoo-finance2';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { getMarketHistory, saveMarketHistory, saveMarketItems, getMarketHistoryWithMeta, saveMarketFundamentals, getMarketFundamentals } from './storage.js';
+import { getMarketHistory, saveMarketHistory, saveMarketItems, getMarketHistoryWithMeta, saveMarketFundamentals, getMarketFundamentals, saveMarketNews } from './storage.js';
+
+// ... (existing code)
+
+export const updateMarketNews = async () => {
+    console.log(`[${new Date().toISOString()}] Running Market News Update...`);
+
+    // Process in chunks
+    const CHUNK_SIZE = 5;
+    const chunks = [];
+    for (let i = 0; i < SYMBOLS.length; i += CHUNK_SIZE) {
+        chunks.push(SYMBOLS.slice(i, i + CHUNK_SIZE));
+    }
+
+    for (const chunk of chunks) {
+        await Promise.all(chunk.map(async (symbol) => {
+            try {
+                // Fetch news from Yahoo Finance
+                const result = await yahooFinance.search(symbol, { newsCount: 5 });
+                if (result.news && result.news.length > 0) {
+                    const newsItems = result.news.map((n: any) => ({
+                        id: n.uuid || Math.random().toString(36).substring(7),
+                        symbol: symbol, // Store with the symbol we searched for
+                        title: n.title,
+                        url: n.link,
+                        site: n.providerPublishTime ? new Date(n.providerPublishTime).toLocaleDateString() : 'Yahoo Finance',
+                        time: n.providerPublishTime ? new Date(n.providerPublishTime).getTime() : Date.now(),
+                        imageUrl: n.thumbnail?.resolutions?.[0]?.url || '',
+                        summary: ''
+                    }));
+
+                    await saveMarketNews(newsItems);
+                }
+            } catch (error) {
+                // console.error(`Failed to update news for ${symbol}:`, error);
+            }
+        }));
+
+        // Small delay between chunks
+        await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+    console.log(`[${new Date().toISOString()}] Market News Update Complete.`);
+};
+
 
 // ... (imports remain the same, just updating the storage import line above)
 

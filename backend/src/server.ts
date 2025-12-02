@@ -5,6 +5,7 @@ import compression from 'compression';
 import cron from 'node-cron';
 import yahooFinance from 'yahoo-finance2';
 import newsRoutes from './routes/news.js';
+import tournamentRoutes from './routes/tournament.js';
 import {
     initDB,
     getUsers,
@@ -21,7 +22,9 @@ import {
     addInsiderTip,
     deleteAssetComment
 } from './services/storage.js';
-import { updateMarketData, fetchHistory, fetchYahooAnalysis, updateDailyCandles, updateMonthlyCandles, updateFundamentals } from './services/fetcher.js';
+import { updateMarketData, fetchHistory, fetchYahooAnalysis, updateDailyCandles, updateMonthlyCandles, updateFundamentals, updateMarketNews } from './services/fetcher.js';
+
+
 import {
     calculateRSI, calculateStoch, calculateStochRSI, calculateMACDValue, calculateATR,
     calculateADX, calculateCCI, calculateHighsLows, calculateROC, calculateWilliamsR,
@@ -99,21 +102,8 @@ initDB().then(async () => {
 // Register Routes
 console.log('Registering /api/news route...');
 app.use('/api/news', newsRoutes);
+app.use('/api/tournament', tournamentRoutes);
 app.get('/api/test', (req, res) => res.send('Test working'));
-
-// Debug Endpoint
-app.get('/api/debug/users', async (req, res) => {
-    try {
-        const users = await getUsers();
-        res.json({
-            count: users.length,
-            users: users.map(u => ({ username: u.username, id: u.id, portfolio: u.portfolioValue })),
-            db_url_prefix: process.env.DATABASE_URL ? process.env.DATABASE_URL.substring(0, 15) : 'UNDEFINED'
-        });
-    } catch (error) {
-        res.status(500).json({ error: String(error) });
-    }
-});
 
 // Admin endpoint to clear cache
 app.delete('/api/admin/cache/:symbol', async (req, res) => {
@@ -152,6 +142,27 @@ cron.schedule('0 0 1 * *', () => {
 // Schedule fundamentals update every 30 minutes
 cron.schedule('*/30 * * * *', () => {
     updateFundamentals();
+});
+
+// Schedule news update every 30 minutes (offset by 15 mins to distribute load)
+cron.schedule('15,45 * * * *', () => {
+    updateMarketNews();
+});
+
+// Schedule weekly tournament processing (Sunday midnight)
+cron.schedule('0 0 * * 0', async () => {
+    console.log('Running weekly tournament processing...');
+    try {
+        const response = await fetch(`http://localhost:${PORT}/api/tournament/process-week`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ secret: process.env.ADMIN_SECRET || 'dev_secret' })
+        });
+        const result = await response.json();
+        console.log('Tournament processing result:', result);
+    } catch (error) {
+        console.error('Error processing tournament:', error);
+    }
 });
 
 // Endpoints
@@ -562,7 +573,10 @@ app.post('/api/register', async (req, res) => {
             email: email || '',
             gameState: INITIAL_GAME_STATE,
             portfolioValue: 10000,
-            lastActive: new Date().toISOString()
+            lastActive: new Date().toISOString(),
+            rankTier: 1,
+            weeklyStartBalance: 0,
+            isInTournament: false
         };
 
         await createUser(newUser);

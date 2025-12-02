@@ -258,7 +258,7 @@ export const Market: React.FC = () => {
     const totalPnLPercent = (totalNetWorth - totalPnL) > 0 ? (totalPnL / (totalNetWorth - totalPnL)) * 100 : 0;
 
     return (
-        <div className="space-y-4 pb-24"> {/* Removed extra top padding, AppLayout handles it */}
+        <div className="space-y-3 pb-24"> {/* Removed extra top padding, AppLayout handles it */}
             {/* Balance Card - Scrollable */}
             <div className="px-4 pt-0 pb-2">
                 <div id="tutorial-balance-card" className="rounded-3xl overflow-hidden relative shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] border border-white/10">
@@ -270,14 +270,14 @@ export const Market: React.FC = () => {
                     {/* 3D Glass Effect Overlay */}
                     <div className="absolute inset-0 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.2)] rounded-3xl pointer-events-none"></div>
 
-                    <div className="relative p-6 text-white">
+                    <div className="relative p-3 text-white">
                         <div className="flex justify-between items-start mb-6">
                             <div>
                                 <h2 className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em] mb-1 flex items-center gap-2">
                                     <div className="w-1 h-1 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.8)]"></div>
                                     {t('net_worth')}
                                 </h2>
-                                <p className="text-4xl font-black tracking-tight text-white drop-shadow-lg">
+                                <p className="text-3xl font-black tracking-tight text-white drop-shadow-lg">
                                     ${totalNetWorth.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </p>
                                 <div className="flex items-center gap-3 mt-2">
@@ -414,7 +414,7 @@ export const Market: React.FC = () => {
                                 <div
                                     key={pos.uniqueId}
                                     onClick={() => navigate(`/stock/${pos.assetId}`)}
-                                    className="w-full p-4 rounded-2xl backdrop-blur-md relative overflow-hidden group cursor-pointer"
+                                    className="w-full p-3 rounded-2xl backdrop-blur-md relative overflow-hidden group cursor-pointer"
                                     style={{
                                         backgroundColor: 'var(--card-bg)'
                                     }}
@@ -488,7 +488,7 @@ export const Market: React.FC = () => {
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${activeTab === tab.id
+                            className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all ${activeTab === tab.id
                                 ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30'
                                 : 'bg-white/5 text-gray-500 hover:bg-white/10'
                                 }`}
@@ -511,7 +511,7 @@ export const Market: React.FC = () => {
                             <button
                                 key={country.id}
                                 onClick={() => setSelectedCountry(country.id)}
-                                className={`px-3 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all ${selectedCountry === country.id
+                                className={`px-2 py-1 rounded-lg text-[10px] font-bold whitespace-nowrap transition-all ${selectedCountry === country.id
                                     ? 'bg-blue-500/20 text-blue-500 border border-blue-500/50'
                                     : 'bg-white/5 text-gray-500 hover:bg-white/10 border border-transparent'
                                     }`}
@@ -555,14 +555,14 @@ export const Market: React.FC = () => {
                                     key={item.id}
                                     id={index === 0 ? 'tutorial-first-stock-item' : `tutorial-stock-item-${item.id}`}
                                     onClick={() => navigate(`/stock/${item.id}`)}
-                                    className={`group rounded-2xl p-3 shadow-sm border hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer relative overflow-hidden ${flashClass}`}
+                                    className={`group rounded-2xl p-2 shadow-sm border hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer relative overflow-hidden ${flashClass}`}
                                     style={{ backgroundColor: flash ? undefined : 'var(--card-bg)', borderColor: 'var(--card-border)', transition: 'background-color 0.5s ease' }}
                                 >
                                     <div className="flex justify-between items-center">
                                         {/* Left Content: Name + Ticker */}
                                         <div className="flex items-center gap-3 flex-1 min-w-0">
                                             <div className="flex-1 min-w-0">
-                                                <h3 className="font-bold text-lg leading-tight truncate" style={{ color: 'var(--text-primary)' }}>{item.name}</h3>
+                                                <h3 className="font-bold text-base leading-tight truncate" style={{ color: 'var(--text-primary)' }}>{item.name}</h3>
                                                 <p className="text-xs font-medium opacity-60" style={{ color: 'var(--text-primary)' }}>{item.symbol}</p>
 
                                             </div>
@@ -570,7 +570,7 @@ export const Market: React.FC = () => {
 
                                         {/* Right Content: Price + Change */}
                                         <div className="text-right shrink-0">
-                                            <p className="font-black text-lg" style={{ color: 'var(--text-primary)' }}>${formatPrice(item.price)}</p>
+                                            <p className="font-black text-base" style={{ color: 'var(--text-primary)' }}>${formatPrice(item.price)}</p>
                                             <p className={`text-xs font-bold ${item.change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                                                 {item.change24h >= 0 ? '+' : ''}{item.change24h.toFixed(2)}%
                                             </p>
@@ -578,7 +578,7 @@ export const Market: React.FC = () => {
                                     </div>
 
                                     {/* Always Visible Action Buttons */}
-                                    <div className="flex gap-2 mt-4 pt-3 border-t" style={{ borderColor: 'var(--card-border)' }}>
+                                    <div className="flex gap-2 mt-2 pt-2 border-t" style={{ borderColor: 'var(--card-border)' }}>
                                         {owned > 0 ? (
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); navigate(`/trade/${item.id}?type=sell`); }}

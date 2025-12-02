@@ -10,29 +10,29 @@ export const Portfolio: React.FC = () => {
     const totalValue = getPortfolioValue(portfolio) + balance;
 
     return (
-        <div className="pb-24 space-y-6">
-            <h1 className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
+        <div className="pb-24 space-y-4">
+            <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
                 {t('portfolio_title')}
             </h1>
 
-            <Card className="p-6 border" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
-                <div className="text-sm mb-1 opacity-60" style={{ color: 'var(--text-primary)' }}>{t('total_net_worth')}</div>
-                <div className="text-4xl font-bold" style={{ color: 'var(--text-primary)' }}>${totalValue.toLocaleString()}</div>
-                <div className="flex gap-4 mt-4">
+            <Card className="p-3 border" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
+                <div className="text-xs mb-1 opacity-60" style={{ color: 'var(--text-primary)' }}>{t('total_net_worth')}</div>
+                <div className="text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>${totalValue.toLocaleString()}</div>
+                <div className="flex gap-4 mt-3">
                     <div>
-                        <div className="text-xs opacity-50" style={{ color: 'var(--text-primary)' }}>{t('cash_balance')}</div>
-                        <div className="text-lg font-bold text-blue-400">${balance.toLocaleString()}</div>
+                        <div className="text-[10px] opacity-50" style={{ color: 'var(--text-primary)' }}>{t('cash_balance')}</div>
+                        <div className="text-base font-bold text-blue-400">${balance.toLocaleString()}</div>
                     </div>
                     <div>
-                        <div className="text-xs opacity-50" style={{ color: 'var(--text-primary)' }}>{t('invested')}</div>
-                        <div className="text-lg font-bold text-purple-400">${getPortfolioValue(portfolio).toLocaleString()}</div>
+                        <div className="text-[10px] opacity-50" style={{ color: 'var(--text-primary)' }}>{t('invested')}</div>
+                        <div className="text-base font-bold text-purple-400">${getPortfolioValue(portfolio).toLocaleString()}</div>
                     </div>
                 </div>
             </Card>
 
-            <div className="space-y-4">
-                <h2 id="portfolio-manager" className="text-xl font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-                    <PieChart size={20} className="text-blue-400" />
+            <div className="space-y-3">
+                <h2 id="portfolio-manager" className="text-lg font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                    <PieChart size={18} className="text-blue-400" />
                     {t('holdings')}
                 </h2>
                 {portfolio.length === 0 ? (
@@ -41,14 +41,14 @@ export const Portfolio: React.FC = () => {
                     </div>
                 ) : (
                     portfolio.map((item) => (
-                        <Card key={item.id} className="p-4 flex justify-between items-center" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
+                        <Card key={item.id} className="p-2 flex justify-between items-center" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
                             <div>
-                                <div className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>{item.id}</div>
-                                <div className="text-sm opacity-60" style={{ color: 'var(--text-primary)' }}>{item.amount} {t('shares')}</div>
+                                <div className="font-bold text-base" style={{ color: 'var(--text-primary)' }}>{item.id}</div>
+                                <div className="text-xs opacity-60" style={{ color: 'var(--text-primary)' }}>{item.amount} {t('shares')}</div>
                             </div>
                             <div className="text-right">
-                                <div className="font-bold" style={{ color: 'var(--text-primary)' }}>${(item.amount * item.avgPrice).toLocaleString()}</div>
-                                <div className="text-xs opacity-50" style={{ color: 'var(--text-primary)' }}>Avg: ${item.avgPrice.toFixed(2)}</div>
+                                <div className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>${(item.amount * item.avgPrice).toLocaleString()}</div>
+                                <div className="text-[10px] opacity-50" style={{ color: 'var(--text-primary)' }}>Avg: ${item.avgPrice.toFixed(2)}</div>
                             </div>
                         </Card>
                     ))

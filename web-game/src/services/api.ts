@@ -205,3 +205,24 @@ export const likeAssetComment = async (commentId: string, username: string) => {
         throw error;
     }
 };
+
+// Tournament API
+export const registerForTournament = async (username: string) => {
+    try {
+        const response = await api.post('/tournament/register', { username });
+        return response.data;
+    } catch (error) {
+        console.error('Error registering for tournament:', error);
+        throw error;
+    }
+};
+
+export const fetchTournamentStatus = async (username: string) => {
+    try {
+        const response = await api.get(`/tournament/status/${username}`);
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching tournament status:', error);
+        return null;
+    }
+};

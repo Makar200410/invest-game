@@ -3,7 +3,8 @@ import { AnimatePresence } from 'framer-motion';
 import { useEffect, useRef } from 'react';
 import { AppLayout } from './components/layout/AppLayout';
 
-import { Market } from './features/game/Market';
+import { House } from './features/game/House';
+import { MarketPage } from './features/game/MarketPage';
 import { Ranking } from './features/game/Ranking';
 import { Skills } from './features/game/Skills';
 import { NewsPage } from './features/game/NewsPage';
@@ -72,8 +73,8 @@ function App() {
       <AnimatePresence mode="wait"> {/* AnimatePresence is moved here */}
         <Routes location={location} key={location.pathname}> {/* Routes now uses location and key for animations */}
           <Route element={<AppLayout />}>
-            <Route path="/" element={<Market />} />
-            <Route path="/market" element={<Market />} />
+            <Route path="/" element={<House />} />
+            <Route path="/market" element={<MarketPage />} />
             <Route path="/stock/:id" element={<StockDetail />} />
             <Route path="/trade/batch" element={<BatchClosePage />} />
             <Route path="/trade/:id" element={<TradePage />} />

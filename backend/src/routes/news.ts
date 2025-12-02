@@ -1,6 +1,15 @@
 import express from 'express';
+import { getMarketNews } from '../services/storage.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import YahooFinance from 'yahoo-finance2';
 
 const router = express.Router();
+const yahooFinance = new YahooFinance();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 interface TickerTickStory {
     id: string;
@@ -17,31 +26,24 @@ interface TickerTickStory {
 let newsCache: { data: TickerTickStory[], timestamp: number } | null = null;
 const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes
 
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 router.get('/', async (req, res) => {
     try {
-        const now = Date.now();
+        // 1. Try DB first
+        const dbNews = await getMarketNews();
+        if (dbNews.length > 0) {
+            return res.json(dbNews);
+        }
 
-        // Return cached news if valid
+        // 2. Fallback to TickerTick/Cache
+        const now = Date.now();
         if (newsCache && (now - newsCache.timestamp < CACHE_DURATION)) {
             return res.json(newsCache.data);
         }
 
-        // Fetch general market news from TickerTick
         const response = await fetch('https://api.tickertick.com/feed?q=z:SPY&n=50');
-
-        if (!response.ok) {
-            throw new Error(`TickerTick API error: ${response.statusText}`);
-        }
+        if (!response.ok) throw new Error(`TickerTick API error: ${response.statusText}`);
 
         const data = await response.json();
-
         if (data.stories) {
             newsCache = {
                 data: data.stories as TickerTickStory[],
@@ -53,8 +55,6 @@ router.get('/', async (req, res) => {
         }
     } catch (error) {
         console.error('Error fetching news, falling back to repository:', error);
-
-        // Fallback to local repository
         try {
             const repoPath = path.join(__dirname, '../news_repository.json');
             if (fs.existsSync(repoPath)) {
@@ -64,21 +64,15 @@ router.get('/', async (req, res) => {
                 res.json([]);
             }
         } catch (repoError) {
-            console.error("Error loading news repository:", repoError);
             res.json([]);
         }
     }
 });
 
 // Insider Info Endpoint
-// We'll use TickerTick but filter for "rumor" or specific high-impact keywords
-// If that fails or returns few results, we can mix in simulated tips
 router.get('/insider', async (req, res) => {
     try {
-        // Try to fetch stories for major tech/finance tickers which often have rumors
-        // q=z:AAPL OR z:TSLA OR z:NVDA OR z:BTC-USD
         const response = await fetch('https://api.tickertick.com/feed?q=z:AAPL,z:TSLA,z:NVDA,z:BTC-USD&n=20');
-
         let stories: any[] = [];
         if (response.ok) {
             const data = await response.json();
@@ -95,7 +89,6 @@ router.get('/insider', async (req, res) => {
             }
         }
 
-        // Add some simulated tips to ensure we always have content
         const simulatedTips = [
             {
                 id: 'sim-1',
@@ -103,7 +96,7 @@ router.get('/insider', async (req, res) => {
                 content: 'Internal memos suggest a major bank is about to upgrade a top tech stock to "Strong Buy" with a 40% upside target.',
                 impact: 'High',
                 reliability: '85%',
-                date: Date.now() - 1000 * 60 * 60 * 2, // 2 hours ago
+                date: Date.now() - 1000 * 60 * 60 * 2,
                 url: '#'
             },
             {
@@ -118,10 +111,8 @@ router.get('/insider', async (req, res) => {
         ];
 
         res.json([...stories, ...simulatedTips]);
-
     } catch (error) {
         console.error('Error fetching insider news:', error);
-        // Return just simulated tips on error
         res.json([
             {
                 id: 'sim-err-1',
@@ -136,21 +127,20 @@ router.get('/insider', async (req, res) => {
     }
 });
 
-import YahooFinance from 'yahoo-finance2';
-const yahooFinance = new YahooFinance();
-
-// ... (existing imports)
-
 // Get news for specific symbol
 router.get('/:symbol', async (req, res) => {
     const { symbol } = req.params;
     try {
-        // 1. Try TickerTick first
-        // TickerTick format: z:SYMBOL
+        // 1. Try DB first
+        const dbNews = await getMarketNews(symbol);
+        if (dbNews.length > 0) {
+            return res.json(dbNews);
+        }
+
+        // 2. Fallback to TickerTick
         const querySymbol = symbol.includes('-') ? symbol : `z:${symbol}`;
         try {
             const response = await fetch(`https://api.tickertick.com/feed?q=${querySymbol}&n=50`);
-
             if (response.ok) {
                 const data = await response.json();
                 if (data.stories && data.stories.length > 0) {
@@ -161,8 +151,7 @@ router.get('/:symbol', async (req, res) => {
             console.warn(`TickerTick failed for ${symbol}:`, ttError);
         }
 
-        // 2. Fallback to Yahoo Finance
-        console.log(`Fetching fallback news for ${symbol} from Yahoo Finance...`);
+        // 3. Fallback to Yahoo Finance
         try {
             const result = await yahooFinance.search(symbol, { newsCount: 50 });
             if (result.news && result.news.length > 0) {
@@ -182,7 +171,7 @@ router.get('/:symbol', async (req, res) => {
             console.error(`Yahoo Finance news fetch failed for ${symbol}:`, yfError);
         }
 
-        // 3. Fallback to repository if API fails or returns empty
+        // 4. Fallback to repository
         const repoPath = path.join(__dirname, '../news_repository.json');
         if (fs.existsSync(repoPath)) {
             const repoData: TickerTickStory[] = JSON.parse(fs.readFileSync(repoPath, 'utf-8'));

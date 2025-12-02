@@ -51,15 +51,15 @@ export const OrderForm: React.FC<OrderFormProps> = ({ assetId, currentPrice, own
     };
 
     return (
-        <div className="mt-6 space-y-4">
+        <div className="mt-4 space-y-3">
             <h3 className="font-bold text-lg flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
                 <Shield className="text-blue-500" size={20} />
                 {t('automatic_orders')}
             </h3>
 
             {/* Create Order Form */}
-            <Card className="p-4" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
-                <div className="flex gap-2 mb-4">
+            <Card className="p-3" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
+                <div className="flex gap-2 mb-3">
                     <button
                         onClick={() => setType('stop-loss')}
                         className={`flex-1 py-2 rounded-lg text-sm font-bold transition-colors flex items-center justify-center gap-2 ${type === 'stop-loss'
@@ -98,7 +98,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({ assetId, currentPrice, own
                             value={triggerPrice}
                             onChange={(e) => setTriggerPrice(e.target.value)}
                             placeholder={type === 'stop-loss' ? `${t('below')} ${currentPrice}` : `${t('above')} ${currentPrice}`}
-                            className="w-full p-3 rounded-xl border focus:border-blue-500 outline-none transition-colors"
+                            className="w-full p-2 rounded-xl border focus:border-blue-500 outline-none transition-colors"
                             style={{
                                 backgroundColor: 'var(--bg-primary)',
                                 color: 'var(--text-primary)',
@@ -114,7 +114,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({ assetId, currentPrice, own
                             value={amount}
                             onChange={(e) => setAmount(e.target.value)}
                             max={ownedAmount}
-                            className="w-full p-3 rounded-xl border focus:border-blue-500 outline-none transition-colors"
+                            className="w-full p-2 rounded-xl border focus:border-blue-500 outline-none transition-colors"
                             style={{
                                 backgroundColor: 'var(--bg-primary)',
                                 color: 'var(--text-primary)',
@@ -125,7 +125,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({ assetId, currentPrice, own
                     <button
                         type="submit"
                         disabled={!triggerPrice || !amount || parseFloat(amount) > ownedAmount}
-                        className="w-full py-3 rounded-xl font-bold bg-blue-500 hover:bg-blue-600 disabled:opacity-50 disabled:hover:bg-blue-500 transition-colors text-white"
+                        className="w-full py-2 rounded-xl font-bold bg-blue-500 hover:bg-blue-600 disabled:opacity-50 disabled:hover:bg-blue-500 transition-colors text-white"
                     >
                         {t('create_order')}
                     </button>
@@ -137,7 +137,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({ assetId, currentPrice, own
                 <div className="space-y-2">
                     <h4 className="text-sm font-bold opacity-70 uppercase tracking-wider" style={{ color: 'var(--text-primary)' }}>{t('active_orders')}</h4>
                     {assetOrders.map(order => (
-                        <Card key={order.id} className="p-3 flex justify-between items-center" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
+                        <Card key={order.id} className="p-2 flex justify-between items-center" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
                             <div className="flex items-center gap-3">
                                 <div className={`p-2 rounded-full ${order.type === 'stop-loss' ? 'bg-red-500/10 text-red-500' : 'bg-green-500/10 text-green-500'}`}>
                                     {order.type === 'stop-loss' ? <TrendingDown size={16} /> : <TrendingUp size={16} />}
