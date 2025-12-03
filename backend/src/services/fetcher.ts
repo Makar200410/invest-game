@@ -316,46 +316,63 @@ export const updateMarketData = async () => {
     let items = [];
 
     try {
-        // 1. Separate Crypto (Binance) vs Yahoo Symbols
-        const cryptoSymbols = SYMBOLS.filter(s => s.includes('-USD'));
-        const yahooSymbols = SYMBOLS.filter(s => !s.includes('-USD'));
-
+        // 1. Prepare Symbols
+        // We will try to fetch EVERYTHING from Yahoo first in batches of 42.
+        // Yahoo supports crypto (e.g. BTC-USD), so we include them.
+        const allSymbols = [...SYMBOLS];
         const results: any[] = [];
+        const cryptoFallbackNeeded: string[] = [];
 
-        // 2. Fetch Yahoo Quotes in Batch (Single Request)
-        // Note: Yahoo Finance API might limit batch size, but 50-60 is usually fine.
-        // If it fails, we might need to chunk it, but let's try full batch first or chunks of 30.
+        // 2. Fetch All Quotes in Batch (Chunks of 42)
         let yahooRequests = 0;
-        const YAHOO_CHUNK_SIZE = 30;
-        for (let i = 0; i < yahooSymbols.length; i += YAHOO_CHUNK_SIZE) {
-            const chunk = yahooSymbols.slice(i, i + YAHOO_CHUNK_SIZE);
+        const BATCH_SIZE = 42;
+
+        for (let i = 0; i < allSymbols.length; i += BATCH_SIZE) {
+            const chunk = allSymbols.slice(i, i + BATCH_SIZE);
             try {
                 const quotes = await yahooFinance.quote(chunk);
                 yahooRequests++;
                 results.push(...quotes);
             } catch (e) {
                 console.error('Batch quote fetch failed:', e);
+                // If a batch fails, we might want to mark these for fallback if they are crypto
+                chunk.forEach(s => {
+                    if (s.includes('-USD')) cryptoFallbackNeeded.push(s);
+                });
             }
             await new Promise(resolve => setTimeout(resolve, 500)); // Small delay between chunks
         }
-        console.log(`[Batch Fetch] Made ${yahooRequests} Yahoo API requests for ${yahooSymbols.length} symbols.`);
+        console.log(`[Batch Fetch] Made ${yahooRequests} Yahoo API requests for ${allSymbols.length} symbols.`);
 
-        // 3. Fetch Crypto from Binance (Parallel)
-        const cryptoResults = await Promise.all(cryptoSymbols.map(async (symbol) => {
-            const data = await fetchCryptoPrice(symbol);
-            if (data) {
-                return {
-                    symbol: symbol,
-                    regularMarketPrice: data.price,
-                    regularMarketTime: new Date(data.time),
-                    regularMarketVolume: 0, // Binance ticker doesn't give 24h vol easily here, can ignore or fetch detail
-                    shortName: symbol,
-                    regularMarketChangePercent: 0 // We'd need 24h ticker for this
-                };
+        // 3. Identify missing/failed Crypto for Binance Fallback
+        // Check which crypto symbols didn't get a valid price from Yahoo
+        const cryptoSymbols = SYMBOLS.filter(s => s.includes('-USD'));
+        cryptoSymbols.forEach(symbol => {
+            const found = results.find(r => r.symbol === symbol);
+            if (!found || !found.regularMarketPrice) {
+                cryptoFallbackNeeded.push(symbol);
             }
-            return null;
-        }));
-        results.push(...cryptoResults.filter(r => r !== null));
+        });
+
+        // 4. Fetch Crypto Fallback from Binance (Parallel)
+        if (cryptoFallbackNeeded.length > 0) {
+            // console.log(`Fetching ${cryptoFallbackNeeded.length} crypto from Binance fallback...`);
+            const cryptoResults = await Promise.all([...new Set(cryptoFallbackNeeded)].map(async (symbol) => {
+                const data = await fetchCryptoPrice(symbol);
+                if (data) {
+                    return {
+                        symbol: symbol,
+                        regularMarketPrice: data.price,
+                        regularMarketTime: new Date(data.time),
+                        regularMarketVolume: 0,
+                        shortName: symbol,
+                        regularMarketChangePercent: 0
+                    };
+                }
+                return null;
+            }));
+            results.push(...cryptoResults.filter(r => r !== null));
+        }
 
         // 4. Process Results
         const processedItems = await Promise.all(results.map(async (quote: any) => {
