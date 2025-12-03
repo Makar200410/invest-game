@@ -239,7 +239,8 @@ const fetchCryptoHistory = async (symbol: string, interval: string): Promise<any
         'https://api.binance.com',
         'https://api1.binance.com',
         'https://api2.binance.com',
-        'https://api3.binance.com'
+        'https://api3.binance.com',
+        'https://data-api.binance.vision'
     ];
 
     const binanceSymbol = symbol.replace('-USD', 'USDT');
@@ -270,8 +271,8 @@ const fetchCryptoHistory = async (symbol: string, interval: string): Promise<any
             }));
 
             if (candles.length > 0) return candles;
-        } catch (error) {
-            // console.error(`Binance fetch failed from ${endpoint}:`, error);
+        } catch (error: any) {
+            console.warn(`Binance fetch failed from ${endpoint}: ${error.message || error}`);
             // Continue to next endpoint
         }
     }
