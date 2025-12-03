@@ -683,6 +683,17 @@ app.get('/api/leaderboard', async (req, res) => {
     res.json(leaderboard);
 });
 
+app.get('/api/debug/update-news', async (req, res) => {
+    console.log('Manual trigger: updateMarketNews');
+    try {
+        await updateMarketNews();
+        res.json({ success: true, message: 'News update triggered' });
+    } catch (error) {
+        console.error('Manual news update failed:', error);
+        res.status(500).json({ error: 'Failed to update news' });
+    }
+});
+
 // Listen on all network interfaces (0.0.0.0)
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Backend server running on port ${PORT}`);

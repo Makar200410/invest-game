@@ -130,9 +130,10 @@ export const StockDetail: React.FC = () => {
                         setFundamentals(fundData);
                     }
 
-                    // Always fetch news for the News tab (blurred if locked)
+                    // Fetch news
                     if (!isBackground) setNewsLoading(true);
                     fetchCompanyNews(foundAsset.symbol).then(news => {
+                        console.log(`[StockDetail] Fetched ${news.length} news items for ${foundAsset.symbol}`, news);
                         setCompanyNews(news);
                         setNewsLoading(false);
                     });
@@ -153,6 +154,56 @@ export const StockDetail: React.FC = () => {
         const pollInterval = setInterval(() => loadData(true), 60000); // 60s polling
         return () => clearInterval(pollInterval);
     }, [id, interval, indicatorInterval, skills]);
+
+    // ... (rest of the file)
+
+    {
+        newsLoading ? (
+            <div className="flex justify-center p-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+            </div>
+        ) : companyNews.length > 0 ? (
+            companyNews.map((item) => (
+                <a
+                    key={item.id}
+                    href={item.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block group"
+                >
+                    <div className="p-3 rounded-2xl shadow-sm border hover:shadow-xl hover:-translate-y-1 transition-all duration-300"
+                        style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
+                        <div className="flex items-start justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                                {item.favicon_url || item.imageUrl ? (
+                                    <img src={item.favicon_url || item.imageUrl} alt="" className="w-5 h-5 rounded-full object-cover" />
+                                ) : (
+                                    <div className="w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--bg-primary)' }}>
+                                        <span className="text-[10px] opacity-60">NEWS</span>
+                                    </div>
+                                )}
+                                <span className="text-xs font-bold" style={{ color: 'var(--text-primary)' }}>{item.site}</span>
+                                <span className="text-xs opacity-60" style={{ color: 'var(--text-primary)' }}>• {new Date(item.time || item.date).toLocaleDateString()}</span>
+                            </div>
+                        </div>
+
+                        <h3 className="font-bold text-lg leading-snug mb-2 group-hover:text-blue-600 transition-colors" style={{ color: 'var(--text-primary)' }}>
+                            {item.title}
+                        </h3>
+                        {item.summary && (
+                            <p className="text-sm opacity-70 line-clamp-2" style={{ color: 'var(--text-primary)' }}>
+                                {item.summary}
+                            </p>
+                        )}
+                    </div>
+                </a>
+            ))
+        ) : (
+            <div className="text-center p-8 opacity-50">
+                {t('no_news_found')}
+            </div>
+        )
+    }
 
     // Poll for comments and check for replies
     useEffect(() => {
@@ -1274,8 +1325,8 @@ export const StockDetail: React.FC = () => {
                                         style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
                                         <div className="flex items-start justify-between mb-3">
                                             <div className="flex items-center gap-2">
-                                                {item.favicon_url ? (
-                                                    <img src={item.favicon_url} alt="" className="w-5 h-5 rounded-full" />
+                                                {item.favicon_url || item.imageUrl ? (
+                                                    <img src={item.favicon_url || item.imageUrl} alt="" className="w-5 h-5 rounded-full" />
                                                 ) : (
                                                     <div className="w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--bg-primary)' }}>
                                                         <span className="text-[10px] opacity-60">NEWS</span>

@@ -132,7 +132,9 @@ router.get('/:symbol', async (req, res) => {
     const { symbol } = req.params;
     try {
         // 1. Try DB first
+        console.log(`[News API] Fetching news for symbol: ${symbol}`);
         const dbNews = await getMarketNews(symbol);
+        console.log(`[News API] Found ${dbNews.length} items in DB for ${symbol}`);
         if (dbNews.length > 0) {
             return res.json(dbNews);
         }

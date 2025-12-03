@@ -527,6 +527,7 @@ export const getMarketNews = async (symbol?: string): Promise<any[]> => {
             site: row.site,
             time: Number(row.time),
             imageUrl: row.image_url,
+            favicon_url: row.image_url,
             summary: row.summary
         }));
     } catch (error) {
