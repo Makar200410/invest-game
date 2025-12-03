@@ -21,7 +21,8 @@ import {
     getMarketHistory,
     getInsiderTips,
     addInsiderTip,
-    deleteAssetComment
+    deleteAssetComment,
+    pruneMarketHistory
 } from './services/storage.js';
 import { updateMarketData, fetchHistory, fetchYahooAnalysis, updateDailyCandles, updateMonthlyCandles, updateFundamentals, updateMarketNews, SYMBOLS, POPULAR_SYMBOLS } from './services/fetcher.js';
 
@@ -692,7 +693,13 @@ app.get('/api/leaderboard', async (req, res) => {
 });
 
 // Listen on all network interfaces (0.0.0.0)
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Backend server running on port ${PORT}`);
-    console.log('Features active: Market Data, News, Indicators, Player DB');
+// Listen on all network interfaces (0.0.0.0)
+initDB().then(async () => {
+    // Prune old data on startup to free space
+    await pruneMarketHistory();
+
+    app.listen(PORT, '0.0.0.0', () => {
+        console.log(`Backend server running on port ${PORT}`);
+        console.log('Features active: Market Data, News, Indicators, Player DB');
+    });
 });
