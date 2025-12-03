@@ -250,6 +250,30 @@ const updateCandleHistory = async (symbol: string, interval: string, price: numb
     try {
         let history = await getMarketHistory(symbol, interval);
 
+        // Self-healing: Detect bad (flat) data for Crypto 1m and force refresh
+        // This fixes the issue where previous fetch failures caused flat lines
+        if (symbol.includes('-USD') && interval === '1m' && Array.isArray(history) && history.length > 10) {
+            // Check last 50 candles (or all if less)
+            const checkCount = Math.min(history.length, 50);
+            const recentHistory = history.slice(-checkCount);
+            const flatCandles = recentHistory.filter((h: any) => h.high === h.low).length;
+
+            // If more than 20% of recent candles are flat, it's likely bad data
+            if (flatCandles > checkCount * 0.2) {
+                console.log(`[Repair] Detected bad data for ${symbol} ${interval} (${flatCandles}/${checkCount} flat). Forcing refresh...`);
+                const fresh = await fetchHistory(symbol, interval, true);
+                if (fresh && fresh.length > 0) {
+                    history = fresh;
+                    // We will save this updated history at the end of the function or right here
+                    // The function saves at the end, so updating the 'history' variable is enough
+                    // BUT we need to ensure the new data is persisted even if the current candle doesn't change much.
+                    // So we force a save here to be safe, or just let the flow continue.
+                    // Let's let the flow continue, but we must ensure 'lastPoint' logic works.
+                    await saveMarketHistory(symbol, interval, history);
+                }
+            }
+        }
+
         // Backfill if empty or insufficient data (ensure we have ~120 points if possible)
         const backfillKey = `${symbol}-${interval}`;
         if ((!Array.isArray(history) || history.length < 120) && !backfilledSymbols.has(backfillKey)) {
