@@ -142,7 +142,7 @@ export const NewsPage: React.FC = () => {
                         className="space-y-4"
                     >
                         {!skills.newsAlert ? (
-                            <div className="p-8 rounded-3xl bg-gray-900 text-white text-center relative overflow-hidden shadow-xl">
+                            <div className="p-8 rounded-3xl text-center relative overflow-hidden shadow-xl" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
                                 <div className="absolute inset-0 bg-gradient-to-br from-blue-900/40 to-purple-900/40 z-0"></div>
                                 <div className="relative z-10 flex flex-col items-center gap-4">
                                     <div className="w-20 h-20 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20">
@@ -150,7 +150,7 @@ export const NewsPage: React.FC = () => {
                                     </div>
                                     <div>
                                         <h3 className="text-2xl font-bold mb-2">{t('news_alert_locked')}</h3>
-                                        <p className="text-gray-300 max-w-xs mx-auto text-sm leading-relaxed">{t('skill_newsAlert_desc')}</p>
+                                        <p className="max-w-xs mx-auto text-sm leading-relaxed" style={{ color: 'var(--text-primary)', opacity: 0.7 }}>{t('skill_newsAlert_desc')}</p>
                                     </div>
                                 </div>
                             </div>
@@ -218,14 +218,14 @@ export const NewsPage: React.FC = () => {
                         className="space-y-4"
                     >
                         {!skills.insiderInfo ? (
-                            <div className="p-8 rounded-3xl bg-red-50 text-center border border-red-100 relative overflow-hidden">
+                            <div className="p-8 rounded-3xl text-center border border-red-500/20 relative overflow-hidden" style={{ backgroundColor: 'var(--card-bg)' }}>
                                 <div className="relative z-10 flex flex-col items-center gap-4">
                                     <div className="w-20 h-20 rounded-full bg-red-100 flex items-center justify-center">
                                         <Lock className="text-red-500" size={32} />
                                     </div>
                                     <div>
-                                        <h3 className="text-2xl font-bold text-red-900 mb-2">{t('insider_info_locked')}</h3>
-                                        <p className="text-red-800/70 max-w-xs mx-auto text-sm leading-relaxed">{t('skill_insiderInfo_desc')}</p>
+                                        <h3 className="text-2xl font-bold text-red-500 mb-2">{t('insider_info_locked')}</h3>
+                                        <p className="text-red-500/70 max-w-xs mx-auto text-sm leading-relaxed">{t('skill_insiderInfo_desc')}</p>
                                     </div>
                                 </div>
                             </div>
@@ -238,7 +238,7 @@ export const NewsPage: React.FC = () => {
                                     </div>
                                 ) : (
                                     insiderTips.map((tip) => (
-                                        <div key={tip.id} className="bg-gray-900 rounded-2xl overflow-hidden shadow-lg relative group">
+                                        <div key={tip.id} className="rounded-2xl overflow-hidden shadow-lg relative group" style={{ backgroundColor: 'var(--card-bg)' }}>
                                             <div className="absolute top-0 right-0 bg-red-600 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl uppercase tracking-widest z-10">
                                                 {t('confidential')}
                                             </div>
@@ -260,10 +260,10 @@ export const NewsPage: React.FC = () => {
                                                     </div>
                                                 </div>
 
-                                                <h3 className="text-lg font-bold text-white mb-2 leading-snug">{tip.title}</h3>
+                                                <h3 className="text-lg font-bold mb-2 leading-snug" style={{ color: 'var(--text-primary)' }}>{tip.title}</h3>
 
-                                                <div className="bg-black/30 p-3 rounded-xl border border-white/5 backdrop-blur-sm">
-                                                    <p className="text-gray-300 text-xs leading-relaxed font-mono">
+                                                <div className="p-3 rounded-xl border backdrop-blur-sm" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--card-border)', opacity: 0.8 }}>
+                                                    <p className="text-xs leading-relaxed font-mono" style={{ color: 'var(--text-primary)' }}>
                                                         {tip.content}
                                                     </p>
                                                 </div>

@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { RefreshCcw, Lock, TrendingUp, TrendingDown, BarChart2, ArrowRight } from 'lucide-react';
+import { RefreshCcw, Lock, TrendingUp, TrendingDown, BarChart2, Store } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useGameStore } from '../../store/gameStore';
 import { fetchCryptoMarket, type MarketItem, updateScore } from '../../services/api';
@@ -183,20 +183,20 @@ export const House: React.FC = () => {
         <div className="space-y-3 pb-24">
             {/* Balance Card */}
             <div className="px-4 pt-0 pb-2">
-                <div id="tutorial-balance-card" className="rounded-3xl overflow-hidden relative shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] border border-white/10">
-                    <div className="absolute inset-0 bg-[#0f172a]"></div>
+                <div id="tutorial-balance-card" className="rounded-3xl overflow-hidden relative shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] border" style={{ borderColor: 'var(--card-border)' }}>
+                    <div className="absolute inset-0" style={{ backgroundColor: 'var(--card-bg)' }}></div>
                     <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent opacity-50"></div>
                     <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-500/20 via-transparent to-transparent"></div>
                     <div className="absolute inset-0 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.2)] rounded-3xl pointer-events-none"></div>
 
-                    <div className="relative p-3 text-white">
+                    <div className="relative p-3" style={{ color: 'var(--text-primary)' }}>
                         <div className="flex justify-between items-start mb-6">
                             <div>
-                                <h2 className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em] mb-1 flex items-center gap-2">
+                                <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] mb-1 flex items-center gap-2" style={{ color: 'var(--text-primary)', opacity: 0.6 }}>
                                     <div className="w-1 h-1 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.8)]"></div>
                                     {t('net_worth')}
                                 </h2>
-                                <p className="text-3xl font-black tracking-tight text-white drop-shadow-lg">
+                                <p className="text-3xl font-black tracking-tight drop-shadow-lg" style={{ color: 'var(--text-primary)' }}>
                                     ${totalNetWorth.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </p>
                                 <div className="flex items-center gap-3 mt-2">
@@ -207,7 +207,7 @@ export const House: React.FC = () => {
                                         ({totalPnLPercent.toFixed(2)}%)
                                     </span>
                                     {loan > 0 && (
-                                        <span className="text-xs font-bold text-red-300/80 border-l border-white/10 pl-3">
+                                        <span className="text-xs font-bold text-red-400 border-l pl-3" style={{ borderColor: 'var(--card-border)' }}>
                                             Loan: ${loan.toLocaleString(undefined, { minimumFractionDigits: 0 })}
                                         </span>
                                     )}
@@ -215,9 +215,10 @@ export const House: React.FC = () => {
                             </div>
                             <button
                                 onClick={loadFullData}
-                                className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 transition-all active:scale-95 shadow-lg"
+                                className="p-2.5 rounded-xl border transition-all active:scale-95 shadow-lg hover:opacity-80"
+                                style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--card-border)' }}
                             >
-                                <RefreshCcw size={16} className="text-white/70" />
+                                <RefreshCcw size={16} style={{ color: 'var(--text-primary)', opacity: 0.7 }} />
                             </button>
                         </div>
 
@@ -236,7 +237,13 @@ export const House: React.FC = () => {
                                 className={`px-3 py-2 rounded-lg border text-[10px] font-bold uppercase tracking-wide flex items-center gap-2 transition-all cursor-pointer select-none
                                     ${skills.portfolioManager
                                         ? 'bg-gradient-to-b from-emerald-500/10 to-emerald-900/20 border-emerald-500/20 text-emerald-400 shadow-[0_4px_12px_rgba(16,185,129,0.1)]'
-                                        : 'bg-slate-800/50 border-white/5 text-slate-500 hover:bg-slate-800 hover:border-white/10'}`}
+                                        : 'border hover:opacity-80'}`}
+                                style={{
+                                    backgroundColor: skills.portfolioManager ? undefined : 'var(--card-bg)',
+                                    borderColor: skills.portfolioManager ? undefined : 'var(--card-border)',
+                                    color: skills.portfolioManager ? undefined : 'var(--text-primary)',
+                                    opacity: skills.portfolioManager ? 1 : 0.6
+                                }}
                             >
                                 {skills.portfolioManager ? (
                                     <>
@@ -257,7 +264,13 @@ export const House: React.FC = () => {
                                 className={`px-3 py-2 rounded-lg border text-[10px] font-bold uppercase tracking-wide flex items-center gap-2 transition-all cursor-pointer select-none
                                     ${skills.dayTrader
                                         ? 'bg-gradient-to-b from-blue-500/10 to-blue-900/20 border-blue-500/20 text-blue-400 shadow-[0_4px_12px_rgba(59,130,246,0.1)]'
-                                        : 'bg-slate-800/50 border-white/5 text-slate-500 hover:bg-slate-800 hover:border-white/10'}`}
+                                        : 'border hover:opacity-80'}`}
+                                style={{
+                                    backgroundColor: skills.dayTrader ? undefined : 'var(--card-bg)',
+                                    borderColor: skills.dayTrader ? undefined : 'var(--card-border)',
+                                    color: skills.dayTrader ? undefined : 'var(--text-primary)',
+                                    opacity: skills.dayTrader ? 1 : 0.6
+                                }}
                             >
                                 {skills.dayTrader ? (
                                     <>
@@ -278,7 +291,13 @@ export const House: React.FC = () => {
                                 className={`px-3 py-2 rounded-lg border text-[10px] font-bold uppercase tracking-wide flex items-center gap-2 transition-all cursor-pointer select-none
                                     ${skills.riskManager
                                         ? 'bg-gradient-to-b from-purple-500/10 to-purple-900/20 border-purple-500/20 text-purple-400 shadow-[0_4px_12px_rgba(168,85,247,0.1)]'
-                                        : 'bg-slate-800/50 border-white/5 text-slate-500 hover:bg-slate-800 hover:border-white/10'}`}
+                                        : 'border hover:opacity-80'}`}
+                                style={{
+                                    backgroundColor: skills.riskManager ? undefined : 'var(--card-bg)',
+                                    borderColor: skills.riskManager ? undefined : 'var(--card-border)',
+                                    color: skills.riskManager ? undefined : 'var(--text-primary)',
+                                    opacity: skills.riskManager ? 1 : 0.6
+                                }}
                             >
                                 {skills.riskManager ? (
                                     <>
@@ -313,23 +332,23 @@ export const House: React.FC = () => {
                     <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 via-violet-500 to-fuchsia-500 rounded-3xl opacity-50 blur transition duration-500"></div>
 
                     {/* Main Content */}
-                    <div className="relative flex items-center justify-between bg-[#0f172a] p-4 rounded-3xl border border-white/10 shadow-2xl">
+                    <div className="relative flex items-center justify-between p-4 rounded-3xl border shadow-2xl" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
                         <div className="flex items-center gap-4">
                             {/* Icon Container */}
-                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500/20 to-violet-500/20 flex items-center justify-center border border-white/5 group-hover:scale-110 transition-transform duration-300 shadow-[0_0_15px_rgba(59,130,246,0.3)]">
+                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500/20 to-violet-500/20 flex items-center justify-center border group-hover:scale-110 transition-transform duration-300 shadow-[0_0_15px_rgba(59,130,246,0.3)]" style={{ borderColor: 'var(--card-border)' }}>
                                 <BarChart2 size={24} className="text-blue-400 drop-shadow-[0_0_8px_rgba(96,165,250,0.5)]" />
                             </div>
 
                             {/* Text */}
                             <div className="text-left">
-                                <h3 className="text-lg font-bold text-white tracking-tight drop-shadow-md">{t('buy_assets')}</h3>
-                                <p className="text-xs font-medium text-slate-400 group-hover:text-blue-300 transition-colors">{t('explore_market')}</p>
+                                <h3 className="text-lg font-bold tracking-tight drop-shadow-md" style={{ color: 'var(--text-primary)' }}>{t('buy_assets')}</h3>
+                                <p className="text-xs font-medium group-hover:text-blue-300 transition-colors" style={{ color: 'var(--text-primary)', opacity: 0.6 }}>{t('explore_market')}</p>
                             </div>
                         </div>
 
                         {/* Arrow Action */}
-                        <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/5 group-hover:bg-white/10 transition-colors">
-                            <ArrowRight size={20} className="text-white/70 group-hover:text-white group-hover:translate-x-1 transition-all" />
+                        <div className="w-10 h-10 rounded-full border flex items-center justify-center transition-all group-hover:bg-blue-500/10" style={{ backgroundColor: 'var(--bg-primary)', borderColor: 'var(--card-border)' }}>
+                            <Store size={20} style={{ color: 'var(--text-primary)' }} />
                         </div>
                     </div>
                 </button>
@@ -339,7 +358,7 @@ export const House: React.FC = () => {
             {allPositions.length > 0 ? (
                 <div className="px-4">
                     <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-xs font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                        <h3 className="text-xs font-bold uppercase tracking-widest flex items-center gap-2" style={{ color: 'var(--text-primary)', opacity: 0.6 }}>
                             <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]"></div>
                             {t('your_assets')}
                         </h3>
@@ -349,7 +368,8 @@ export const House: React.FC = () => {
                         {allPositions.some(p => p.type !== 'short') && (
                             <button
                                 onClick={() => navigate('/trade/batch?type=long')}
-                                className="flex-1 relative overflow-hidden group bg-[#0f172a] border border-violet-500/30 hover:border-violet-500/50 rounded-2xl p-3 transition-all shadow-lg shadow-violet-900/10"
+                                className="flex-1 relative overflow-hidden group border border-violet-500/30 hover:border-violet-500/50 rounded-2xl p-3 transition-all shadow-lg shadow-violet-900/10"
+                                style={{ backgroundColor: 'var(--card-bg)' }}
                             >
                                 <div className="absolute inset-0 bg-violet-500/5 group-hover:bg-violet-500/10 transition-colors"></div>
                                 <div className="relative flex items-center justify-center gap-2">
@@ -360,7 +380,8 @@ export const House: React.FC = () => {
                         {allPositions.some(p => p.type === 'short') && (
                             <button
                                 onClick={() => navigate('/trade/batch?type=short')}
-                                className="flex-1 relative overflow-hidden group bg-[#0f172a] border border-blue-500/30 hover:border-blue-500/50 rounded-2xl p-3 transition-all shadow-lg shadow-blue-900/10"
+                                className="flex-1 relative overflow-hidden group border border-blue-500/30 hover:border-blue-500/50 rounded-2xl p-3 transition-all shadow-lg shadow-blue-900/10"
+                                style={{ backgroundColor: 'var(--card-bg)' }}
                             >
                                 <div className="absolute inset-0 bg-blue-500/5 group-hover:bg-blue-500/10 transition-colors"></div>
                                 <div className="relative flex items-center justify-center gap-2">
@@ -398,7 +419,8 @@ export const House: React.FC = () => {
                                     {/* Animated Gradient Glow */}
                                     <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 via-violet-500 to-fuchsia-500 rounded-3xl opacity-50 blur transition duration-500"></div>
 
-                                    <div className={`relative p-4 rounded-3xl border border-white/10 shadow-xl overflow-hidden transition-colors duration-300 ${flash === 'up' ? 'bg-emerald-900/90' : flash === 'down' ? 'bg-rose-900/90' : 'bg-[#0f172a]'}`}>
+                                    <div className={`relative p-4 rounded-3xl border shadow-xl overflow-hidden transition-colors duration-300 ${flash === 'up' ? 'bg-emerald-500/20' : flash === 'down' ? 'bg-rose-500/20' : ''}`}
+                                        style={{ backgroundColor: flash ? undefined : 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
                                         {/* Price Flash Overlay - Removed as we are changing background directly */}
                                         <div className="flex justify-between items-center mb-4">
                                             <div className="flex items-center gap-3">
@@ -408,7 +430,7 @@ export const House: React.FC = () => {
 
                                                 <div>
                                                     <div className="flex items-center gap-2">
-                                                        <span className="font-bold text-base text-white tracking-tight">{item.name}</span>
+                                                        <span className="font-bold text-base tracking-tight" style={{ color: 'var(--text-primary)' }}>{item.name}</span>
                                                         <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider ${pos.type === 'short' ? 'bg-orange-500/20 text-orange-400 border border-orange-500/20' :
                                                             pos.type === 'leverage' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/20' :
                                                                 'bg-blue-500/20 text-blue-400 border border-blue-500/20'
@@ -418,7 +440,7 @@ export const House: React.FC = () => {
                                                                     t('long')}
                                                         </span>
                                                     </div>
-                                                    <div className="text-xs font-medium text-slate-400 mt-0.5">
+                                                    <div className="text-xs font-medium mt-0.5" style={{ color: 'var(--text-primary)', opacity: 0.6 }}>
                                                         {pos.amount} • {t('avg_price')} ${formatPrice(pos.entryPrice)}
                                                     </div>
                                                 </div>
@@ -446,8 +468,13 @@ export const House: React.FC = () => {
                                             }}
                                             className={`w-full py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 border ${pos.type === 'short'
                                                 ? 'bg-blue-500/10 hover:bg-blue-500/20 border-blue-500/20 text-blue-400'
-                                                : 'bg-white/5 hover:bg-white/10 border-white/10 text-slate-300 hover:text-white'
+                                                : 'hover:opacity-80'
                                                 }`}
+                                            style={{
+                                                backgroundColor: pos.type === 'short' ? undefined : 'var(--bg-primary)',
+                                                color: pos.type === 'short' ? undefined : 'var(--text-primary)',
+                                                opacity: pos.type === 'short' ? 1 : 0.8
+                                            }}
                                         >
                                             {pos.type === 'short' ? t('close_short') : t('sell_position')}
                                         </button>

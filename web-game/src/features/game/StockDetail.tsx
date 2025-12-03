@@ -83,7 +83,7 @@ export const StockDetail: React.FC = () => {
     const [indicators, setIndicators] = useState<TechnicalAnalysisData | null>(null);
     const [indicatorInterval, setIndicatorInterval] = useState('1d');
 
-    const [chartType, setChartType] = useState<'candle' | 'line'>('line');
+    const [chartType, setChartType] = useState<'candle' | 'line'>('candle');
     const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'overview');
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [fundamentals, setFundamentals] = useState<any>(null);
@@ -428,10 +428,11 @@ export const StockDetail: React.FC = () => {
                 </button>
                 <button
                     onClick={() => setActiveTab('orders')}
-                    className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${activeTab === 'orders' ? 'bg-white/10' : 'opacity-60 hover:opacity-100'}`}
+                    className={`px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap flex items-center gap-1 transition-colors ${activeTab === 'orders' ? 'bg-white/10' : 'opacity-60 hover:opacity-100'}`}
                     style={{ color: 'var(--text-primary)' }}
                 >
                     {t('orders', 'Orders')}
+                    {!skills.stopLossMaster && <Lock size={10} />}
                 </button>
             </div>
 
@@ -703,15 +704,16 @@ export const StockDetail: React.FC = () => {
                     </div>
 
                     {/* Timeframe Selector & Chart Type Toggle */}
-                    <div id="timeframe-selector" className="flex justify-between items-center px-2 mt-2">
-                        <div className="flex gap-4">
+                    {/* Timeframe Selector & Chart Type Toggle */}
+                    <div id="timeframe-selector" className="flex justify-between items-center px-2 mt-2 flex-wrap gap-y-2">
+                        <div className="flex gap-4 overflow-x-auto no-scrollbar">
                             {['1m', '5m', '1h', '1d', 'All'].map((t) => {
                                 const isLocked = !skills.multiTimeframe && ['1m', '5m', '1h'].includes(t);
                                 return (
                                     <button
                                         key={t}
                                         onClick={() => !isLocked ? handleIntervalChange(t) : navigate('/skills')}
-                                        className={`text-sm font-bold transition-colors flex items-center ${interval === t ? 'bg-white/20 px-3 py-1 rounded-full' : 'opacity-40 hover:opacity-100'} ${isLocked ? 'opacity-50 cursor-pointer' : ''}`}
+                                        className={`text-sm font-bold transition-colors flex items-center whitespace-nowrap ${interval === t ? 'bg-white/20 px-3 py-1 rounded-full' : 'opacity-60 hover:opacity-100'} ${isLocked ? 'opacity-50 cursor-pointer' : ''}`}
                                         style={{ color: 'var(--text-primary)' }}
                                     >
                                         {t}
@@ -722,16 +724,20 @@ export const StockDetail: React.FC = () => {
                         </div>
 
                         {/* Chart Type Icons */}
-                        <div className="flex gap-2 bg-white/5 rounded-lg p-1">
+                        <div className="flex gap-2 bg-white/5 rounded-lg p-1 shrink-0">
                             <button
                                 onClick={() => setChartType('candle')}
-                                className={`p-1 rounded transition-colors ${chartType === 'candle' ? 'bg-white/20 text-white' : 'text-white/40 hover:text-white'}`}
+                                className={`p-1 rounded transition-colors ${chartType === 'candle' ? 'bg-white/20' : 'opacity-60 hover:opacity-100'}`}
+                                style={{ color: 'var(--text-primary)' }}
+                                title={t('candle', 'Candle')}
                             >
                                 <CandlestickChart size={18} />
                             </button>
                             <button
                                 onClick={() => setChartType('line')}
-                                className={`p-1 rounded transition-colors ${chartType === 'line' ? 'bg-white/20 text-white' : 'text-white/40 hover:text-white'}`}
+                                className={`p-1 rounded transition-colors ${chartType === 'line' ? 'bg-white/20' : 'opacity-60 hover:opacity-100'}`}
+                                style={{ color: 'var(--text-primary)' }}
+                                title={t('line', 'Line')}
                             >
                                 <LineChart size={18} />
                             </button>
@@ -1583,7 +1589,21 @@ export const StockDetail: React.FC = () => {
             {/* Order Form (Stop Loss / Take Profit) */}
             {
                 activeTab === 'orders' && (
-                    <div id="order-form">
+                    <div id="order-form" className="relative">
+                        {/* Lock Overlay */}
+                        {!skills.stopLossMaster && (
+                            <div
+                                onClick={() => navigate('/skills')}
+                                className="absolute inset-0 backdrop-blur-sm bg-black/40 rounded-2xl z-10 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-black/50 transition-colors"
+                                style={{ height: '100%', minHeight: '300px', zIndex: 50 }}
+                            >
+                                <Lock size={48} className="text-white/90" />
+                                <div className="text-center">
+                                    <p className="text-white font-bold text-lg">{t('skill_locked')}</p>
+                                    <p className="text-white/70 text-sm mt-1">{t('unlock_stop_loss_master')}</p>
+                                </div>
+                            </div>
+                        )}
                         <OrderForm
                             assetId={asset.id}
                             currentPrice={asset.price}

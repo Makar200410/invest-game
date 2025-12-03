@@ -239,7 +239,7 @@ export const createUser = async (user: User): Promise<void> => {
     }
 };
 
-export const updateUser = async (username: string, updates: Partial<User>): Promise<void> => {
+export const updateUser = async (username: string, updates: Partial<User>): Promise<boolean> => {
     try {
         // Build dynamic query
         const fields: string[] = [];
@@ -255,12 +255,14 @@ export const updateUser = async (username: string, updates: Partial<User>): Prom
         if (updates.weeklyStartBalance !== undefined) { fields.push(`weekly_start_balance = $${idx++}`); values.push(updates.weeklyStartBalance); }
         if (updates.isInTournament !== undefined) { fields.push(`is_in_tournament = $${idx++}`); values.push(updates.isInTournament); }
 
-        if (fields.length === 0) return;
+        if (fields.length === 0) return false;
 
         values.push(username);
-        await query(`UPDATE users SET ${fields.join(', ')} WHERE username = $${idx}`, values);
+        const res = await query(`UPDATE users SET ${fields.join(', ')} WHERE username = $${idx}`, values);
+        return (res.rowCount || 0) > 0;
     } catch (error) {
         console.error('Error updating user:', error);
+        return false;
     }
 };
 

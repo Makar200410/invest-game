@@ -207,6 +207,33 @@ export const MarketPage: React.FC = () => {
 
     return (
         <div className="space-y-3 pb-24 pt-4">
+            {/* Balance Display */}
+            <div className="px-4">
+                <div className="text-center mb-2">
+                    <div className="text-xs text-gray-400 mb-1">{t('available_balance', 'Available Balance')}</div>
+                    <div className="text-3xl font-black" style={{ color: 'var(--text-primary)' }}>
+                        ${formatPrice(useGameStore.getState().balance)}
+                    </div>
+                </div>
+
+                {/* Virtual Account Notice */}
+                <div className="bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-pink-500/20 border-2 border-blue-500/30 rounded-xl p-4 backdrop-blur-sm">
+                    <div className="flex items-start gap-3">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-blue-500/30 flex items-center justify-center">
+                            <span className="text-blue-400 text-lg">ℹ️</span>
+                        </div>
+                        <div className="flex-1">
+                            <h3 className="text-sm font-bold mb-1" style={{ color: 'var(--text-primary)' }}>
+                                {t('virtual_account_title', 'Virtual Trading Account')}
+                            </h3>
+                            <p className="text-xs leading-relaxed" style={{ color: 'var(--text-primary)', opacity: 0.7 }}>
+                                {t('virtual_account_desc', 'This is a virtual brokerage account where you trade real assets in real-time. All prices and data are live, but your account balance is virtual for practice and learning.')}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {/* Search and Sort Header */}
             <div className="px-4 flex gap-2 items-center">
                 <div className="flex-1 relative">

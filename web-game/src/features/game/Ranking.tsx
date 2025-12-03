@@ -143,18 +143,20 @@ export const Ranking: React.FC = () => {
     return (
         <div className="space-y-6 pb-24 pt-4 px-4">
             {/* View Tabs - Premium Segmented Control */}
-            <div className="p-1 rounded-2xl bg-slate-800/50 backdrop-blur-md border border-white/5 relative">
+            <div className="p-1 rounded-2xl backdrop-blur-md border relative" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
                 <div className="flex relative z-10">
                     <button
                         onClick={() => setActiveView('tournament')}
-                        className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-300 z-10 ${activeView === 'tournament' ? 'text-white' : 'text-slate-400 hover:text-white'}`}
+                        className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-300 z-10`}
+                        style={{ color: activeView === 'tournament' ? '#ffffff' : 'var(--text-primary)', opacity: activeView === 'tournament' ? 1 : 0.6 }}
                     >
                         <Trophy size={16} className={activeView === 'tournament' ? 'text-yellow-400 drop-shadow-md' : ''} />
                         <span className="text-center leading-tight">{t('weekly_tournament')}</span>
                     </button>
                     <button
                         onClick={() => setActiveView('global')}
-                        className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-300 z-10 ${activeView === 'global' ? 'text-white' : 'text-slate-400 hover:text-white'}`}
+                        className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-300 z-10`}
+                        style={{ color: activeView === 'global' ? '#ffffff' : 'var(--text-primary)', opacity: activeView === 'global' ? 1 : 0.6 }}
                     >
                         <Crown size={16} className={activeView === 'global' ? 'text-purple-400 drop-shadow-md' : ''} />
                         <span className="text-center leading-3 max-w-[100px]">{t('global_ranking')}</span>
@@ -184,8 +186,8 @@ export const Ranking: React.FC = () => {
                         className="space-y-6"
                     >
                         {/* Tournament Status Card */}
-                        <div className="relative rounded-3xl overflow-hidden border border-white/10 shadow-2xl">
-                            <div className="absolute inset-0 bg-[#0f172a]"></div>
+                        <div className="relative rounded-3xl overflow-hidden border shadow-2xl" style={{ borderColor: 'var(--card-border)' }}>
+                            <div className="absolute inset-0" style={{ backgroundColor: 'var(--card-bg)' }}></div>
                             {/* Dynamic Background Gradients */}
                             <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
                             <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
@@ -196,7 +198,7 @@ export const Ranking: React.FC = () => {
                                         <div className="p-2 rounded-xl bg-yellow-500/10 border border-yellow-500/20">
                                             <Trophy size={20} className="text-yellow-400 drop-shadow-[0_0_10px_rgba(250,204,21,0.5)]" />
                                         </div>
-                                        <h2 className="text-xl font-black text-white tracking-tight">
+                                        <h2 className="text-xl font-black tracking-tight" style={{ color: 'var(--text-primary)' }}>
                                             {t('weekly_tournament')}
                                         </h2>
                                     </div>
@@ -340,8 +342,12 @@ export const Ranking: React.FC = () => {
                                                 onClick={() => navigate(`/profile/${player.username}`)}
                                                 className={`relative p-3 rounded-xl border flex items-center justify-between group transition-all duration-300 cursor-pointer ${isUser
                                                     ? 'bg-blue-500/10 border-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.1)]'
-                                                    : 'bg-slate-800/30 border-white/5 hover:bg-slate-800/50'
+                                                    : 'hover:opacity-80'
                                                     }`}
+                                                style={{
+                                                    backgroundColor: isUser ? undefined : 'var(--card-bg)',
+                                                    borderColor: isUser ? undefined : 'var(--card-border)'
+                                                }}
                                             >
                                                 <div className="flex items-center gap-3">
                                                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs ${idx === 0 ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/30' :
@@ -352,14 +358,14 @@ export const Ranking: React.FC = () => {
                                                         {idx + 1}
                                                     </div>
                                                     <div>
-                                                        <div className={`font-bold text-sm ${isUser ? 'text-blue-400' : 'text-slate-200'}`}>
+                                                        <div className={`font-bold text-sm ${isUser ? 'text-blue-400' : ''}`} style={{ color: isUser ? undefined : 'var(--text-primary)' }}>
                                                             {player.username}
                                                         </div>
                                                         {isUser && <div className="text-[9px] font-bold text-blue-500/60 uppercase tracking-wider">{t('you')}</div>}
                                                     </div>
                                                 </div>
                                                 <div className="text-right">
-                                                    <div className="font-mono font-bold text-sm text-white">
+                                                    <div className="font-mono font-bold text-sm" style={{ color: 'var(--text-primary)' }}>
                                                         ${player.portfolioValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                                                     </div>
                                                 </div>
@@ -402,8 +408,12 @@ export const Ranking: React.FC = () => {
                                         onClick={() => navigate(`/profile/${player.username}`)}
                                         className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer ${isCurrentUser
                                             ? 'bg-blue-500/10 border-blue-500/30'
-                                            : 'bg-slate-800/30 border-white/5 hover:bg-slate-800/50'
+                                            : 'hover:opacity-80'
                                             }`}
+                                        style={{
+                                            backgroundColor: isCurrentUser ? undefined : 'var(--card-bg)',
+                                            borderColor: isCurrentUser ? undefined : 'var(--card-border)'
+                                        }}
                                     >
                                         <div className="flex items-center gap-3">
                                             <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs ${index === 0 ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/50' :
@@ -415,7 +425,7 @@ export const Ranking: React.FC = () => {
                                             </div>
                                             <div>
                                                 <div className="flex items-center gap-2">
-                                                    <span className={`font-bold text-sm ${isCurrentUser ? 'text-blue-400' : 'text-slate-200'}`}>
+                                                    <span className={`font-bold text-sm ${isCurrentUser ? 'text-blue-400' : ''}`} style={{ color: isCurrentUser ? undefined : 'var(--text-primary)' }}>
                                                         {player.username}
                                                     </span>
                                                     {player.isInTournament && (

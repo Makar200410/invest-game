@@ -103,6 +103,11 @@ initDB().then(async () => {
         // Initial fetch
         updateMarketData();
 
+        // Initial fetch for Fundamentals and News
+        console.log('Triggering initial Fundamentals and News update...');
+        updateFundamentals();
+        updateMarketNews();
+
         // Schedule updates every 15 seconds
         cron.schedule('*/15 * * * * *', () => {
             updateMarketData();
@@ -615,11 +620,15 @@ app.post('/api/sync', async (req, res) => {
     // Update portfolio value for leaderboard
     const portfolioValue = gameState.balance + (gameState.portfolio ? gameState.portfolio.reduce((acc: number, item: any) => acc + (item.amount * item.avgPrice), 0) : 0);
 
-    await updateUser(username, {
+    const updated = await updateUser(username, {
         gameState,
         portfolioValue: gameState.netWorth || portfolioValue,
         lastActive: new Date().toISOString()
     });
+
+    if (!updated) {
+        return res.status(404).json({ error: 'User not found' });
+    }
 
     res.json({ success: true });
 });
@@ -650,10 +659,14 @@ app.post('/api/update-score', async (req, res) => {
         return res.status(400).json({ error: 'Missing data' });
     }
 
-    await updateUser(username, {
+    const updated = await updateUser(username, {
         portfolioValue: Number(portfolioValue),
         lastActive: new Date().toISOString()
     });
+
+    if (!updated) {
+        return res.status(404).json({ error: 'User not found' });
+    }
 
     res.json({ success: true });
 });

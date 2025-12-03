@@ -261,23 +261,23 @@ export const Market: React.FC = () => {
         <div className="space-y-3 pb-24"> {/* Removed extra top padding, AppLayout handles it */}
             {/* Balance Card - Scrollable */}
             <div className="px-4 pt-0 pb-2">
-                <div id="tutorial-balance-card" className="rounded-3xl overflow-hidden relative shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] border border-white/10">
+                <div id="tutorial-balance-card" className="rounded-3xl overflow-hidden relative shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] border" style={{ borderColor: 'var(--card-border)' }}>
                     {/* Strict 3D Background */}
-                    <div className="absolute inset-0 bg-[#0f172a]"></div>
+                    <div className="absolute inset-0" style={{ backgroundColor: 'var(--card-bg)' }}></div>
                     <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent opacity-50"></div>
                     <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-blue-500/20 via-transparent to-transparent"></div>
 
                     {/* 3D Glass Effect Overlay */}
                     <div className="absolute inset-0 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.2)] rounded-3xl pointer-events-none"></div>
 
-                    <div className="relative p-3 text-white">
+                    <div className="relative p-3" style={{ color: 'var(--text-primary)' }}>
                         <div className="flex justify-between items-start mb-6">
                             <div>
-                                <h2 className="text-slate-400 text-[10px] font-bold uppercase tracking-[0.2em] mb-1 flex items-center gap-2">
+                                <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] mb-1 flex items-center gap-2" style={{ color: 'var(--text-primary)', opacity: 0.6 }}>
                                     <div className="w-1 h-1 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.8)]"></div>
                                     {t('net_worth')}
                                 </h2>
-                                <p className="text-3xl font-black tracking-tight text-white drop-shadow-lg">
+                                <p className="text-3xl font-black tracking-tight drop-shadow-lg" style={{ color: 'var(--text-primary)' }}>
                                     ${totalNetWorth.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                 </p>
                                 <div className="flex items-center gap-3 mt-2">
@@ -501,9 +501,10 @@ export const Market: React.FC = () => {
                             onClick={() => setActiveTab(tab.id)}
                             className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all ${activeTab === tab.id
                                 ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30'
-                                : 'bg-white/5 text-gray-500 hover:bg-white/10'
+                                : 'hover:opacity-80'
                                 }`}
                             style={{
+                                backgroundColor: activeTab === tab.id ? undefined : 'var(--card-bg)',
                                 color: activeTab === tab.id ? '#ffffff' : 'var(--text-primary)',
                                 opacity: activeTab === tab.id ? 1 : 0.6
                             }}
@@ -618,7 +619,8 @@ export const Market: React.FC = () => {
                                         )}
                                         <button
                                             onClick={(e) => { e.stopPropagation(); navigate(`/trade/${item.id}?type=buy`); }}
-                                            className="flex-1 px-3 py-1.5 rounded-lg bg-black text-white font-bold text-xs hover:bg-gray-800 transition-all"
+                                            className="flex-1 px-3 py-1.5 rounded-lg font-bold text-xs hover:opacity-80 transition-all"
+                                            style={{ backgroundColor: 'var(--text-primary)', color: 'var(--bg-primary)' }}
                                         >
                                             {t('buy')}
                                         </button>
