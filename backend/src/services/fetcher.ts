@@ -321,13 +321,18 @@ const updateCandleHistory = async (symbol: string, interval: string, price: numb
             lastPoint.price = price;
             if (price > lastPoint.high) lastPoint.high = price;
             if (price < lastPoint.low) lastPoint.low = price;
-            // Accumulate volume? Yahoo gives total volume for the day usually, or for the candle.
-            // If we are streaming, we might want to just take the latest volume if it's cumulative, or add if it's tick.
-            // For simplicity, we'll update it if provided (Yahoo usually provides cumulative for the period).
             if (volume) lastPoint.volume = volume;
 
             await saveMarketHistory(symbol, interval, history);
         } else {
+            // Only create new candle if price has actually changed from last candle's close
+            // This prevents creating flat candles when there's no trading activity
+            if (lastPoint && lastPoint.close === price) {
+                // Price hasn't changed, don't create a flat candle
+                // Just skip this update - proper historical data will be fetched when needed
+                return;
+            }
+
             // Start new candle
             const newDataPoint = {
                 date: candleStartDate,

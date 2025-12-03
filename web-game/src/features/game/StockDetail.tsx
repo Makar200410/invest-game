@@ -91,6 +91,13 @@ export const StockDetail: React.FC = () => {
     const [companyNews, setCompanyNews] = useState<any[]>([]);
     const [chartLoaded, setChartLoaded] = useState(false);
 
+    // Zoom and Pan state
+    const [candleCount, setCandleCount] = useState(60); // Initial display of 60 candles
+    const [panOffset, setPanOffset] = useState(0); // Offset for panning
+    const [isDragging, setIsDragging] = useState(false);
+    const [dragStart, setDragStart] = useState({ x: 0, offset: 0 });
+    const chartRef = useRef<SVGSVGElement>(null);
+
     // Derived State
     const assetShorts = shortPositions.filter(p => p.assetId === asset?.id);
 
@@ -238,6 +245,12 @@ export const StockDetail: React.FC = () => {
         buyAsset(asset.id, asset.price, positionAmount, 1, positionId);
     };
 
+    // Reset zoom/pan when interval changes
+    useEffect(() => {
+        setCandleCount(60);
+        setPanOffset(0);
+    }, [interval]);
+
     if (loading) {
         return (
             <div className="flex justify-center items-center min-h-screen pb-24">
@@ -263,8 +276,69 @@ export const StockDetail: React.FC = () => {
     const owned = portfolio.find(p => p.id === asset.id)?.amount || 0;
     const displayPrice = hoverData ? hoverData.price : asset.price;
 
-    // Chart Calculations
-    const prices = history.length > 0 ? history.map(h => h.price) : [];
+    // Zoom and Pan handlers
+    const handleWheel = (e: React.WheelEvent) => {
+        e.preventDefault();
+        const delta = e.deltaY;
+
+        setCandleCount(prev => {
+            const newCount = delta > 0 ? Math.min(prev + 10, history.length) : Math.max(prev - 10, 10);
+            setPanOffset(curr => Math.min(curr, Math.max(0, history.length - newCount)));
+            return newCount;
+        });
+    };
+
+    const handleMouseDown = (e: React.MouseEvent) => {
+        setIsDragging(true);
+        setDragStart({ x: e.clientX, offset: panOffset });
+    };
+
+    const handleMouseMove = (e: React.MouseEvent) => {
+        if (!isDragging || !chartRef.current) return;
+
+        const rect = chartRef.current.getBoundingClientRect();
+        const dx = e.clientX - dragStart.x;
+        const dragRatio = dx / rect.width;
+        const candleShift = Math.round(dragRatio * candleCount);
+
+        const newOffset = Math.max(0, Math.min(history.length - candleCount, dragStart.offset - candleShift));
+        setPanOffset(newOffset);
+    };
+
+    const handleMouseUp = () => {
+        setIsDragging(false);
+    };
+
+    const handleTouchStart = (e: React.TouchEvent) => {
+        if (e.touches.length === 1) {
+            setIsDragging(true);
+            setDragStart({ x: e.touches[0].clientX, offset: panOffset });
+        }
+    };
+
+    const handleTouchMove = (e: React.TouchEvent) => {
+        if (!isDragging || !chartRef.current || e.touches.length !== 1) return;
+
+        const rect = chartRef.current.getBoundingClientRect();
+        const dx = e.touches[0].clientX - dragStart.x;
+        const dragRatio = dx / rect.width;
+        const candleShift = Math.round(dragRatio * candleCount);
+
+        const newOffset = Math.max(0, Math.min(history.length - candleCount, dragStart.offset - candleShift));
+        setPanOffset(newOffset);
+    };
+
+    const handleTouchEnd = () => {
+        setIsDragging(false);
+    };
+
+    // Chart Calculations with Zoom/Pan
+    const visibleHistory = history.slice(
+        Math.max(0, history.length - candleCount - panOffset),
+        history.length - panOffset
+    );
+
+    const prices = visibleHistory.length > 0 ? visibleHistory.map(h => h.price) : [];
     const minPrice = prices.length > 0 ? Math.min(...prices) : 0;
     const maxPrice = prices.length > 0 ? Math.max(...prices) : 0;
     const priceRange = maxPrice - minPrice || 1;
@@ -273,8 +347,8 @@ export const StockDetail: React.FC = () => {
     const availableHeight = 100 - (padding * 2);
     const CHART_WIDTH = 100; // Full width
 
-    const chartData = history.map((point, index) => ({
-        x: history.length > 1 ? (index / (history.length - 1)) * CHART_WIDTH : CHART_WIDTH / 2,
+    const chartData = visibleHistory.map((point, index) => ({
+        x: visibleHistory.length > 1 ? (index / (visibleHistory.length - 1)) * CHART_WIDTH : CHART_WIDTH / 2,
         y: 100 - padding - ((point.price - minPrice) / priceRange) * availableHeight,
         open: point.open !== undefined ? 100 - padding - ((point.open - minPrice) / priceRange) * availableHeight : undefined,
         high: point.high !== undefined ? 100 - padding - ((point.high - minPrice) / priceRange) * availableHeight : undefined,
@@ -378,30 +452,40 @@ export const StockDetail: React.FC = () => {
                         <div className="h-60 w-full overflow-hidden">
                             {history.length > 0 ? (
                                 <svg
+                                    ref={chartRef}
                                     viewBox="0 0 100 100"
-                                    className="w-full h-full overflow-visible"
+                                    className={`w-full h-full overflow-visible ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
                                     preserveAspectRatio="none"
+                                    onWheel={handleWheel}
+                                    onMouseDown={handleMouseDown}
                                     onMouseMove={(e) => {
+                                        handleMouseMove(e);
+                                        if (isDragging) return;
+
                                         const rect = e.currentTarget.getBoundingClientRect();
                                         const x = e.clientX - rect.left;
                                         const width = rect.width;
-                                        // Adjust mouse mapping for CHART_WIDTH
                                         const chartAreaWidth = width * (CHART_WIDTH / 100);
                                         if (x <= chartAreaWidth) {
-                                            const index = Math.floor((x / chartAreaWidth) * history.length);
-                                            if (index >= 0 && index < history.length) {
+                                            const index = Math.floor((x / chartAreaWidth) * visibleHistory.length);
+                                            if (index >= 0 && index < visibleHistory.length) {
                                                 setHoverData({
-                                                    price: history[index].price,
-                                                    date: history[index].date,
+                                                    price: visibleHistory[index].price,
+                                                    date: visibleHistory[index].date,
                                                     index,
-                                                    open: history[index].open,
-                                                    high: history[index].high,
-                                                    low: history[index].low,
-                                                    close: history[index].close
+                                                    open: visibleHistory[index].open,
+                                                    high: visibleHistory[index].high,
+                                                    low: visibleHistory[index].low,
+                                                    close: visibleHistory[index].close
                                                 });
                                             }
                                         }
                                     }}
+                                    onMouseUp={handleMouseUp}
+                                    onMouseLeave={() => { handleMouseUp(); setHoverData(null); }}
+                                    onTouchStart={handleTouchStart}
+                                    onTouchMove={handleTouchMove}
+                                    onTouchEnd={handleTouchEnd}
                                 >
                                     {/* Grid Lines */}
                                     {[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((y) => (
@@ -411,17 +495,16 @@ export const StockDetail: React.FC = () => {
                                         <line key={`v-${x}`} x1={(x / 100) * CHART_WIDTH} y1="0" x2={(x / 100) * CHART_WIDTH} y2="100" stroke="var(--text-primary)" strokeOpacity="0.1" strokeWidth="0.2" />
                                     ))}
 
-                                    {/* Current Price Line */}
-                                    {(() => {
+                                    {/* Current Price Line - only show if viewing latest data */}
+                                    {panOffset === 0 && (() => {
                                         const lastPoint = chartData[chartData.length - 1];
                                         const currentPrice = history[history.length - 1].price;
-                                        const yCurrent = lastPoint.y; // Use close price Y for line
+                                        const yCurrent = lastPoint.y;
                                         const color = asset.change24h >= 0 ? '#089981' : '#F23645';
 
                                         return (
                                             <>
                                                 <line x1="0" y1={yCurrent} x2={CHART_WIDTH} y2={yCurrent} stroke={color} strokeOpacity="0.8" strokeWidth="0.3" strokeDasharray="2 2" />
-                                                {/* Price Label on Left Axis */}
                                                 <rect x="0" y={yCurrent - 3} width="22" height="6" fill={color} rx="1" />
                                                 <text x="1" y={yCurrent + 1.5} fill="white" fontSize="3.7" fontWeight="bold" style={{ fontFamily: 'sans-serif' }}>{formatPrice(currentPrice)}</text>
                                             </>
@@ -430,12 +513,12 @@ export const StockDetail: React.FC = () => {
 
                                     {/* Min/Max Points */}
                                     {(() => {
-                                        if (history.length === 0) return null;
+                                        if (visibleHistory.length === 0) return null;
                                         let localMinIdx = 0;
                                         let localMaxIdx = 0;
-                                        history.forEach((h, i) => {
-                                            if (h.price < history[localMinIdx].price) localMinIdx = i;
-                                            if (h.price > history[localMaxIdx].price) localMaxIdx = i;
+                                        visibleHistory.forEach((h, i) => {
+                                            if (h.price < visibleHistory[localMinIdx].price) localMinIdx = i;
+                                            if (h.price > visibleHistory[localMaxIdx].price) localMaxIdx = i;
                                         });
 
                                         const minPt = chartData[localMinIdx];
@@ -455,11 +538,11 @@ export const StockDetail: React.FC = () => {
                                             <>
                                                 {/* Max */}
                                                 <circle cx={maxPt.x} cy={maxPt.y} r="1" fill="var(--text-primary)" />
-                                                <text x={maxPt.x} y={maxLabelY} fill="var(--text-primary)" fontSize="3.7" textAnchor={getAnchor(maxPt.x)} fontWeight="bold" style={{ fontFamily: 'sans-serif' }}>${formatPrice(history[localMaxIdx].price)}</text>
+                                                <text x={maxPt.x} y={maxLabelY} fill="var(--text-primary)" fontSize="3.7" textAnchor={getAnchor(maxPt.x)} fontWeight="bold" style={{ fontFamily: 'sans-serif' }}>${formatPrice(visibleHistory[localMaxIdx].price)}</text>
 
                                                 {/* Min */}
                                                 <circle cx={minPt.x} cy={minPt.y} r="1" fill="var(--text-primary)" />
-                                                <text x={minPt.x} y={minLabelY} fill="var(--text-primary)" fontSize="3.7" textAnchor={getAnchor(minPt.x)} fontWeight="bold" style={{ fontFamily: 'sans-serif' }}>${formatPrice(history[localMinIdx].price)}</text>
+                                                <text x={minPt.x} y={minLabelY} fill="var(--text-primary)" fontSize="3.7" textAnchor={getAnchor(minPt.x)} fontWeight="bold" style={{ fontFamily: 'sans-serif' }}>${formatPrice(visibleHistory[localMinIdx].price)}</text>
                                             </>
                                         );
                                     })()}
@@ -467,9 +550,8 @@ export const StockDetail: React.FC = () => {
                                     {/* Chart Lines/Candles */}
                                     {chartType === 'candle' && chartData.map((point, i) => {
                                         if (point.open === undefined) return null;
-                                        // Cap max width to avoid huge candles
                                         const candleWidth = Math.min((CHART_WIDTH / chartData.length) * 0.7, 2);
-                                        const rawPoint = history[i];
+                                        const rawPoint = visibleHistory[i];
                                         const isGreenColor = (rawPoint.close || 0) >= (rawPoint.open || 0);
                                         const color = isGreenColor ? '#089981' : '#F23645';
 
@@ -571,33 +653,53 @@ export const StockDetail: React.FC = () => {
                     <div className="flex justify-between text-[10px] opacity-50 px-1 mt-1 font-mono">
                         {/* Start Date */}
                         <span>
-                            {history.length > 0 ? (
+                            {visibleHistory.length > 0 ? (
                                 (() => {
-                                    const d = new Date(history[0].date);
+                                    const d = new Date(visibleHistory[0].date);
                                     return `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
                                 })()
                             ) : ''}
                         </span>
 
-                        {/* Middle Date */}
-                        <span>
-                            {history.length > 0 ? (
-                                (() => {
-                                    const d = new Date(history[Math.floor(history.length / 2)].date);
-                                    return `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-                                })()
-                            ) : ''}
+                        {/* Middle: Zoom Info */}
+                        <span className="opacity-70">
+                            {candleCount} {chartType === 'candle' ? 'candles' : 'points'} {panOffset > 0 && `(-${panOffset})`}
                         </span>
 
                         {/* End Date */}
                         <span>
-                            {history.length > 0 ? (
+                            {visibleHistory.length > 0 ? (
                                 (() => {
-                                    const d = new Date(history[history.length - 1].date);
+                                    const d = new Date(visibleHistory[visibleHistory.length - 1].date);
                                     return `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
                                 })()
                             ) : ''}
                         </span>
+                    </div>
+
+                    {/* Zoom Controls */}
+                    <div className="flex justify-center gap-2 mt-2">
+                        <button
+                            onClick={() => setCandleCount(prev => Math.max(10, prev - 20))}
+                            className="px-3 py-1 text-xs rounded bg-white/5 hover:bg-white/10 transition-colors"
+                            style={{ color: 'var(--text-primary)' }}
+                        >
+                            Zoom In
+                        </button>
+                        <button
+                            onClick={() => setCandleCount(prev => Math.min(history.length, prev + 20))}
+                            className="px-3 py-1 text-xs rounded bg-white/5 hover:bg-white/10 transition-colors"
+                            style={{ color: 'var(--text-primary)' }}
+                        >
+                            Zoom Out
+                        </button>
+                        <button
+                            onClick={() => { setCandleCount(60); setPanOffset(0); }}
+                            className="px-3 py-1 text-xs rounded bg-white/5 hover:bg-white/10 transition-colors"
+                            style={{ color: 'var(--text-primary)' }}
+                        >
+                            Reset
+                        </button>
                     </div>
 
                     {/* Timeframe Selector & Chart Type Toggle */}
