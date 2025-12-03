@@ -103,8 +103,8 @@ initDB().then(async () => {
         // Initial fetch
         updateMarketData();
 
-        // Schedule updates every 1 minute
-        cron.schedule('* * * * *', () => {
+        // Schedule updates every 15 seconds
+        cron.schedule('*/15 * * * * *', () => {
             updateMarketData();
         });
 
