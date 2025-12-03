@@ -361,7 +361,8 @@ export const updateMarketData = async () => {
         console.log(`[Batch Fetch] Made ${yahooRequests} Yahoo API requests for ${allSymbols.length} symbols.`);
 
         // 3. Identify missing/failed Crypto for Binance Fallback
-        // Check which crypto symbols didn't get a valid price from Yahoo
+        // (Disabled to use Yahoo Finance for everything as requested)
+        /*
         const cryptoSymbols = SYMBOLS.filter(s => s.includes('-USD'));
         cryptoSymbols.forEach(symbol => {
             const found = results.find(r => r.symbol === symbol);
@@ -389,6 +390,7 @@ export const updateMarketData = async () => {
             }));
             results.push(...cryptoResults.filter(r => r !== null));
         }
+        */
 
         // 4. Process Results
         const processedItems = await Promise.all(results.map(async (quote: any) => {
@@ -532,9 +534,12 @@ export const fetchHistory = async (symbol: string, interval: string = '5m', forc
 
         let historyData: any[] = [];
 
+        // REMOVED: Custom Binance fetch for crypto
+        /*
         if (symbol.includes('-USD')) {
             historyData = await fetchCryptoHistory(symbol, interval);
         }
+        */
 
         if (historyData.length === 0) {
             try {
@@ -640,24 +645,29 @@ const updateLongTermCandles = async (interval: string, daysBack: number) => {
 
             let newCandles: any[] = [];
 
+            // REMOVED: Custom Binance fetch for crypto
+            /*
             if (symbol.includes('-USD')) {
                 const cryptoHistory = await fetchCryptoHistory(symbol, interval);
                 newCandles = cryptoHistory.slice(-10);
             } else {
-                try {
-                    const result = await yahooFinance.chart(symbol, queryOptions) as any;
-                    if (result && result.quotes && Array.isArray(result.quotes)) {
-                        newCandles = (result.quotes as any[])
-                            .filter((q: any) => q.close !== null)
-                            .map((q: any) => ({
-                                date: q.date.toISOString(),
-                                open: q.open, high: q.high, low: q.low, close: q.close, volume: q.volume, price: q.close
-                            }));
-                    }
-                } catch (yError) {
-                    // console.warn(`Yahoo fetch failed for ${symbol} ${interval}`);
+            */
+            try {
+                const result = await yahooFinance.chart(symbol, queryOptions) as any;
+                if (result && result.quotes && Array.isArray(result.quotes)) {
+                    newCandles = (result.quotes as any[])
+                        .filter((q: any) => q.close !== null)
+                        .map((q: any) => ({
+                            date: q.date.toISOString(),
+                            open: q.open, high: q.high, low: q.low, close: q.close, volume: q.volume, price: q.close
+                        }));
                 }
+            } catch (yError) {
+                // console.warn(`Yahoo fetch failed for ${symbol} ${interval}`);
             }
+            /*
+            }
+            */
 
             if (newCandles.length === 0) continue;
 
