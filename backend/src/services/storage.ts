@@ -64,9 +64,9 @@ export const initDB = async () => {
             );
         `);
 
-        // Market History Table (TimeSeries)
+        // Market History Table (TimeSeries) - UNLOGGED to save WAL space
         await query(`
-            CREATE TABLE IF NOT EXISTS market_history (
+            CREATE UNLOGGED TABLE IF NOT EXISTS market_history (
                 symbol VARCHAR(50),
                 interval VARCHAR(10),
                 data JSONB,
@@ -135,6 +135,14 @@ export const initDB = async () => {
             await query(`ALTER TABLE asset_comments ADD COLUMN IF NOT EXISTS parent_id VARCHAR(255)`);
         } catch (e) {
             console.log('Migration note: parent_id column might already exist or error ignored');
+        }
+
+        // Migration: Convert market_history to UNLOGGED to save space
+        try {
+            await query(`ALTER TABLE market_history SET UNLOGGED`);
+            console.log('Migration: market_history set to UNLOGGED');
+        } catch (e) {
+            console.log('Migration note: market_history might already be UNLOGGED or error ignored');
         }
 
         console.log('Database initialized successfully.');
