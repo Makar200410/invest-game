@@ -356,6 +356,17 @@ export const getMarketHistoryWithMeta = async (symbol: string, interval: string)
     }
 };
 
+export const pruneMarketNews = async () => {
+    try {
+        console.log('Pruning old market news...');
+        // Keep news for 30 days
+        await query("DELETE FROM market_news WHERE time < EXTRACT(EPOCH FROM (NOW() - INTERVAL '30 days')) * 1000");
+        console.log('Market news pruned successfully.');
+    } catch (error) {
+        console.error('Error pruning market news:', error);
+    }
+};
+
 // Insider Tips Functions
 export const addInsiderTip = async (tip: any) => {
     try {

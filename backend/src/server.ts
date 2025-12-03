@@ -22,7 +22,8 @@ import {
     getInsiderTips,
     addInsiderTip,
     deleteAssetComment,
-    pruneMarketHistory
+    pruneMarketHistory,
+    pruneMarketNews
 } from './services/storage.js';
 import { updateMarketData, fetchHistory, fetchYahooAnalysis, updateDailyCandles, updateMonthlyCandles, updateFundamentals, updateMarketNews, SYMBOLS, POPULAR_SYMBOLS } from './services/fetcher.js';
 
@@ -697,6 +698,7 @@ app.get('/api/leaderboard', async (req, res) => {
 initDB().then(async () => {
     // Prune old data on startup to free space
     await pruneMarketHistory();
+    await pruneMarketNews();
 
     app.listen(PORT, '0.0.0.0', () => {
         console.log(`Backend server running on port ${PORT}`);
