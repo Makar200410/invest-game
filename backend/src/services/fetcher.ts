@@ -63,7 +63,7 @@ export const updateMarketNews = async () => {
                         symbol: symbol, // Store with the symbol we searched for
                         title: n.title,
                         url: n.link,
-                        site: n.providerPublishTime ? new Date(n.providerPublishTime).toLocaleDateString() : 'Yahoo Finance',
+                        site: n.publisher || 'Yahoo Finance',
                         time: n.providerPublishTime ? new Date(n.providerPublishTime).getTime() : Date.now(),
                         imageUrl: n.thumbnail?.resolutions?.[0]?.url || '',
                         summary: ''
