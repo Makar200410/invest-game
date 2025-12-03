@@ -23,7 +23,7 @@ import {
     addInsiderTip,
     deleteAssetComment
 } from './services/storage.js';
-import { updateMarketData, fetchHistory, fetchYahooAnalysis, updateDailyCandles, updateMonthlyCandles, updateFundamentals, updateMarketNews } from './services/fetcher.js';
+import { updateMarketData, fetchHistory, fetchYahooAnalysis, updateDailyCandles, updateMonthlyCandles, updateFundamentals, updateMarketNews, SYMBOLS, POPULAR_SYMBOLS } from './services/fetcher.js';
 
 
 import {
@@ -125,9 +125,15 @@ console.log('Route registered.');
 // Initial fetch
 updateMarketData();
 
-// Schedule updates every 1 minute
+// Schedule updates every 10 seconds for POPULAR assets
 cron.schedule('*/10 * * * * *', () => {
-    updateMarketData();
+    updateMarketData(POPULAR_SYMBOLS);
+});
+
+// Schedule updates every 1 minute for the REST of the assets
+cron.schedule('* * * * *', () => {
+    const otherSymbols = SYMBOLS.filter(s => !POPULAR_SYMBOLS.includes(s));
+    updateMarketData(otherSymbols);
 });
 
 // Schedule daily history update at midnight (00:00)

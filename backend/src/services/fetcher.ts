@@ -133,7 +133,7 @@ const __dirname = path.dirname(__filename);
 // Create Yahoo Finance instance
 // Create Yahoo Finance instance
 const yahooFinance = new YahooFinance();
-const SYMBOLS = [
+export const SYMBOLS = [
     // --- Crypto (10) ---
     'BTC-USD', 'ETH-USD', 'SOL-USD', 'BNB-USD', 'XRP-USD',
     'ADA-USD', 'DOGE-USD', 'AVAX-USD', 'DOT-USD', 'MATIC-USD',
@@ -178,6 +178,20 @@ const SYMBOLS = [
     // --- Brazil (pt) ---
     'PETR4.SA', 'VALE3.SA', 'ITUB4.SA', 'BBDC4.SA', 'PETR3.SA', 'ABEV3.SA', 'B3SA3.SA', 'WEGE3.SA', 'BBAS3.SA', 'ITSA4.SA', 'SUZB3.SA', 'GGBR4.SA', 'RENT3.SA', 'RDOR3.SA',
     '^BVSP' // Indices
+];
+
+export const POPULAR_SYMBOLS = [
+    // Crypto (10)
+    'BTC-USD', 'ETH-USD', 'SOL-USD', 'BNB-USD', 'XRP-USD',
+    'ADA-USD', 'DOGE-USD', 'AVAX-USD', 'DOT-USD', 'MATIC-USD',
+    // Indices (3)
+    '^GSPC', '^DJI', '^IXIC',
+    // US Tech (7)
+    'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'NVDA', 'META',
+    // Commodities (5)
+    'GC=F', 'SI=F', 'CL=F', 'NG=F', 'HG=F',
+    // Forex (5)
+    'EURUSD=X', 'GBPUSD=X', 'JPY=X', 'CNY=X', 'CAD=X'
 ];
 
 // Helper to fetch crypto price from Binance
@@ -303,9 +317,9 @@ const updateCandleHistory = async (symbol: string, interval: string, price: numb
     }
 };
 
-export const updateMarketData = async () => {
+export const updateMarketData = async (targetSymbols: string[] = SYMBOLS) => {
     console.log('====================================');
-    console.log(`[${new Date().toISOString()}] Fetching fresh market data...`);
+    console.log(`[${new Date().toISOString()}] Fetching fresh market data for ${targetSymbols.length} items...`);
 
     let items = [];
 
@@ -313,8 +327,8 @@ export const updateMarketData = async () => {
         // Process in chunks
         const CHUNK_SIZE = 5;
         const chunks = [];
-        for (let i = 0; i < SYMBOLS.length; i += CHUNK_SIZE) {
-            chunks.push(SYMBOLS.slice(i, i + CHUNK_SIZE));
+        for (let i = 0; i < targetSymbols.length; i += CHUNK_SIZE) {
+            chunks.push(targetSymbols.slice(i, i + CHUNK_SIZE));
         }
 
         const results = [];
