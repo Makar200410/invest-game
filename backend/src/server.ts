@@ -42,6 +42,9 @@ app.use(cors());
 app.use(compression()); // Enable gzip compression
 app.use(express.json());
 
+app.use('/api/news', newsRoutes);
+app.use('/api/tournament', tournamentRoutes);
+
 // Initialize Database
 console.log('Checking DATABASE_URL...');
 if (!process.env.DATABASE_URL) {

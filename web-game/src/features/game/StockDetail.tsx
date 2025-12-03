@@ -1337,9 +1337,14 @@ export const StockDetail: React.FC = () => {
                                             </div>
                                         </div>
 
-                                        <h3 className="font-bold text-lg leading-snug mb-3 group-hover:text-blue-600 transition-colors" style={{ color: 'var(--text-primary)' }}>
+                                        <h3 className="font-bold text-lg leading-snug mb-2 group-hover:text-blue-600 transition-colors" style={{ color: 'var(--text-primary)' }}>
                                             {item.title}
                                         </h3>
+                                        {item.summary && (
+                                            <p className="text-sm opacity-70 line-clamp-2" style={{ color: 'var(--text-primary)' }}>
+                                                {item.summary}
+                                            </p>
+                                        )}
                                     </div>
                                 </a>
                             ))
