@@ -2,12 +2,48 @@ import YahooFinance from 'yahoo-finance2';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 import { getMarketHistory, saveMarketHistory, saveMarketItems, getMarketHistoryWithMeta, saveMarketFundamentals, getMarketFundamentals, saveMarketNews } from './storage.js';
 
 // ... (existing code)
 
 export const updateMarketNews = async () => {
     console.log(`[${new Date().toISOString()}] Running Market News Update...`);
+
+    // 1. Load from Repository
+    try {
+        const repoPath = path.join(__dirname, '../news_repository.json');
+        if (fs.existsSync(repoPath)) {
+            const repoNews = JSON.parse(fs.readFileSync(repoPath, 'utf-8'));
+            if (Array.isArray(repoNews) && repoNews.length > 0) {
+                const newsItemsToSave = [];
+                for (const item of repoNews) {
+                    if (item.tickers && Array.isArray(item.tickers)) {
+                        for (const ticker of item.tickers) {
+                            newsItemsToSave.push({
+                                id: `${item.id}-${ticker}`, // Unique ID per symbol
+                                symbol: ticker,
+                                title: item.title,
+                                url: item.url,
+                                site: item.site,
+                                time: item.time,
+                                imageUrl: item.favicon_url || '',
+                                summary: item.tags ? item.tags.join(', ') : ''
+                            });
+                        }
+                    }
+                }
+                if (newsItemsToSave.length > 0) {
+                    await saveMarketNews(newsItemsToSave);
+                    console.log(`Loaded ${newsItemsToSave.length} news items from repository.`);
+                }
+            }
+        }
+    } catch (e) {
+        console.error("Error loading news repository:", e);
+    }
 
     // Process in chunks
     const CHUNK_SIZE = 5;
@@ -53,6 +89,7 @@ export const updateMarketNews = async () => {
 
 export const updateFundamentals = async () => {
     console.log(`[${new Date().toISOString()}] Running Fundamentals Update...`);
+    let updatedCount = 0;
 
     // Process in chunks to avoid rate limiting
     const CHUNK_SIZE = 5;
@@ -82,17 +119,18 @@ export const updateFundamentals = async () => {
 
                 if (result) {
                     await saveMarketFundamentals(symbol, result);
+                    updatedCount++;
                     // console.log(`Updated fundamentals for ${symbol}`);
                 }
             } catch (error) {
-                // console.error(`Failed to update fundamentals for ${symbol}:`, error);
+                console.error(`Failed to update fundamentals for ${symbol}:`, error);
             }
         }));
 
         // Small delay between chunks
         await new Promise(resolve => setTimeout(resolve, 2000));
     }
-    console.log(`[${new Date().toISOString()}] Fundamentals Update Complete.`);
+    console.log(`[${new Date().toISOString()}] Fundamentals Update Complete. Updated: ${updatedCount}/${SYMBOLS.length}`);
 };
 
 export const fetchYahooAnalysis = async (symbol: string) => {
@@ -127,8 +165,7 @@ export const fetchYahooAnalysis = async (symbol: string) => {
     }
 };
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+
 
 // Create Yahoo Finance instance
 // Create Yahoo Finance instance
