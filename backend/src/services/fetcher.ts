@@ -270,6 +270,12 @@ const updateCandleHistory = async (symbol: string, interval: string, price: numb
         const isSameCandle = lastPoint && lastPointTime >= candleStart;
 
         if (isSameCandle) {
+            // Check if anything changed to avoid unnecessary DB writes (WAL growth)
+            if (lastPoint.close === price && lastPoint.high === price && lastPoint.low === price && (!volume || lastPoint.volume === volume)) {
+                // No change in candle data, skip DB write
+                return;
+            }
+
             // Update existing candle
             lastPoint.close = price;
             lastPoint.price = price;

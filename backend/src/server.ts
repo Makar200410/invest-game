@@ -93,81 +93,63 @@ initDB().then(async () => {
         }
 
         // Clear all historical data cache on startup to force fresh fetches
+        // Clear all historical data cache on startup to force fresh fetches
         console.log('Clearing historical data cache to force fresh data fetching...');
         await query('DELETE FROM market_history');
         // Also try to truncate to reclaim space if DELETE didn't help enough (though DELETE is usually sufficient for rows, TRUNCATE is better for space)
         await pruneMarketHistory();
         console.log('Cache cleared. Market data will be fetched fresh on first request.');
+
+        // Initial fetch
+        updateMarketData();
+
+        // Schedule updates every 10 seconds
+        cron.schedule('*/10 * * * * *', () => {
+            updateMarketData();
+        });
+
+        // Schedule daily history update at midnight (00:00)
+        cron.schedule('0 0 * * *', () => {
+            updateDailyCandles();
+        });
+
+        // Schedule monthly history update at midnight on the 1st of every month
+        cron.schedule('0 0 1 * *', () => {
+            updateMonthlyCandles();
+        });
+
+        // Schedule fundamentals update every 30 minutes
+        cron.schedule('*/30 * * * *', () => {
+            updateFundamentals();
+        });
+
+        // Schedule news update every 30 minutes (offset by 15 mins to distribute load)
+        cron.schedule('15,45 * * * *', () => {
+            updateMarketNews();
+        });
+
+        // Schedule weekly tournament processing (Sunday midnight)
+        cron.schedule('0 0 * * 0', async () => {
+            console.log('Running weekly tournament processing...');
+            try {
+                const response = await fetch(`http://localhost:${PORT}/api/tournament/process-week`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ secret: process.env.ADMIN_SECRET || 'dev_secret' })
+                });
+                const result = await response.json();
+                console.log('Tournament processing result:', result);
+            } catch (error) {
+                console.error('Error processing tournament:', error);
+            }
+        });
+
     } catch (e) {
         console.error('Startup DB Check Failed:', e);
     }
 });
 
-// Register Routes
-console.log('Registering /api/news route...');
-app.use('/api/news', newsRoutes);
-app.use('/api/tournament', tournamentRoutes);
-app.get('/api/test', (req, res) => res.send('Test working'));
 
-// Admin endpoint to clear cache
-app.delete('/api/admin/cache/:symbol', async (req, res) => {
-    const { symbol } = req.params;
-    const { interval } = req.query;
-    const queryInterval = (interval as string) || '1d';
-
-    try {
-        await query('DELETE FROM market_history WHERE symbol = $1 AND interval = $2', [symbol, queryInterval]);
-        res.json({ success: true, message: `Cache cleared for ${symbol} (${queryInterval})` });
-    } catch (error) {
-        res.status(500).json({ error: String(error) });
-    }
-});
-
-console.log('Route registered.');
-
-// Initial fetch
-updateMarketData();
-
-// Schedule updates every 1 minute
-cron.schedule('*/10 * * * * *', () => {
-    updateMarketData();
-});
-
-// Schedule daily history update at midnight (00:00)
-cron.schedule('0 0 * * *', () => {
-    updateDailyCandles();
-});
-
-// Schedule monthly history update at midnight on the 1st of every month
-cron.schedule('0 0 1 * *', () => {
-    updateMonthlyCandles();
-});
-
-// Schedule fundamentals update every 30 minutes
-cron.schedule('*/30 * * * *', () => {
-    updateFundamentals();
-});
-
-// Schedule news update every 30 minutes (offset by 15 mins to distribute load)
-cron.schedule('15,45 * * * *', () => {
-    updateMarketNews();
-});
-
-// Schedule weekly tournament processing (Sunday midnight)
-cron.schedule('0 0 * * 0', async () => {
-    console.log('Running weekly tournament processing...');
-    try {
-        const response = await fetch(`http://localhost:${PORT}/api/tournament/process-week`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ secret: process.env.ADMIN_SECRET || 'dev_secret' })
-        });
-        const result = await response.json();
-        console.log('Tournament processing result:', result);
-    } catch (error) {
-        console.error('Error processing tournament:', error);
-    }
-});
 
 // Endpoints
 
