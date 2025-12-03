@@ -126,7 +126,7 @@ console.log('Route registered.');
 updateMarketData();
 
 // Schedule updates every 1 minute
-cron.schedule('* * * * *', () => {
+cron.schedule('*/10 * * * * *', () => {
     updateMarketData();
 });
 

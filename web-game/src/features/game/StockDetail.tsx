@@ -27,7 +27,7 @@ export const StockDetail: React.FC = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const { balance, buyAsset, portfolio, skills, shortPositions, user, addNotification } = useGameStore();
+    const { balance, buyAsset, portfolio, skills, shortPositions, user, addNotification, favorites, toggleFavorite } = useGameStore();
 
     // State
     const [asset, setAsset] = useState<MarketItem | null>(null);
@@ -143,7 +143,7 @@ export const StockDetail: React.FC = () => {
         loadData();
 
         // Polling for price updates
-        const pollInterval = setInterval(() => loadData(true), 60000); // 60s polling
+        const pollInterval = setInterval(() => loadData(true), 10000); // 10s polling
         return () => clearInterval(pollInterval);
     }, [id, interval, indicatorInterval, skills]);
 
@@ -302,7 +302,12 @@ export const StockDetail: React.FC = () => {
                 </div>
                 <div className="flex gap-3">
                     <button className="opacity-70 hover:opacity-100"><TrendingUp size={20} /></button>
-                    <button className="opacity-70 hover:opacity-100">★</button>
+                    <button
+                        onClick={() => asset && toggleFavorite(asset.id)}
+                        className={`transition-colors ${asset && favorites.includes(asset.id) ? 'text-yellow-400 opacity-100' : 'opacity-70 hover:opacity-100'}`}
+                    >
+                        <span className="text-xl">★</span>
+                    </button>
                 </div>
             </div>
 

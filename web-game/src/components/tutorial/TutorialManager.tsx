@@ -24,7 +24,7 @@ const STEPS: TutorialStep[] = [
         titleKey: 'tutorial_balance_title',
         contentKey: 'tutorial_balance_content',
         position: 'bottom',
-        path: '/'
+        path: '/house'
     },
     {
         id: 'market-item',
@@ -32,7 +32,7 @@ const STEPS: TutorialStep[] = [
         titleKey: 'tutorial_market_title',
         contentKey: 'tutorial_market_content',
         position: 'top',
-        path: '/market',
+        path: '/',
         offset: 200
     },
     {

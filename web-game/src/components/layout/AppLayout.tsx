@@ -90,8 +90,8 @@ export const AppLayout = () => {
     };
 
     const navItems = [
-        { path: '/', icon: Home, label: t('house', 'House'), id: 'nav-house' },
-        { path: '/market', icon: TrendingUp, label: t('market'), id: 'nav-market' },
+        { path: '/', icon: TrendingUp, label: t('market'), id: 'nav-market' },
+        { path: '/house', icon: Home, label: t('house', 'House'), id: 'nav-house' },
         { path: '/ranking', icon: Trophy, label: t('rank'), id: 'nav-ranking' },
         { path: '/skills', icon: Zap, label: t('skills'), id: 'nav-skills' },
         { path: '/news', icon: Newspaper, label: t('news'), id: 'nav-news' },

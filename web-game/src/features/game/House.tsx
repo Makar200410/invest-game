@@ -11,7 +11,7 @@ import { AssetIcon } from '../../components/ui/AssetIcon';
 export const House: React.FC = () => {
     const { t } = useTranslation();
     const navigate = useNavigate();
-    const { balance, loan, portfolio, leveragedPositions, shortPositions, user, skills, tradesToday, getDiversificationBonus, checkOrders } = useGameStore();
+    const { balance, loan, portfolio, leveragedPositions, shortPositions, user, skills, tradesToday, getDiversificationBonus, checkOrders, favorites } = useGameStore();
     const [items, setItems] = useState<MarketItem[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -115,7 +115,7 @@ export const House: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        const interval = setInterval(updatePricesOnly, 60000);
+        const interval = setInterval(updatePricesOnly, 10000);
         return () => clearInterval(interval);
     }, []);
 
@@ -222,6 +222,14 @@ export const House: React.FC = () => {
                         </div>
 
                         <div className="flex flex-wrap gap-2">
+                            {/* Selected Assets Badge */}
+                            <div
+                                onClick={() => navigate('/favorites')}
+                                className="px-3 py-2 rounded-lg border text-[10px] font-bold uppercase tracking-wide flex items-center gap-2 transition-all cursor-pointer select-none bg-gradient-to-b from-amber-500/10 to-amber-900/20 border-amber-500/20 text-amber-400 shadow-[0_4px_12px_rgba(245,158,11,0.1)] hover:bg-amber-500/20"
+                            >
+                                <div className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]"></div>
+                                {t('selected_assets', 'Selected Assets')} ({favorites.length})
+                            </div>
                             {/* Portfolio Manager Badge */}
                             <div
                                 onClick={() => !skills.portfolioManager && navigate('/skills')}
@@ -297,7 +305,7 @@ export const House: React.FC = () => {
                 className="px-4"
             >
                 <button
-                    onClick={() => navigate('/market')}
+                    onClick={() => navigate('/')}
                     className="w-full group relative"
                 >
                     {/* Animated Gradient Glow */}
@@ -454,7 +462,7 @@ export const House: React.FC = () => {
                 <div className="px-4 py-8 text-center opacity-50">
                     <p className="text-sm">{t('no_assets', 'No active assets')}</p>
                     <button
-                        onClick={() => navigate('/market')}
+                        onClick={() => navigate('/')}
                         className="mt-4 px-4 py-2 rounded-xl bg-blue-500 text-white font-bold text-sm"
                     >
                         {t('go_to_market', 'Go to Market')}

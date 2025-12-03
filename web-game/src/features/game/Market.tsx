@@ -44,7 +44,7 @@ export const Market: React.FC = () => {
     };
 
     const navigate = useNavigate();
-    const { balance, loan, portfolio, leveragedPositions, shortPositions, user, skills, tradesToday, getDiversificationBonus, checkOrders } = useGameStore();
+    const { balance, loan, portfolio, leveragedPositions, shortPositions, user, skills, tradesToday, getDiversificationBonus, checkOrders, favorites } = useGameStore();
     const [items, setItems] = useState<MarketItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [marketInterval] = useState<string>('1d'); // Default to daily
@@ -302,7 +302,17 @@ export const Market: React.FC = () => {
                             </button>
                         </div>
 
+
+
                         <div className="flex flex-wrap gap-2">
+                            {/* Selected Assets Badge */}
+                            <div
+                                onClick={() => navigate('/favorites')}
+                                className="px-3 py-2 rounded-lg border text-[10px] font-bold uppercase tracking-wide flex items-center gap-2 transition-all cursor-pointer select-none bg-gradient-to-b from-amber-500/10 to-amber-900/20 border-amber-500/20 text-amber-400 shadow-[0_4px_12px_rgba(245,158,11,0.1)] hover:bg-amber-500/20"
+                            >
+                                <div className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]"></div>
+                                {t('selected_assets', 'Selected Assets')} ({favorites.length})
+                            </div>
                             {/* Portfolio Manager Badge */}
                             <div
                                 onClick={() => !skills.portfolioManager && navigate('/skills')}
@@ -478,6 +488,7 @@ export const Market: React.FC = () => {
                 <div className="flex flex-wrap gap-2 justify-start pb-2">
                     {[
                         { id: 'popular', label: t('cat_popular') },
+                        { id: 'favorites', label: t('favorites', 'Favorites') },
                         { id: 'stock', label: t('cat_stocks') },
                         { id: 'crypto', label: t('cat_crypto') },
                         { id: 'index', label: t('cat_indices') },
@@ -532,6 +543,7 @@ export const Market: React.FC = () => {
                     {items
                         .filter(item => {
                             if (activeTab === 'popular') return POPULAR_IDS.includes(item.id);
+                            if (activeTab === 'favorites') return favorites.includes(item.id);
                             if (activeTab === 'stock') {
                                 if (item.type !== 'stock') return false;
                                 if (selectedCountry === 'all') return true;

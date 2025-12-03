@@ -181,6 +181,8 @@ interface GameState {
     unlockAllSkills: () => void;
     notifications: Notification[];
     settings: GameSettings;
+    favorites: string[];
+    toggleFavorite: (assetId: string) => void;
     addNotification: (title: string, message: string, type?: 'info' | 'success' | 'warning' | 'error') => void;
     markNotificationAsRead: (id: string) => void;
     clearNotifications: () => void;
@@ -196,6 +198,7 @@ export const useGameStore = create<GameState>()(
             leveragedPositions: [],
             shortPositions: [],
             orders: [],
+            favorites: [],
             skills: {
                 stopLossMaster: false,
                 leverageTrading: false,
@@ -221,6 +224,16 @@ export const useGameStore = create<GameState>()(
             notifications: [],
             settings: {
                 notificationsEnabled: true
+            },
+
+            toggleFavorite: (assetId) => {
+                const state = get();
+                const isFav = state.favorites.includes(assetId);
+                set({
+                    favorites: isFav
+                        ? state.favorites.filter(id => id !== assetId)
+                        : [...state.favorites, assetId]
+                });
             },
 
             addNotification: (title, message, type = 'info') => {
@@ -665,6 +678,7 @@ export const useGameStore = create<GameState>()(
                     leveragedPositions: [],
                     shortPositions: [],
                     orders: [],
+                    favorites: [],
                     skills: {
                         stopLossMaster: false,
                         leverageTrading: false,
@@ -699,6 +713,7 @@ export const useGameStore = create<GameState>()(
                             leveragedPositions: state.leveragedPositions,
                             shortPositions: state.shortPositions,
                             orders: state.orders,
+                            favorites: state.favorites,
                             skills: state.skills,
                             skillPoints: state.skillPoints,
                             tradesToday: state.tradesToday,
@@ -733,7 +748,7 @@ export const useGameStore = create<GameState>()(
         }),
         {
             name: 'invest-game-storage',
-            version: 2,
+            version: 3,
             migrate: (persistedState: any, version) => {
                 if (version < 2) {
                     // Migration to version 2 (adding loan)
@@ -743,6 +758,7 @@ export const useGameStore = create<GameState>()(
                         orders: persistedState.orders || [],
                         shortPositions: persistedState.shortPositions || [],
                         leveragedPositions: persistedState.leveragedPositions || [],
+                        favorites: [],
                         skills: {
                             ...persistedState.skills,
                             stopLossMaster: persistedState.skills?.stopLossMaster || false,
@@ -752,6 +768,13 @@ export const useGameStore = create<GameState>()(
                         tutorialActive: false,
                         tutorialStep: 0,
                         hasCompletedTutorial: false
+                    };
+                }
+                if (version < 3) {
+                    // Migration to version 3 (adding favorites)
+                    return {
+                        ...persistedState,
+                        favorites: persistedState.favorites || []
                     };
                 }
                 return persistedState;

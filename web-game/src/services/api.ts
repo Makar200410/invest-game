@@ -233,6 +233,24 @@ export interface UserProfile {
     rankTier: number;
     portfolioValue: number;
     levelName?: string;
+    loan?: number;
+    orders?: any[];
+    skills?: { [key: string]: boolean };
+    balance?: number;
+    lastLogin?: string;
+    portfolio?: { id: string; amount: number; avgPrice: number }[];
+    skillPoints?: number;
+    tradesToday?: number;
+    lastTradeDate?: string;
+    shortPositions?: {
+        id: string;
+        amount: number;
+        assetId: string;
+        leverage: number;
+        entryPrice: number;
+        marginLocked: number;
+    }[];
+    leveragedPositions?: any[];
     stats?: {
         totalTrades: number;
         winRate: number;
@@ -254,6 +272,13 @@ export const fetchUserProfile = async (username: string): Promise<UserProfile | 
                     joinDate: new Date().toISOString(),
                     rankTier: status.rankTier,
                     portfolioValue: status.currentBalance,
+                    balance: status.currentBalance,
+                    skills: {},
+                    portfolio: [],
+                    tradesToday: 0,
+                    lastLogin: new Date().toISOString(),
+                    loan: 0,
+                    skillPoints: 0,
                     levelName: status.levelName
                 };
             }

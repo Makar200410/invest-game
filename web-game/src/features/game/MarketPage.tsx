@@ -150,7 +150,7 @@ export const MarketPage: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        const interval = setInterval(updatePricesOnly, 60000);
+        const interval = setInterval(updatePricesOnly, 10000);
         return () => clearInterval(interval);
     }, []);
 
@@ -304,7 +304,7 @@ export const MarketPage: React.FC = () => {
                         const owned = (portfolioItem?.amount || 0) + leveragedAmount;
 
                         const flash = priceFlashes[item.id];
-                        const flashClass = flash === 'up' ? 'bg-green-500/20' : flash === 'down' ? 'bg-red-500/20' : '';
+                        const flashClass = flash === 'up' ? 'bg-emerald-900/90' : flash === 'down' ? 'bg-rose-900/90' : '';
 
                         return (
                             <div

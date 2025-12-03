@@ -14,6 +14,7 @@ import { BatchClosePage } from './features/game/BatchClosePage';
 import { Portfolio } from './features/game/Portfolio'; // Assuming Portfolio is a new component
 import { Profile } from './features/game/Profile';
 import { UserProfile } from './features/game/UserProfile';
+import { FavoritesPage } from './features/game/FavoritesPage';
 
 import { App as CapacitorApp } from '@capacitor/app';
 
@@ -50,10 +51,16 @@ function App() {
     const setupBackButton = async () => {
       const listener = await CapacitorApp.addListener('backButton', () => {
         const currentPath = locationRef.current.pathname;
-        if (currentPath === '/' || currentPath === '/market') {
+        if (currentPath === '/') {
           CapacitorApp.minimizeApp();
         } else {
-          navigate(-1);
+          // Check if we can go back (React Router keeps state.idx)
+          // If we can't go back (idx is 0 or undefined), go to Home
+          if (window.history.state && window.history.state.idx > 0) {
+            navigate(-1);
+          } else {
+            navigate('/', { replace: true });
+          }
         }
       });
 
@@ -74,8 +81,8 @@ function App() {
       <AnimatePresence mode="wait"> {/* AnimatePresence is moved here */}
         <Routes location={location} key={location.pathname}> {/* Routes now uses location and key for animations */}
           <Route element={<AppLayout />}>
-            <Route path="/" element={<House />} />
-            <Route path="/market" element={<MarketPage />} />
+            <Route path="/" element={<MarketPage />} />
+            <Route path="/house" element={<House />} />
             <Route path="/stock/:id" element={<StockDetail />} />
             <Route path="/trade/batch" element={<BatchClosePage />} />
             <Route path="/trade/:id" element={<TradePage />} />
@@ -85,6 +92,7 @@ function App() {
             <Route path="/news" element={<NewsPage />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/profile/:username" element={<UserProfile />} />
+            <Route path="/favorites" element={<FavoritesPage />} />
           </Route>
         </Routes>
       </AnimatePresence>
