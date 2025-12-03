@@ -150,7 +150,7 @@ export const MarketPage: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        const interval = setInterval(updatePricesOnly, 10000);
+        const interval = setInterval(updatePricesOnly, 60000);
         return () => clearInterval(interval);
     }, []);
 
