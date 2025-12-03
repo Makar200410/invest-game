@@ -563,12 +563,10 @@ export const fetchHistory = async (symbol: string, interval: string = '5m', forc
 
         let historyData: any[] = [];
 
-        // REMOVED: Custom Binance fetch for crypto
-        /*
+        // Use Binance for crypto history as Yahoo provides poor quality minute-level data
         if (symbol.includes('-USD')) {
             historyData = await fetchCryptoHistory(symbol, interval);
         }
-        */
 
         if (historyData.length === 0) {
             try {
@@ -674,29 +672,26 @@ const updateLongTermCandles = async (interval: string, daysBack: number) => {
 
             let newCandles: any[] = [];
 
-            // REMOVED: Custom Binance fetch for crypto
-            /*
+
             if (symbol.includes('-USD')) {
                 const cryptoHistory = await fetchCryptoHistory(symbol, interval);
                 newCandles = cryptoHistory.slice(-10);
             } else {
-            */
-            try {
-                const result = await yahooFinance.chart(symbol, queryOptions) as any;
-                if (result && result.quotes && Array.isArray(result.quotes)) {
-                    newCandles = (result.quotes as any[])
-                        .filter((q: any) => q.close !== null)
-                        .map((q: any) => ({
-                            date: q.date.toISOString(),
-                            open: q.open, high: q.high, low: q.low, close: q.close, volume: q.volume, price: q.close
-                        }));
+                try {
+                    const result = await yahooFinance.chart(symbol, queryOptions) as any;
+                    if (result && result.quotes && Array.isArray(result.quotes)) {
+                        newCandles = (result.quotes as any[])
+                            .filter((q: any) => q.close !== null)
+                            .map((q: any) => ({
+                                date: q.date.toISOString(),
+                                open: q.open, high: q.high, low: q.low, close: q.close, volume: q.volume, price: q.close
+                            }));
+                    }
+                } catch (yError) {
+                    // console.warn(`Yahoo fetch failed for ${symbol} ${interval}`);
                 }
-            } catch (yError) {
-                // console.warn(`Yahoo fetch failed for ${symbol} ${interval}`);
             }
-            /*
-            }
-            */
+
 
             if (newCandles.length === 0) continue;
 
