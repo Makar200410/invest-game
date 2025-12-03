@@ -311,89 +311,96 @@ const updateCandleHistory = async (symbol: string, interval: string, price: numb
 
 export const updateMarketData = async () => {
     console.log('====================================');
-    console.log(`[${new Date().toISOString()}] Fetching fresh market data...`);
+    console.log(`[${new Date().toISOString()}] Fetching fresh market data (Batch Mode)...`);
 
     let items = [];
 
     try {
-        // Process in chunks
-        const CHUNK_SIZE = 5;
-        const chunks = [];
-        for (let i = 0; i < SYMBOLS.length; i += CHUNK_SIZE) {
-            chunks.push(SYMBOLS.slice(i, i + CHUNK_SIZE));
+        // 1. Separate Crypto (Binance) vs Yahoo Symbols
+        const cryptoSymbols = SYMBOLS.filter(s => s.includes('-USD'));
+        const yahooSymbols = SYMBOLS.filter(s => !s.includes('-USD'));
+
+        const results: any[] = [];
+
+        // 2. Fetch Yahoo Quotes in Batch (Single Request)
+        // Note: Yahoo Finance API might limit batch size, but 50-60 is usually fine.
+        // If it fails, we might need to chunk it, but let's try full batch first or chunks of 30.
+        const YAHOO_CHUNK_SIZE = 30;
+        for (let i = 0; i < yahooSymbols.length; i += YAHOO_CHUNK_SIZE) {
+            const chunk = yahooSymbols.slice(i, i + YAHOO_CHUNK_SIZE);
+            try {
+                const quotes = await yahooFinance.quote(chunk);
+                results.push(...quotes);
+            } catch (e) {
+                console.error('Batch quote fetch failed:', e);
+            }
+            await new Promise(resolve => setTimeout(resolve, 500)); // Small delay between chunks
         }
 
-        const results = [];
-        for (const chunk of chunks) {
-            const chunkResults = await Promise.all(chunk.map(async (symbol) => {
-                try {
-                    let price = 0;
-                    let marketTime = 0;
-                    let volume = 0;
-                    let quoteResult: any = null;
+        // 3. Fetch Crypto from Binance (Parallel)
+        const cryptoResults = await Promise.all(cryptoSymbols.map(async (symbol) => {
+            const data = await fetchCryptoPrice(symbol);
+            if (data) {
+                return {
+                    symbol: symbol,
+                    regularMarketPrice: data.price,
+                    regularMarketTime: new Date(data.time),
+                    regularMarketVolume: 0, // Binance ticker doesn't give 24h vol easily here, can ignore or fetch detail
+                    shortName: symbol,
+                    regularMarketChangePercent: 0 // We'd need 24h ticker for this
+                };
+            }
+            return null;
+        }));
+        results.push(...cryptoResults.filter(r => r !== null));
 
-                    // Try Binance for Crypto first
-                    if (symbol.includes('-USD')) {
-                        const binanceData = await fetchCryptoPrice(symbol);
-                        if (binanceData) {
-                            price = binanceData.price;
-                            marketTime = binanceData.time;
-                        }
-                    }
+        // 4. Process Results
+        const processedItems = await Promise.all(results.map(async (quote: any) => {
+            try {
+                const symbol = quote.symbol;
+                const price = quote.regularMarketPrice;
+                const marketTime = quote.regularMarketTime ? new Date(quote.regularMarketTime).getTime() : Date.now();
+                const volume = quote.regularMarketVolume || 0;
 
-                    // Fallback to Yahoo
-                    if (price === 0) {
-                        try {
-                            quoteResult = await yahooFinance.quote(symbol);
-                            if (quoteResult && quoteResult.regularMarketPrice) {
-                                price = quoteResult.regularMarketPrice;
-                                marketTime = quoteResult.regularMarketTime ? new Date(quoteResult.regularMarketTime).getTime() : Date.now();
-                                volume = quoteResult.regularMarketVolume || 0;
-                            }
-                        } catch (yError) {
-                            // console.warn(`Yahoo quote failed for ${symbol}`);
-                        }
-                    }
+                if (!price) return null;
 
-                    if (price === 0) return null;
+                // Update 1m, 5m, 1h databases
+                await updateCandleHistory(symbol, '1m', price, volume, marketTime);
+                await updateCandleHistory(symbol, '5m', price, volume, marketTime);
+                await updateCandleHistory(symbol, '1h', price, volume, marketTime);
 
-                    // Update 1m, 5m, 1h databases
-                    await updateCandleHistory(symbol, '1m', price, volume, marketTime);
-                    await updateCandleHistory(symbol, '5m', price, volume, marketTime);
-                    await updateCandleHistory(symbol, '1h', price, volume, marketTime);
+                // For Sparkline (Main Page):
+                // Instead of fetching 1d history every minute (which is 60 requests),
+                // we will read from our local DB. The DB is updated daily via cron.
+                // If DB is empty, we might return empty or trigger a background fetch?
+                // For now, just read DB.
+                const history1d = await getMarketHistory(symbol, '1d');
 
-                    // Fetch 1d history for Sparkline (Main Page)
-                    // We use '1d' history which is updated daily
-                    const history1d = await fetchHistory(symbol, '1d');
+                // Determine Type
+                let type = 'stock';
+                if (symbol.includes('-USD')) type = 'crypto';
+                else if (['GC=F', 'SI=F', 'CL=F', 'NG=F', 'HG=F', 'PL=F', 'PA=F', 'ZC=F', 'ZS=F', 'ZW=F'].includes(symbol)) type = 'commodity';
+                else if (symbol.endsWith('=X')) type = 'forex';
+                else if (symbol.startsWith('^')) type = 'index';
+                else if (symbol.endsWith('=F')) type = 'future';
 
-                    // Determine Type
-                    let type = 'stock';
-                    if (symbol.includes('-USD')) type = 'crypto';
-                    else if (['GC=F', 'SI=F', 'CL=F', 'NG=F', 'HG=F', 'PL=F', 'PA=F', 'ZC=F', 'ZS=F', 'ZW=F'].includes(symbol)) type = 'commodity';
-                    else if (symbol.endsWith('=X')) type = 'forex';
-                    else if (symbol.startsWith('^')) type = 'index';
-                    else if (symbol.endsWith('=F')) type = 'future';
+                return {
+                    id: symbol,
+                    symbol: symbol.replace('-USD', '').replace('=F', '').replace('=X', ''),
+                    name: quote.shortName || quote.longName || symbol,
+                    price: price,
+                    change24h: quote.regularMarketChangePercent || 0,
+                    type: type,
+                    sparkline: Array.isArray(history1d) ? history1d.slice(-90) : []
+                };
+            } catch (err) {
+                console.error(`Error processing ${quote.symbol}:`, err);
+                return null;
+            }
+        }));
 
-                    return {
-                        id: symbol,
-                        symbol: symbol.replace('-USD', '').replace('=F', '').replace('=X', ''),
-                        name: quoteResult?.shortName || quoteResult?.longName || symbol,
-                        price: price,
-                        change24h: quoteResult?.regularMarketChangePercent || 0,
-                        type: type,
-                        sparkline: history1d
-                    };
-                } catch (err) {
-                    console.error(`Error fetching ${symbol}:`, err);
-                    return null;
-                }
-            }));
+        items = processedItems.filter(item => item !== null);
 
-            results.push(...chunkResults);
-            await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-
-        items = results.filter(item => item !== null);
     } catch (error) {
         console.error("Fetch failed:", error);
     }
