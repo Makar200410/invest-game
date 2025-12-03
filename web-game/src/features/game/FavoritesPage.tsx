@@ -15,21 +15,18 @@ export const FavoritesPage: React.FC = () => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const loadData = async (isBackground = false) => {
-            if (!isBackground) setLoading(true);
+        const loadData = async () => {
+            setLoading(true);
             try {
                 const allAssets = await fetchCryptoMarket(true); // pricesOnly = true is enough for list
                 setItems(allAssets.filter(item => favorites.includes(item.id)));
             } catch (error) {
                 console.error("Failed to load favorites", error);
             } finally {
-                if (!isBackground) setLoading(false);
+                setLoading(false);
             }
         };
         loadData();
-
-        const interval = setInterval(() => loadData(true), 10000);
-        return () => clearInterval(interval);
     }, [favorites]);
 
     return (

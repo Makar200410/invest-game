@@ -296,14 +296,11 @@ export const getMarketItems = async (): Promise<any[]> => {
 
 export const saveMarketHistory = async (symbol: string, interval: string, data: any[]) => {
     try {
-        // Enforce strict limit of 500 data points per timeframe to save DB space
-        const limitedData = data.length > 500 ? data.slice(-500) : data;
-
         await query(
             `INSERT INTO market_history (symbol, interval, data, last_updated)
              VALUES ($1, $2, $3, NOW())
              ON CONFLICT (symbol, interval) DO UPDATE SET data = $3, last_updated = NOW()`,
-            [symbol, interval, JSON.stringify(limitedData)]
+            [symbol, interval, JSON.stringify(data)]
         );
     } catch (error) {
         console.error('Error saving market history:', error);
@@ -323,22 +320,6 @@ export const getMarketHistory = async (symbol: string, interval: string): Promis
     }
 };
 
-export const pruneMarketHistory = async () => {
-    try {
-        console.log('Pruning old market history...');
-        // Keep 1m data for 2 days
-        await query("DELETE FROM market_history WHERE interval = '1m' AND last_updated < NOW() - INTERVAL '2 days'");
-        // Keep 5m data for 14 days
-        await query("DELETE FROM market_history WHERE interval = '5m' AND last_updated < NOW() - INTERVAL '14 days'");
-        // Keep 1h data for 60 days
-        await query("DELETE FROM market_history WHERE interval = '1h' AND last_updated < NOW() - INTERVAL '60 days'");
-
-        console.log('Market history pruned successfully.');
-    } catch (error) {
-        console.error('Error pruning market history:', error);
-    }
-};
-
 
 export const getMarketHistoryWithMeta = async (symbol: string, interval: string): Promise<{ data: any[], lastUpdated: Date } | null> => {
     try {
@@ -353,17 +334,6 @@ export const getMarketHistoryWithMeta = async (symbol: string, interval: string)
     } catch (error) {
         console.error('Error fetching market history with meta:', error);
         return null;
-    }
-};
-
-export const pruneMarketNews = async () => {
-    try {
-        console.log('Pruning old market news...');
-        // Keep news for 30 days
-        await query("DELETE FROM market_news WHERE time < EXTRACT(EPOCH FROM (NOW() - INTERVAL '30 days')) * 1000");
-        console.log('Market news pruned successfully.');
-    } catch (error) {
-        console.error('Error pruning market news:', error);
     }
 };
 

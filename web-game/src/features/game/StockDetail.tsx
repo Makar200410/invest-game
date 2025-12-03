@@ -143,7 +143,7 @@ export const StockDetail: React.FC = () => {
         loadData();
 
         // Polling for price updates
-        const pollInterval = setInterval(() => loadData(true), 10000); // 10s polling
+        const pollInterval = setInterval(() => loadData(true), 60000); // 60s polling
         return () => clearInterval(pollInterval);
     }, [id, interval, indicatorInterval, skills]);
 

@@ -304,7 +304,7 @@ export const MarketPage: React.FC = () => {
                         const owned = (portfolioItem?.amount || 0) + leveragedAmount;
 
                         const flash = priceFlashes[item.id];
-                        const flashClass = flash === 'up' ? 'bg-emerald-900/90' : flash === 'down' ? 'bg-rose-900/90' : '';
+                        const flashClass = flash === 'up' ? 'bg-emerald-500/40' : flash === 'down' ? 'bg-rose-500/40' : '';
 
                         return (
                             <div

@@ -23,7 +23,7 @@ export const TradePage: React.FC = () => {
         const loadData = async () => {
             if (!id) return;
             try {
-                const market = await fetchCryptoMarket(true);
+                const market = await fetchCryptoMarket();
                 const currentAsset = market.find(m => m.id === id);
                 if (currentAsset) {
                     setAsset(currentAsset);
@@ -33,8 +33,6 @@ export const TradePage: React.FC = () => {
             }
         };
         loadData();
-        const interval = setInterval(loadData, 10000);
-        return () => clearInterval(interval);
     }, [id]);
 
     // Scroll to hash after loading
