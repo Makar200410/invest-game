@@ -55,6 +55,17 @@ export const AssetIcon: React.FC<AssetIconProps> = ({ symbol, type, className = 
 
     // 3. Handle Commodities/Futures (GC=F, CL=F)
     if (type === 'future' || type === 'commodity' || symbol.includes('=F')) {
+        // Custom Icons for Major Commodities
+        if (symbol.startsWith('GC') || symbol === 'Gold') {
+            return <img src="/assets/icons/gold.png" alt="Gold" className={`${className} rounded-full object-contain bg-white`} onError={() => setError(true)} />;
+        }
+        if (symbol.startsWith('SI') || symbol === 'Silver') {
+            return <img src="/assets/icons/silver.png" alt="Silver" className={`${className} rounded-full object-contain bg-white`} onError={() => setError(true)} />;
+        }
+        if (symbol.startsWith('CL') || symbol === 'Oil' || symbol === 'Crude Oil') {
+            return <img src="/assets/icons/oil.png" alt="Oil" className={`${className} rounded-full object-contain bg-white`} onError={() => setError(true)} />;
+        }
+
         // Try FMP first, but if it fails, fallback to generic
         // FMP often uses 'GCUSD' or similar, but let's try the symbol without =F
         // GC=F -> GC

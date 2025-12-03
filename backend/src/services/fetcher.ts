@@ -200,33 +200,49 @@ const fetchCryptoPrice = async (symbol: string): Promise<{ price: number, time: 
 
 // Helper to fetch crypto history from Binance
 const fetchCryptoHistory = async (symbol: string, interval: string): Promise<any[]> => {
-    try {
-        const binanceSymbol = symbol.replace('-USD', 'USDT');
-        // Map intervals: 1m, 5m, 15m, 1h, 1d are same. 3h -> 4h (Binance doesn't have 3h)
-        let binanceInterval = interval;
-        if (interval === '3h') binanceInterval = '4h';
-        else if (interval === '1mo') binanceInterval = '1M'; // Binance uses '1M' for monthly
+    const endpoints = [
+        'https://api.binance.com',
+        'https://api1.binance.com',
+        'https://api2.binance.com',
+        'https://api3.binance.com'
+    ];
 
-        const limit = 500; // Fetch enough candles
-        const response = await fetch(`https://api.binance.com/api/v3/klines?symbol=${binanceSymbol}&interval=${binanceInterval}&limit=${limit}`);
+    const binanceSymbol = symbol.replace('-USD', 'USDT');
+    // Map intervals: 1m, 5m, 15m, 1h, 1d are same. 3h -> 4h (Binance doesn't have 3h)
+    let binanceInterval = interval;
+    if (interval === '3h') binanceInterval = '4h';
+    else if (interval === '1mo') binanceInterval = '1M'; // Binance uses '1M' for monthly
 
-        if (!response.ok) return [];
+    const limit = 500; // Fetch enough candles
 
-        const data = await response.json();
-        // Binance response: [ [openTime, open, high, low, close, volume, closeTime, ...], ... ]
-        return data.map((d: any[]) => ({
-            date: new Date(d[0]).toISOString(),
-            open: parseFloat(d[1]),
-            high: parseFloat(d[2]),
-            low: parseFloat(d[3]),
-            close: parseFloat(d[4]),
-            volume: parseFloat(d[5]),
-            price: parseFloat(d[4])
-        }));
-    } catch (error) {
-        console.error(`Binance history fetch failed for ${symbol}:`, error);
-        return [];
+    for (const endpoint of endpoints) {
+        try {
+            // console.log(`Fetching crypto history for ${symbol} from ${endpoint}...`);
+            const response = await fetch(`${endpoint}/api/v3/klines?symbol=${binanceSymbol}&interval=${binanceInterval}&limit=${limit}`);
+
+            if (!response.ok) continue; // Try next endpoint
+
+            const data = await response.json();
+            // Binance response: [ [openTime, open, high, low, close, volume, closeTime, ...], ... ]
+            const candles = data.map((d: any[]) => ({
+                date: new Date(d[0]).toISOString(),
+                open: parseFloat(d[1]),
+                high: parseFloat(d[2]),
+                low: parseFloat(d[3]),
+                close: parseFloat(d[4]),
+                volume: parseFloat(d[5]),
+                price: parseFloat(d[4])
+            }));
+
+            if (candles.length > 0) return candles;
+        } catch (error) {
+            // console.error(`Binance fetch failed from ${endpoint}:`, error);
+            // Continue to next endpoint
+        }
     }
+
+    console.error(`All Binance endpoints failed for ${symbol}`);
+    return [];
 };
 
 // Helper to update candle history for a specific interval
@@ -497,7 +513,7 @@ export const fetchHistory = async (symbol: string, interval: string = '5m', forc
         let queryInterval: any = interval;
 
         switch (interval) {
-            case '1m': periodDays = 7; break;
+            case '1m': periodDays = 2; break; // Reduced from 7 to 2 to ensure Yahoo fallback works reliably
             case '5m': periodDays = 5; break;
             case '15m': periodDays = 10; break;
             case '1h': periodDays = 60; break;

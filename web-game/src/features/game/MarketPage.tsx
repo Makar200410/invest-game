@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Lock, Search, ArrowUpDown } from 'lucide-react';
+import { Search, ArrowUpDown } from 'lucide-react';
 import { useGameStore } from '../../store/gameStore';
 import { fetchCryptoMarket, fetchMarketChartByInterval, type MarketItem } from '../../services/api';
 import { formatPrice } from '../../utils/format';
@@ -12,7 +12,7 @@ type SortOption = 'popular' | 'price_desc' | 'price_asc' | 'change_desc' | 'chan
 export const MarketPage: React.FC = () => {
     const { t } = useTranslation();
     const navigate = useNavigate();
-    const { portfolio, leveragedPositions, skills, checkOrders } = useGameStore();
+    const { skills, checkOrders } = useGameStore();
     const [items, setItems] = useState<MarketItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [marketInterval] = useState<string>('1d');
@@ -54,6 +54,24 @@ export const MarketPage: React.FC = () => {
         if (symbol.endsWith('.T')) return 'jp';
         if (symbol.endsWith('.SA')) return 'br';
         return 'us';
+    };
+
+    const getIndexCountry = (symbol: string): string => {
+        const map: Record<string, string> = {
+            '^GSPC': 'USA',
+            '^DJI': 'USA',
+            '^IXIC': 'USA',
+            '^FTSE': 'UK',
+            '^GDAXI': 'Germany',
+            '^N225': 'Japan',
+            '^FCHI': 'France',
+            '^HSI': 'Hong Kong',
+            '^BVSP': 'Brazil',
+            '^BSESN': 'India',
+            '000001.SS': 'China',
+            '^SS000001': 'China'
+        };
+        return map[symbol] || 'Global';
     };
 
     useEffect(() => {
@@ -297,12 +315,6 @@ export const MarketPage: React.FC = () => {
             ) : (
                 <div className="grid gap-2 grid-cols-1 px-4">
                     {filteredAndSortedItems.map((item, index) => {
-                        const portfolioItem = portfolio.find(p => p.id === item.id);
-                        const leveragedAmount = leveragedPositions
-                            .filter(p => p.assetId === item.id)
-                            .reduce((sum, p) => sum + p.amount, 0);
-                        const owned = (portfolioItem?.amount || 0) + leveragedAmount;
-
                         const flash = priceFlashes[item.id];
                         const flashClass = flash === 'up' ? 'bg-emerald-500/40' : flash === 'down' ? 'bg-rose-500/40' : '';
 
@@ -317,9 +329,12 @@ export const MarketPage: React.FC = () => {
                                 <div className="flex justify-between items-center">
                                     <div className="flex items-center gap-3 flex-1 min-w-0">
                                         <AssetIcon symbol={item.symbol} type={item.type} />
+
                                         <div className="flex-1 min-w-0">
                                             <h3 className="font-bold text-base leading-tight truncate" style={{ color: 'var(--text-primary)' }}>{item.name}</h3>
-                                            <p className="text-xs font-medium opacity-60" style={{ color: 'var(--text-primary)' }}>{item.symbol}</p>
+                                            <p className="text-xs font-medium opacity-60" style={{ color: 'var(--text-primary)' }}>
+                                                {item.type === 'index' ? getIndexCountry(item.symbol) : item.symbol}
+                                            </p>
                                         </div>
                                     </div>
 
@@ -331,39 +346,7 @@ export const MarketPage: React.FC = () => {
                                     </div>
                                 </div>
 
-                                <div className="flex gap-2 mt-2 pt-2 border-t" style={{ borderColor: 'var(--card-border)' }}>
-                                    {owned > 0 ? (
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); navigate(`/trade/${item.id}?type=sell`); }}
-                                            className="flex-1 px-3 py-1.5 rounded-lg bg-violet-50 text-violet-600 font-bold text-xs hover:bg-violet-100 transition-all"
-                                        >
-                                            {t('sell')}
-                                        </button>
-                                    ) : (
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                if (skills.shortSelling) {
-                                                    navigate(`/trade/${item.id}?type=short`);
-                                                } else {
-                                                    navigate('/skills');
-                                                }
-                                            }}
-                                            className={`flex-1 px-3 py-1.5 rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-1 ${skills.shortSelling
-                                                ? 'bg-yellow-500/10 text-yellow-600 hover:bg-yellow-500/20'
-                                                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                                }`}
-                                        >
-                                            {t('short')} {!skills.shortSelling && <Lock size={10} />}
-                                        </button>
-                                    )}
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); navigate(`/trade/${item.id}?type=buy`); }}
-                                        className="flex-1 px-3 py-1.5 rounded-lg bg-black text-white font-bold text-xs hover:bg-gray-800 transition-all"
-                                    >
-                                        {t('buy')}
-                                    </button>
-                                </div>
+
                             </div >
                         );
                     })}

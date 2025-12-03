@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, TrendingUp, Lock, Target, MessageCircle, ThumbsUp, Send, Trash2, X } from 'lucide-react';
+import { ArrowLeft, TrendingUp, Lock, Target, MessageCircle, ThumbsUp, Send, Trash2, X, CandlestickChart, LineChart } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Card } from '../../components/ui/Card';
 import { useGameStore } from '../../store/gameStore';
@@ -271,9 +271,10 @@ export const StockDetail: React.FC = () => {
 
     const padding = 10;
     const availableHeight = 100 - (padding * 2);
+    const CHART_WIDTH = 100; // Full width
 
     const chartData = history.map((point, index) => ({
-        x: history.length > 1 ? (index / (history.length - 1)) * 100 : 50,
+        x: history.length > 1 ? (index / (history.length - 1)) * CHART_WIDTH : CHART_WIDTH / 2,
         y: 100 - padding - ((point.price - minPrice) / priceRange) * availableHeight,
         open: point.open !== undefined ? 100 - padding - ((point.open - minPrice) / priceRange) * availableHeight : undefined,
         high: point.high !== undefined ? 100 - padding - ((point.high - minPrice) / priceRange) * availableHeight : undefined,
@@ -374,7 +375,7 @@ export const StockDetail: React.FC = () => {
                 <>
                     {/* Chart Area */}
                     <div id="tutorial-chart-area" className="relative w-full" onMouseLeave={() => setHoverData(null)}>
-                        <div className="h-48 w-full overflow-hidden">
+                        <div className="h-60 w-full overflow-hidden">
                             {history.length > 0 ? (
                                 <svg
                                     viewBox="0 0 100 100"
@@ -384,93 +385,81 @@ export const StockDetail: React.FC = () => {
                                         const rect = e.currentTarget.getBoundingClientRect();
                                         const x = e.clientX - rect.left;
                                         const width = rect.width;
-                                        const index = Math.floor((x / width) * history.length);
-                                        if (index >= 0 && index < history.length) {
-                                            setHoverData({
-                                                price: history[index].price,
-                                                date: history[index].date,
-                                                index,
-                                                open: history[index].open,
-                                                high: history[index].high,
-                                                low: history[index].low,
-                                                close: history[index].close
-                                            });
+                                        // Adjust mouse mapping for CHART_WIDTH
+                                        const chartAreaWidth = width * (CHART_WIDTH / 100);
+                                        if (x <= chartAreaWidth) {
+                                            const index = Math.floor((x / chartAreaWidth) * history.length);
+                                            if (index >= 0 && index < history.length) {
+                                                setHoverData({
+                                                    price: history[index].price,
+                                                    date: history[index].date,
+                                                    index,
+                                                    open: history[index].open,
+                                                    high: history[index].high,
+                                                    low: history[index].low,
+                                                    close: history[index].close
+                                                });
+                                            }
                                         }
                                     }}
                                 >
                                     {/* Grid Lines */}
                                     {[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((y) => (
-                                        <line key={`h-${y}`} x1="0" y1={y} x2="100" y2={y} stroke="var(--text-primary)" strokeOpacity="0.1" strokeWidth="0.5" />
+                                        <line key={`h-${y}`} x1="0" y1={y} x2={CHART_WIDTH} y2={y} stroke="var(--text-primary)" strokeOpacity="0.1" strokeWidth="0.2" />
                                     ))}
-                                    {[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((x) => (
-                                        <line key={`v-${x}`} x1={x} y1="0" x2={x} y2="100" stroke="var(--text-primary)" strokeOpacity="0.1" strokeWidth="0.5" />
+                                    {[0, 10, 20, 30, 40, 50, 60, 70, 80, 90].map((x) => (
+                                        <line key={`v-${x}`} x1={(x / 100) * CHART_WIDTH} y1="0" x2={(x / 100) * CHART_WIDTH} y2="100" stroke="var(--text-primary)" strokeOpacity="0.1" strokeWidth="0.2" />
                                     ))}
-
-                                    {/* Bollinger Bands */}
-
 
                                     {/* Current Price Line */}
-                                    {(chartType === 'line' || (chartType === 'candle' && !history[0].open)) && (() => {
+                                    {(() => {
                                         const lastPoint = chartData[chartData.length - 1];
                                         const currentPrice = history[history.length - 1].price;
-                                        const yCurrent = lastPoint.y;
+                                        const yCurrent = lastPoint.y; // Use close price Y for line
+                                        const color = asset.change24h >= 0 ? '#089981' : '#F23645';
 
                                         return (
                                             <>
-                                                <line x1="0" y1={yCurrent} x2="100" y2={yCurrent} stroke="var(--text-primary)" strokeOpacity="0.5" strokeWidth="0.5" strokeDasharray="1 1" />
-                                                <circle cx="0" cy={yCurrent} r="1" fill="var(--text-primary)" />
-                                                <text x="2" y={yCurrent - 2} fill="var(--text-primary)" fontSize="3" textAnchor="start" fontWeight="bold">${formatPrice(currentPrice)}</text>
+                                                <line x1="0" y1={yCurrent} x2={CHART_WIDTH} y2={yCurrent} stroke={color} strokeOpacity="0.8" strokeWidth="0.3" strokeDasharray="2 2" />
+                                                {/* Price Label on Left Axis */}
+                                                <rect x="0" y={yCurrent - 3} width="22" height="6" fill={color} rx="1" />
+                                                <text x="1" y={yCurrent + 1.5} fill="white" fontSize="3.7" fontWeight="bold" style={{ fontFamily: 'sans-serif' }}>{formatPrice(currentPrice)}</text>
                                             </>
                                         );
                                     })()}
 
                                     {/* Min/Max Points */}
-                                    {(chartType === 'line' || (chartType === 'candle' && !history[0].open)) && (() => {
-                                        let minIdx = 0;
-                                        let maxIdx = 0;
+                                    {(() => {
+                                        if (history.length === 0) return null;
+                                        let localMinIdx = 0;
+                                        let localMaxIdx = 0;
                                         history.forEach((h, i) => {
-                                            if (h.price < history[minIdx].price) minIdx = i;
-                                            if (h.price > history[maxIdx].price) maxIdx = i;
+                                            if (h.price < history[localMinIdx].price) localMinIdx = i;
+                                            if (h.price > history[localMaxIdx].price) localMaxIdx = i;
                                         });
 
-                                        const minP = history[minIdx];
-                                        const maxP = history[maxIdx];
-                                        const minData = chartData[minIdx];
-                                        const maxData = chartData[maxIdx];
+                                        const minPt = chartData[localMinIdx];
+                                        const maxPt = chartData[localMaxIdx];
 
                                         const getAnchor = (x: number) => {
-                                            if (x < 10) return 'start';
-                                            if (x > 90) return 'end';
+                                            if (x < 15) return 'start';
+                                            if (x > CHART_WIDTH - 15) return 'end';
                                             return 'middle';
                                         };
 
+                                        // Ensure labels fit vertically
+                                        const maxLabelY = Math.max(5, maxPt.y - 4);
+                                        const minLabelY = Math.min(95, minPt.y + 6);
+
                                         return (
                                             <>
-                                                {/* Max Point */}
-                                                <circle cx={maxData.x} cy={maxData.y} r="1" fill="var(--text-primary)" />
-                                                <text
-                                                    x={maxData.x}
-                                                    y={maxData.y - 3}
-                                                    fill="var(--text-primary)"
-                                                    fontSize="3"
-                                                    textAnchor={getAnchor(maxData.x)}
-                                                    fontWeight="bold"
-                                                >
-                                                    ${formatPrice(maxP.price)}
-                                                </text>
+                                                {/* Max */}
+                                                <circle cx={maxPt.x} cy={maxPt.y} r="1" fill="var(--text-primary)" />
+                                                <text x={maxPt.x} y={maxLabelY} fill="var(--text-primary)" fontSize="3.7" textAnchor={getAnchor(maxPt.x)} fontWeight="bold" style={{ fontFamily: 'sans-serif' }}>${formatPrice(history[localMaxIdx].price)}</text>
 
-                                                {/* Min Point */}
-                                                <circle cx={minData.x} cy={minData.y} r="1" fill="var(--text-primary)" />
-                                                <text
-                                                    x={minData.x}
-                                                    y={minData.y + 5}
-                                                    fill="var(--text-primary)"
-                                                    fontSize="3"
-                                                    textAnchor={getAnchor(minData.x)}
-                                                    fontWeight="bold"
-                                                >
-                                                    ${formatPrice(minP.price)}
-                                                </text>
+                                                {/* Min */}
+                                                <circle cx={minPt.x} cy={minPt.y} r="1" fill="var(--text-primary)" />
+                                                <text x={minPt.x} y={minLabelY} fill="var(--text-primary)" fontSize="3.7" textAnchor={getAnchor(minPt.x)} fontWeight="bold" style={{ fontFamily: 'sans-serif' }}>${formatPrice(history[localMinIdx].price)}</text>
                                             </>
                                         );
                                     })()}
@@ -478,21 +467,22 @@ export const StockDetail: React.FC = () => {
                                     {/* Chart Lines/Candles */}
                                     {chartType === 'candle' && chartData.map((point, i) => {
                                         if (point.open === undefined) return null;
-                                        const candleWidth = (100 / chartData.length) * 0.7;
+                                        // Cap max width to avoid huge candles
+                                        const candleWidth = Math.min((CHART_WIDTH / chartData.length) * 0.7, 2);
                                         const rawPoint = history[i];
                                         const isGreenColor = (rawPoint.close || 0) >= (rawPoint.open || 0);
-                                        const color = isGreenColor ? '#10B981' : '#EF4444';
+                                        const color = isGreenColor ? '#089981' : '#F23645';
 
                                         return (
                                             <g key={i}>
-                                                <line x1={point.x + candleWidth / 2} y1={point.high} x2={point.x + candleWidth / 2} y2={point.low} stroke={color} strokeWidth="0.7" />
+                                                <line x1={point.x} y1={point.high} x2={point.x} y2={point.low} stroke={color} strokeWidth="0.2" />
                                                 <rect
-                                                    x={point.x}
+                                                    x={point.x - candleWidth / 2}
                                                     y={Math.min(point.open!, point.close!)}
                                                     width={candleWidth}
-                                                    height={Math.max(0.5, Math.abs(point.close! - point.open!))}
+                                                    height={Math.max(0.2, Math.abs(point.close! - point.open!))}
                                                     fill={color}
-                                                    rx="0"
+                                                    rx="0.2"
                                                 />
                                             </g>
                                         );
@@ -502,12 +492,12 @@ export const StockDetail: React.FC = () => {
                                         <>
                                             <defs>
                                                 <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="0%" stopColor="#22c55e" stopOpacity="0.2" />
-                                                    <stop offset="100%" stopColor="#22c55e" stopOpacity="0" />
+                                                    <stop offset="0%" stopColor="#089981" stopOpacity="0.2" />
+                                                    <stop offset="100%" stopColor="#089981" stopOpacity="0" />
                                                 </linearGradient>
                                             </defs>
                                             <motion.path
-                                                d={`${pathData} L 100 100 L 0 100 Z`}
+                                                d={`${pathData} L ${CHART_WIDTH} 100 L 0 100 Z`}
                                                 fill="url(#chartGradient)"
                                                 initial={!chartLoaded ? { opacity: 0 } : false}
                                                 animate={{ opacity: 1 }}
@@ -516,8 +506,8 @@ export const StockDetail: React.FC = () => {
                                             <motion.path
                                                 d={pathData}
                                                 fill="none"
-                                                stroke="#22c55e"
-                                                strokeWidth="0.8"
+                                                stroke="#089981"
+                                                strokeWidth="0.5"
                                                 initial={!chartLoaded ? { pathLength: 0 } : false}
                                                 animate={{ pathLength: 1 }}
                                                 transition={{ duration: 1.5, ease: "easeInOut" }}
@@ -526,18 +516,30 @@ export const StockDetail: React.FC = () => {
                                         </>
                                     )}
 
-                                    {/* Hover Line */}
+                                    {/* Hover Crosshair */}
                                     {hoverData && chartData[hoverData.index] && (
-                                        <line
-                                            x1={chartData[hoverData.index].x}
-                                            y1="0"
-                                            x2={chartData[hoverData.index].x}
-                                            y2="100"
-                                            stroke="var(--text-primary)"
-                                            strokeWidth="0.5"
-                                            strokeDasharray="2 2"
-                                            opacity="0.5"
-                                        />
+                                        <>
+                                            <line
+                                                x1={chartData[hoverData.index].x}
+                                                y1="0"
+                                                x2={chartData[hoverData.index].x}
+                                                y2="100"
+                                                stroke="var(--text-primary)"
+                                                strokeWidth="0.2"
+                                                strokeDasharray="2 2"
+                                                opacity="0.5"
+                                            />
+                                            <line
+                                                x1="0"
+                                                y1={chartData[hoverData.index].y}
+                                                x2={CHART_WIDTH}
+                                                y2={chartData[hoverData.index].y}
+                                                stroke="var(--text-primary)"
+                                                strokeWidth="0.2"
+                                                strokeDasharray="2 2"
+                                                opacity="0.5"
+                                            />
+                                        </>
                                     )}
                                 </svg>
                             ) : (
@@ -567,12 +569,39 @@ export const StockDetail: React.FC = () => {
 
                     {/* X-Axis Labels */}
                     <div className="flex justify-between text-[10px] opacity-50 px-1 mt-1 font-mono">
-                        <span>{history.length > 0 ? (['1d', '1w', '1mo', 'All'].includes(interval) ? new Date(history[0].date).toLocaleDateString() : new Date(history[0].date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })) : ''}</span>
-                        <span>{history.length > 0 ? (['1d', '1w', '1mo', 'All'].includes(interval) ? new Date(history[history.length - 1].date).toLocaleDateString() : new Date(history[history.length - 1].date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })) : ''}</span>
+                        {/* Start Date */}
+                        <span>
+                            {history.length > 0 ? (
+                                (() => {
+                                    const d = new Date(history[0].date);
+                                    return `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+                                })()
+                            ) : ''}
+                        </span>
+
+                        {/* Middle Date */}
+                        <span>
+                            {history.length > 0 ? (
+                                (() => {
+                                    const d = new Date(history[Math.floor(history.length / 2)].date);
+                                    return `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+                                })()
+                            ) : ''}
+                        </span>
+
+                        {/* End Date */}
+                        <span>
+                            {history.length > 0 ? (
+                                (() => {
+                                    const d = new Date(history[history.length - 1].date);
+                                    return `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+                                })()
+                            ) : ''}
+                        </span>
                     </div>
 
-                    {/* Timeframe Selector */}
-                    <div id="timeframe-selector" className="flex justify-between items-center px-2">
+                    {/* Timeframe Selector & Chart Type Toggle */}
+                    <div id="timeframe-selector" className="flex justify-between items-center px-2 mt-2">
                         <div className="flex gap-4">
                             {['1m', '5m', '1h', '1d', 'All'].map((t) => {
                                 const isLocked = !skills.multiTimeframe && ['1m', '5m', '1h'].includes(t);
@@ -590,18 +619,21 @@ export const StockDetail: React.FC = () => {
                             })}
                         </div>
 
-                    </div>
-
-                    {/* Chart Type Selector */}
-                    <div className="flex justify-start px-2 mt-2">
-                        <button
-                            onClick={() => setChartType(prev => prev === 'candle' ? 'line' : 'candle')}
-                            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-xs font-bold"
-                            style={{ color: 'var(--text-primary)' }}
-                        >
-                            <TrendingUp size={16} />
-                            {chartType === 'candle' ? t('candles') : t('line')}
-                        </button>
+                        {/* Chart Type Icons */}
+                        <div className="flex gap-2 bg-white/5 rounded-lg p-1">
+                            <button
+                                onClick={() => setChartType('candle')}
+                                className={`p-1 rounded transition-colors ${chartType === 'candle' ? 'bg-white/20 text-white' : 'text-white/40 hover:text-white'}`}
+                            >
+                                <CandlestickChart size={18} />
+                            </button>
+                            <button
+                                onClick={() => setChartType('line')}
+                                className={`p-1 rounded transition-colors ${chartType === 'line' ? 'bg-white/20 text-white' : 'text-white/40 hover:text-white'}`}
+                            >
+                                <LineChart size={18} />
+                            </button>
+                        </div>
                     </div>
 
                     {/* Position Info */}
@@ -619,238 +651,241 @@ export const StockDetail: React.FC = () => {
                 </>
             )}
 
-            {activeTab === 'indicators' && (
-                <div className="space-y-4 mb-4 relative">
-                    {/* Lock Overlay */}
-                    {!skills.technicalAnalyst && (
-                        <div
-                            onClick={() => navigate('/skills')}
-                            className="absolute inset-0 backdrop-blur-sm bg-black/40 rounded-2xl z-10 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-black/50 transition-colors"
-                            style={{ height: '100%', zIndex: 50 }}
-                        >
-                            <Lock size={48} className="text-white/90" />
-                            <div className="text-center">
-                                <p className="text-white font-bold text-lg">{t('skill_locked')}</p>
-                                <p className="text-white/70 text-sm mt-1">{t('unlock_technical_analyst')}</p>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Indicator Interval Selector */}
-                    <div className="flex justify-between items-center px-1">
-                        <h3 className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>{t('technical_analysis')}</h3>
-                        <div className="flex gap-1 p-1 rounded-lg" style={{ backgroundColor: 'var(--bg-primary)' }}>
-                            {['5m', '15m', '1h', '3h', '1d'].map((t) => (
-                                <button
-                                    key={t}
-                                    onClick={() => skills.technicalAnalyst && setIndicatorInterval(t)}
-                                    disabled={!skills.technicalAnalyst}
-                                    className={`px-3 py-1 rounded text-xs font-bold transition-all disabled:cursor-not-allowed`}
-                                    style={{
-                                        color: indicatorInterval === t ? 'var(--text-primary)' : 'var(--text-secondary)',
-                                        backgroundColor: indicatorInterval === t ? 'var(--card-bg)' : 'transparent',
-                                        opacity: indicatorInterval === t ? 1 : 0.6
-                                    }}
-                                >
-                                    {t}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-
-                    <span className="text-[10px] opacity-50 uppercase tracking-wider font-bold">
-                        {indicatorInterval === '1d' ? t('interval_daily') : `${t('interval')}: ${indicatorInterval}`}
-                    </span>
-
-                    {/* Loading or No Data State */}
-                    {!indicators ? (
-                        <div className="flex flex-col items-center justify-center py-12">
-                            <p className="text-sm opacity-50">{t('no_data_available', 'No data available')}</p>
-                        </div>
-                    ) : (
-                        <>
-                            {/* Summary */}
-                            <Card className="p-2" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
-                                <div className="flex justify-between items-center mb-2">
-                                    <h4 className="font-bold text-base">{t('technical_summary')}</h4>
-                                    <div className={`px-3 py-1 rounded text-xs font-bold ${indicators.summary?.recommendation.includes('Buy') ? 'bg-green-500 text-white' :
-                                        indicators.summary?.recommendation.includes('Sell') ? 'bg-red-500 text-white' :
-                                            'bg-gray-500 text-white'
-                                        }`}>
-                                        {t((indicators.summary?.recommendation || 'Neutral').toLowerCase().replace(/ /g, '_'), indicators.summary?.recommendation || 'Neutral') as string}
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-3 gap-2 text-center text-[10px] font-bold">
-                                    <div className="p-2 rounded bg-white/5 border border-white/10">
-                                        <div className="opacity-50 mb-0.5 uppercase tracking-wider">{t('buy')}</div>
-                                        <div className="text-green-400 text-lg">{indicators.summary?.buy || 0}</div>
-                                    </div>
-                                    <div className="p-2 rounded bg-white/5 border border-white/10">
-                                        <div className="opacity-50 mb-0.5 uppercase tracking-wider">{t('sell')}</div>
-                                        <div className="text-red-400 text-lg">{indicators.summary?.sell || 0}</div>
-                                    </div>
-                                    <div className="p-2 rounded bg-white/5 border border-white/10">
-                                        <div className="opacity-50 mb-0.5 uppercase tracking-wider">{t('neutral')}</div>
-                                        <div className="text-gray-400 text-lg">{indicators.summary?.neutral || 0}</div>
-                                    </div>
-                                </div>
-                            </Card>
-
-                            {/* Pivot Points */}
-                            <Card className="p-2" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
-                                <h4 className="font-bold mb-2 text-base">{t('pivot_points')}</h4>
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-[10px]">
-                                        <thead>
-                                            <tr className="opacity-50 border-b border-white/10">
-                                                <th className="text-left py-1">{t('level')}</th>
-                                                <th className="text-right py-1">{t('classic')}</th>
-                                                <th className="text-right py-1">{t('fibonacci')}</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="font-mono">
-                                            {['r3', 'r2', 'r1', 'p', 's1', 's2', 's3'].map((level) => (
-                                                <tr key={level} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
-                                                    <td className="py-1 font-bold uppercase text-blue-400">{level}</td>
-                                                    <td className="py-1 text-right">{formatPrice(indicators.pivotPoints?.classic[level] || 0)}</td>
-                                                    <td className="py-1 text-right">{formatPrice(indicators.pivotPoints?.fibonacci[level] || 0)}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </Card>
-
-                            {/* Moving Averages */}
-                            <Card className="p-2" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
-                                <h4 className="font-bold mb-2 text-base">{t('moving_averages')}</h4>
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-[10px]">
-                                        <thead>
-                                            <tr className="opacity-50 border-b border-white/10">
-                                                <th className="text-left py-1">{t('period')}</th>
-                                                <th className="text-right py-1">{t('simple')}</th>
-                                                <th className="text-right py-1">{t('exponential')}</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {indicators.movingAverages?.map((ma: any) => (
-                                                <tr key={ma.period} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
-                                                    <td className="py-1 font-bold text-blue-400">MA{ma.period}</td>
-                                                    <td className="py-1 text-right">
-                                                        <div className="flex justify-end items-center gap-2">
-                                                            <span className="font-mono opacity-80">{formatPrice(ma.simple || 0)}</span>
-                                                            <span className={`px-1 py-0.5 rounded text-[8px] font-bold uppercase ${ma.simpleAction === 'Buy' ? 'bg-green-500/20 text-green-500' :
-                                                                ma.simpleAction === 'Sell' ? 'bg-red-500/20 text-red-500' :
-                                                                    'bg-gray-500/20 text-gray-500'
-                                                                }`}>
-                                                                {t((ma.simpleAction || 'Neutral').toLowerCase().replace(/ /g, '_'), ma.simpleAction || 'Neutral') as string}
-                                                            </span>
-                                                        </div>
-                                                    </td>
-                                                    <td className="py-1 text-right">
-                                                        <div className="flex justify-end items-center gap-2">
-                                                            <span className="font-mono opacity-80">{formatPrice(ma.exponential || 0)}</span>
-                                                            <span className={`px-1 py-0.5 rounded text-[8px] font-bold uppercase ${ma.exponentialAction === 'Buy' ? 'bg-green-500/20 text-green-500' :
-                                                                ma.exponentialAction === 'Sell' ? 'bg-red-500/20 text-red-500' :
-                                                                    'bg-gray-500/20 text-gray-500'
-                                                                }`}>
-                                                                {t((ma.exponentialAction || 'Neutral').toLowerCase().replace(/ /g, '_'), ma.exponentialAction || 'Neutral') as string}
-                                                            </span>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </Card>
-
-                            {/* Technical Indicators */}
-                            <Card className="p-2" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
-                                <h4 className="font-bold mb-2 text-base">{t('technical_indicators')}</h4>
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-[10px]">
-                                        <thead>
-                                            <tr className="opacity-50 border-b border-white/10">
-                                                <th className="text-left py-1">{t('indicator')}</th>
-                                                <th className="text-right py-1">{t('value')}</th>
-                                                <th className="text-right py-1">{t('action')}</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {indicators.indicators?.map((ind: any) => (
-                                                <tr key={ind.name} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
-                                                    <td className="py-1 font-bold">{ind.name}</td>
-                                                    <td className="py-1 text-right font-mono opacity-80">
-                                                        {typeof ind.value === 'number' ? ind.value.toFixed(4) : (ind.value || '-')}
-                                                    </td>
-                                                    <td className="py-1 text-right">
-                                                        <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${['Buy', 'Strong Buy'].includes(ind.action) || ind.action?.includes('Upside') ? 'bg-green-500 text-white' :
-                                                            ['Sell', 'Strong Sell'].includes(ind.action) || ind.action?.includes('Downside') ? 'bg-red-500 text-white' :
-                                                                ['Overbought', 'High Volatility'].includes(ind.action) ? 'bg-orange-500 text-white' :
-                                                                    'bg-gray-500 text-white'
-                                                            }`}>
-                                                            {t((ind.action || 'Neutral').replace('_', ' ').toLowerCase().replace(/ /g, '_'), ind.action?.replace('_', ' ') || 'Neutral') as string}
-                                                        </span>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </Card>
-                        </>
-                    )}
-                </div>
-            )}
-            {activeTab === 'overview' && (
-                <>
-                    {/* Market Timer */}
-                    <Card id="market-timer" className="p-2 relative mb-4" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
+            {
+                activeTab === 'indicators' && (
+                    <div className="space-y-4 mb-4 relative">
                         {/* Lock Overlay */}
-                        {!skills.marketTimer && (
+                        {!skills.technicalAnalyst && (
                             <div
                                 onClick={() => navigate('/skills')}
                                 className="absolute inset-0 backdrop-blur-sm bg-black/40 rounded-2xl z-10 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-black/50 transition-colors"
+                                style={{ height: '100%', zIndex: 50 }}
                             >
                                 <Lock size={48} className="text-white/90" />
                                 <div className="text-center">
                                     <p className="text-white font-bold text-lg">{t('skill_locked')}</p>
-                                    <p className="text-white/70 text-sm mt-1">{t('unlock_market_timer')}</p>
+                                    <p className="text-white/70 text-sm mt-1">{t('unlock_technical_analyst')}</p>
                                 </div>
                             </div>
                         )}
 
-                        <div className="flex justify-between items-center mb-2">
-                            <h3 className="font-bold text-base flex items-center gap-2">
-                                <Target size={16} className="text-blue-500" />
-                                {t('market_timer')}
-                            </h3>
-                            {skills.marketTimer && (
-                                <span className="px-2 py-0.5 rounded bg-green-500/20 text-green-500 text-[10px] font-bold">{t('active')}</span>
+                        {/* Indicator Interval Selector */}
+                        <div className="flex justify-between items-center px-1">
+                            <h3 className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>{t('technical_analysis')}</h3>
+                            <div className="flex gap-1 p-1 rounded-lg" style={{ backgroundColor: 'var(--bg-primary)' }}>
+                                {['5m', '15m', '1h', '3h', '1d'].map((t) => (
+                                    <button
+                                        key={t}
+                                        onClick={() => skills.technicalAnalyst && setIndicatorInterval(t)}
+                                        disabled={!skills.technicalAnalyst}
+                                        className={`px-3 py-1 rounded text-xs font-bold transition-all disabled:cursor-not-allowed`}
+                                        style={{
+                                            color: indicatorInterval === t ? 'var(--text-primary)' : 'var(--text-secondary)',
+                                            backgroundColor: indicatorInterval === t ? 'var(--card-bg)' : 'transparent',
+                                            opacity: indicatorInterval === t ? 1 : 0.6
+                                        }}
+                                    >
+                                        {t}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+
+                        <span className="text-[10px] opacity-50 uppercase tracking-wider font-bold">
+                            {indicatorInterval === '1d' ? t('interval_daily') : `${t('interval')}: ${indicatorInterval}`}
+                        </span>
+
+                        {/* Loading or No Data State */}
+                        {!indicators ? (
+                            <div className="flex flex-col items-center justify-center py-12">
+                                <p className="text-sm opacity-50">{t('no_data_available', 'No data available')}</p>
+                            </div>
+                        ) : (
+                            <>
+                                {/* Summary */}
+                                <Card className="p-2" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
+                                    <div className="flex justify-between items-center mb-2">
+                                        <h4 className="font-bold text-base">{t('technical_summary')}</h4>
+                                        <div className={`px-3 py-1 rounded text-xs font-bold ${indicators.summary?.recommendation.includes('Buy') ? 'bg-green-500 text-white' :
+                                            indicators.summary?.recommendation.includes('Sell') ? 'bg-red-500 text-white' :
+                                                'bg-gray-500 text-white'
+                                            }`}>
+                                            {t((indicators.summary?.recommendation || 'Neutral').toLowerCase().replace(/ /g, '_'), indicators.summary?.recommendation || 'Neutral') as string}
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2 text-center text-[10px] font-bold">
+                                        <div className="p-2 rounded bg-white/5 border border-white/10">
+                                            <div className="opacity-50 mb-0.5 uppercase tracking-wider">{t('buy')}</div>
+                                            <div className="text-green-400 text-lg">{indicators.summary?.buy || 0}</div>
+                                        </div>
+                                        <div className="p-2 rounded bg-white/5 border border-white/10">
+                                            <div className="opacity-50 mb-0.5 uppercase tracking-wider">{t('sell')}</div>
+                                            <div className="text-red-400 text-lg">{indicators.summary?.sell || 0}</div>
+                                        </div>
+                                        <div className="p-2 rounded bg-white/5 border border-white/10">
+                                            <div className="opacity-50 mb-0.5 uppercase tracking-wider">{t('neutral')}</div>
+                                            <div className="text-gray-400 text-lg">{indicators.summary?.neutral || 0}</div>
+                                        </div>
+                                    </div>
+                                </Card>
+
+                                {/* Pivot Points */}
+                                <Card className="p-2" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
+                                    <h4 className="font-bold mb-2 text-base">{t('pivot_points')}</h4>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-[10px]">
+                                            <thead>
+                                                <tr className="opacity-50 border-b border-white/10">
+                                                    <th className="text-left py-1">{t('level')}</th>
+                                                    <th className="text-right py-1">{t('classic')}</th>
+                                                    <th className="text-right py-1">{t('fibonacci')}</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="font-mono">
+                                                {['r3', 'r2', 'r1', 'p', 's1', 's2', 's3'].map((level) => (
+                                                    <tr key={level} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+                                                        <td className="py-1 font-bold uppercase text-blue-400">{level}</td>
+                                                        <td className="py-1 text-right">{formatPrice(indicators.pivotPoints?.classic[level] || 0)}</td>
+                                                        <td className="py-1 text-right">{formatPrice(indicators.pivotPoints?.fibonacci[level] || 0)}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </Card>
+
+                                {/* Moving Averages */}
+                                <Card className="p-2" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
+                                    <h4 className="font-bold mb-2 text-base">{t('moving_averages')}</h4>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-[10px]">
+                                            <thead>
+                                                <tr className="opacity-50 border-b border-white/10">
+                                                    <th className="text-left py-1">{t('period')}</th>
+                                                    <th className="text-right py-1">{t('simple')}</th>
+                                                    <th className="text-right py-1">{t('exponential')}</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {indicators.movingAverages?.map((ma: any) => (
+                                                    <tr key={ma.period} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+                                                        <td className="py-1 font-bold text-blue-400">MA{ma.period}</td>
+                                                        <td className="py-1 text-right">
+                                                            <div className="flex justify-end items-center gap-2">
+                                                                <span className="font-mono opacity-80">{formatPrice(ma.simple || 0)}</span>
+                                                                <span className={`px-1 py-0.5 rounded text-[8px] font-bold uppercase ${ma.simpleAction === 'Buy' ? 'bg-green-500/20 text-green-500' :
+                                                                    ma.simpleAction === 'Sell' ? 'bg-red-500/20 text-red-500' :
+                                                                        'bg-gray-500/20 text-gray-500'
+                                                                    }`}>
+                                                                    {t((ma.simpleAction || 'Neutral').toLowerCase().replace(/ /g, '_'), ma.simpleAction || 'Neutral') as string}
+                                                                </span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="py-1 text-right">
+                                                            <div className="flex justify-end items-center gap-2">
+                                                                <span className="font-mono opacity-80">{formatPrice(ma.exponential || 0)}</span>
+                                                                <span className={`px-1 py-0.5 rounded text-[8px] font-bold uppercase ${ma.exponentialAction === 'Buy' ? 'bg-green-500/20 text-green-500' :
+                                                                    ma.exponentialAction === 'Sell' ? 'bg-red-500/20 text-red-500' :
+                                                                        'bg-gray-500/20 text-gray-500'
+                                                                    }`}>
+                                                                    {t((ma.exponentialAction || 'Neutral').toLowerCase().replace(/ /g, '_'), ma.exponentialAction || 'Neutral') as string}
+                                                                </span>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </Card>
+
+                                {/* Technical Indicators */}
+                                <Card className="p-2" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
+                                    <h4 className="font-bold mb-2 text-base">{t('technical_indicators')}</h4>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full text-[10px]">
+                                            <thead>
+                                                <tr className="opacity-50 border-b border-white/10">
+                                                    <th className="text-left py-1">{t('indicator')}</th>
+                                                    <th className="text-right py-1">{t('value')}</th>
+                                                    <th className="text-right py-1">{t('action')}</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {indicators.indicators?.map((ind: any) => (
+                                                    <tr key={ind.name} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+                                                        <td className="py-1 font-bold">{ind.name}</td>
+                                                        <td className="py-1 text-right font-mono opacity-80">
+                                                            {typeof ind.value === 'number' ? ind.value.toFixed(4) : (ind.value || '-')}
+                                                        </td>
+                                                        <td className="py-1 text-right">
+                                                            <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${['Buy', 'Strong Buy'].includes(ind.action) || ind.action?.includes('Upside') ? 'bg-green-500 text-white' :
+                                                                ['Sell', 'Strong Sell'].includes(ind.action) || ind.action?.includes('Downside') ? 'bg-red-500 text-white' :
+                                                                    ['Overbought', 'High Volatility'].includes(ind.action) ? 'bg-orange-500 text-white' :
+                                                                        'bg-gray-500 text-white'
+                                                                }`}>
+                                                                {t((ind.action || 'Neutral').replace('_', ' ').toLowerCase().replace(/ /g, '_'), ind.action?.replace('_', ' ') || 'Neutral') as string}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </Card>
+                            </>
+                        )}
+                    </div>
+                )
+            }
+            {
+                activeTab === 'overview' && (
+                    <>
+                        {/* Market Timer */}
+                        <Card id="market-timer" className="p-2 relative mb-4" style={{ backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)' }}>
+                            {/* Lock Overlay */}
+                            {!skills.marketTimer && (
+                                <div
+                                    onClick={() => navigate('/skills')}
+                                    className="absolute inset-0 backdrop-blur-sm bg-black/40 rounded-2xl z-10 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-black/50 transition-colors"
+                                >
+                                    <Lock size={48} className="text-white/90" />
+                                    <div className="text-center">
+                                        <p className="text-white font-bold text-lg">{t('skill_locked')}</p>
+                                        <p className="text-white/70 text-sm mt-1">{t('unlock_market_timer')}</p>
+                                    </div>
+                                </div>
                             )}
-                        </div>
 
-                        <div className="grid grid-cols-2 gap-3">
-                            <div className="p-2 rounded-xl bg-black/20 border border-white/5 text-center">
-                                <p className="text-[10px] opacity-50 uppercase mb-0.5">{t('signal')}</p>
-                                <p className="font-bold text-base text-green-400">{t('strong_buy')}</p>
+                            <div className="flex justify-between items-center mb-2">
+                                <h3 className="font-bold text-base flex items-center gap-2">
+                                    <Target size={16} className="text-blue-500" />
+                                    {t('market_timer')}
+                                </h3>
+                                {skills.marketTimer && (
+                                    <span className="px-2 py-0.5 rounded bg-green-500/20 text-green-500 text-[10px] font-bold">{t('active')}</span>
+                                )}
                             </div>
-                            <div className="p-2 rounded-xl bg-black/20 border border-white/5 text-center">
-                                <p className="text-[10px] opacity-50 uppercase mb-0.5">{t('confidence')}</p>
-                                <p className="font-bold text-base">87%</p>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="p-2 rounded-xl bg-black/20 border border-white/5 text-center">
+                                    <p className="text-[10px] opacity-50 uppercase mb-0.5">{t('signal')}</p>
+                                    <p className="font-bold text-base text-green-400">{t('strong_buy')}</p>
+                                </div>
+                                <div className="p-2 rounded-xl bg-black/20 border border-white/5 text-center">
+                                    <p className="text-[10px] opacity-50 uppercase mb-0.5">{t('confidence')}</p>
+                                    <p className="font-bold text-base">87%</p>
+                                </div>
                             </div>
-                        </div>
-                        <p className="text-[10px] opacity-50 mt-2 text-center">
-                            {t('market_timer_analysis')}
-                        </p>
-                    </Card>
+                            <p className="text-[10px] opacity-50 mt-2 text-center">
+                                {t('market_timer_analysis')}
+                            </p>
+                        </Card>
 
 
-                </>
-            )
+                    </>
+                )
             }
 
             {
