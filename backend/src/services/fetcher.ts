@@ -325,17 +325,20 @@ export const updateMarketData = async () => {
         // 2. Fetch Yahoo Quotes in Batch (Single Request)
         // Note: Yahoo Finance API might limit batch size, but 50-60 is usually fine.
         // If it fails, we might need to chunk it, but let's try full batch first or chunks of 30.
+        let yahooRequests = 0;
         const YAHOO_CHUNK_SIZE = 30;
         for (let i = 0; i < yahooSymbols.length; i += YAHOO_CHUNK_SIZE) {
             const chunk = yahooSymbols.slice(i, i + YAHOO_CHUNK_SIZE);
             try {
                 const quotes = await yahooFinance.quote(chunk);
+                yahooRequests++;
                 results.push(...quotes);
             } catch (e) {
                 console.error('Batch quote fetch failed:', e);
             }
             await new Promise(resolve => setTimeout(resolve, 500)); // Small delay between chunks
         }
+        console.log(`[Batch Fetch] Made ${yahooRequests} Yahoo API requests for ${yahooSymbols.length} symbols.`);
 
         // 3. Fetch Crypto from Binance (Parallel)
         const cryptoResults = await Promise.all(cryptoSymbols.map(async (symbol) => {
