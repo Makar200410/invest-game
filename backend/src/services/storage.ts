@@ -337,6 +337,16 @@ export const getMarketHistoryWithMeta = async (symbol: string, interval: string)
     }
 };
 
+export const pruneMarketHistory = async () => {
+    try {
+        console.log('Pruning market history to free up space...');
+        await query('TRUNCATE TABLE market_history');
+        console.log('Market history truncated successfully.');
+    } catch (error) {
+        console.error('Error pruning market history:', error);
+    }
+};
+
 // Insider Tips Functions
 export const addInsiderTip = async (tip: any) => {
     try {

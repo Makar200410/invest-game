@@ -294,8 +294,8 @@ const updateCandleHistory = async (symbol: string, interval: string, price: numb
             };
 
             history.push(newDataPoint);
-            // Limit to 500 values to support indicators (charts will slice to 120)
-            if (history.length > 500) history = history.slice(-500);
+            // Limit to 200 values to support indicators (charts will slice to 120)
+            if (history.length > 200) history = history.slice(-200);
             await saveMarketHistory(symbol, interval, history);
         }
     } catch (error) {
@@ -550,8 +550,8 @@ export const fetchHistory = async (symbol: string, interval: string = '5m', forc
 
         if (historyData.length === 0) return [];
 
-        // Limit to 500 values to support indicators (charts will slice to 120)
-        if (historyData.length > 500) historyData = historyData.slice(-500);
+        // Limit to 200 values to support indicators (charts will slice to 120)
+        if (historyData.length > 200) historyData = historyData.slice(-200);
 
         // Save to DB
         if (['1m', '5m', '1h', '1d', '1mo'].includes(interval) && historyData.length > 0) {
@@ -632,8 +632,8 @@ const updateLongTermCandles = async (interval: string, daysBack: number) => {
             }
 
             if (updated) {
-                // Limit to 500 values to support indicators (charts will slice to 120)
-                if (history.length > 500) history = history.slice(-500);
+                // Limit to 200 values to support indicators (charts will slice to 120)
+                if (history.length > 200) history = history.slice(-200);
                 await saveMarketHistory(symbol, interval, history);
             }
         } catch (error) {

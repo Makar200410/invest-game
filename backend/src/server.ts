@@ -21,7 +21,8 @@ import {
     getMarketHistory,
     getInsiderTips,
     addInsiderTip,
-    deleteAssetComment
+    deleteAssetComment,
+    pruneMarketHistory
 } from './services/storage.js';
 import { updateMarketData, fetchHistory, fetchYahooAnalysis, updateDailyCandles, updateMonthlyCandles, updateFundamentals, updateMarketNews } from './services/fetcher.js';
 
@@ -94,6 +95,8 @@ initDB().then(async () => {
         // Clear all historical data cache on startup to force fresh fetches
         console.log('Clearing historical data cache to force fresh data fetching...');
         await query('DELETE FROM market_history');
+        // Also try to truncate to reclaim space if DELETE didn't help enough (though DELETE is usually sufficient for rows, TRUNCATE is better for space)
+        await pruneMarketHistory();
         console.log('Cache cleared. Market data will be fetched fresh on first request.');
     } catch (e) {
         console.error('Startup DB Check Failed:', e);
