@@ -497,17 +497,19 @@ export const fetchHistory = async (symbol: string, interval: string = '5m', forc
             try {
                 // Use historical() for daily/weekly/monthly as it's more reliable for US stocks
                 if (['1d', '1wk', '1mo'].includes(queryInterval)) {
-                    const historicalResult = await yahooFinance.historical(symbol, {
+                    const chartResult = await yahooFinance.chart(symbol, {
                         period1: queryOptions.period1,
                         period2: new Date(), // End date (now)
                         interval: queryInterval
                     });
 
-                    if (historicalResult && historicalResult.length > 0) {
-                        historyData = historicalResult.map((q: any) => ({
-                            date: q.date.toISOString(),
-                            open: q.open, high: q.high, low: q.low, close: q.close, volume: q.volume, price: q.close
-                        }));
+                    if (chartResult && chartResult.quotes && chartResult.quotes.length > 0) {
+                        historyData = chartResult.quotes
+                            .filter((q: any) => q.close !== null)
+                            .map((q: any) => ({
+                                date: q.date.toISOString(),
+                                open: q.open, high: q.high, low: q.low, close: q.close, volume: q.volume, price: q.close
+                            }));
                     }
                 }
             } catch (e) {
