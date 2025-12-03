@@ -111,7 +111,6 @@ export const updateFundamentals = async () => {
                         'financialData',
                         'defaultKeyStatistics',
                         'assetProfile',
-                        'fundamentalsTimeSeries',
                         'earnings',
                         'recommendationTrend'
                     ] as any
@@ -149,7 +148,6 @@ export const fetchYahooAnalysis = async (symbol: string) => {
                 'financialData',
                 'defaultKeyStatistics',
                 'assetProfile',
-                'fundamentalsTimeSeries',
                 'earnings',
                 'recommendationTrend'
             ] as any
