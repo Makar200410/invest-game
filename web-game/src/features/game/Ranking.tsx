@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Trophy, Target, AlertTriangle, Shield, ChevronLeft, ChevronRight, Crown, Users, TrendingUp } from 'lucide-react';
+import { Trophy, Target, AlertTriangle, Shield, ChevronLeft, ChevronRight, Crown, Users, TrendingUp, ArrowLeft, BadgeCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../../store/gameStore';
 import { fetchLeaderboard, registerForTournament, fetchTournamentStatus } from '../../services/api';
@@ -11,6 +11,7 @@ interface LeaderboardUser {
     portfolioValue: number;
     rankTier: number;
     isInTournament: boolean;
+    isPremium?: boolean;
 }
 
 interface TournamentStatus {
@@ -60,8 +61,6 @@ export const Ranking: React.FC = () => {
         { tier: 15, name: t('grandmaster') }
     ];
 
-
-    // Helper function to convert backend tier name to translation key
     const getTierTranslationKey = (tierName: string): string => {
         const nameMap: { [key: string]: string } = {
             'Bronze I': 'bronze_i',
@@ -90,6 +89,11 @@ export const Ranking: React.FC = () => {
     const [registering, setRegistering] = useState(false);
     const [selectedTier, setSelectedTier] = useState<number>(1);
     const [activeView, setActiveView] = useState<'tournament' | 'global'>('tournament');
+
+    // Scroll to top when switching views
+    useEffect(() => {
+        window.scrollTo({ top: 0, behavior: 'instant' });
+    }, [activeView]);
 
     const loadData = async () => {
         try {
@@ -141,37 +145,88 @@ export const Ranking: React.FC = () => {
     };
 
     return (
-        <div className="space-y-6 pb-24 pt-4 px-4">
-            {/* View Tabs - Premium Segmented Control */}
-            <div className="p-1 rounded-2xl backdrop-blur-md border relative" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
+        <div className="space-y-5 pb-24 pt-4 px-4">
+            {/* Back Button */}
+            <button
+                onClick={() => navigate(-1)}
+                className="flex items-center gap-2 text-sm opacity-70 hover:opacity-100 transition-opacity"
+                style={{ color: 'var(--text-primary)' }}
+            >
+                <ArrowLeft size={18} />
+                {t('back')}
+            </button>
+
+            {/* Premium Header Card */}
+            <div className="relative overflow-hidden rounded-3xl p-5 border shadow-xl" style={{ borderColor: 'var(--card-border)', backgroundColor: 'var(--card-bg)' }}>
+                {/* Animated Background */}
+                <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/10 via-purple-600/10 to-pink-600/10" />
+                <motion.div
+                    animate={{ y: [0, -15, 0], x: [0, 8, 0] }}
+                    transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+                    className="absolute top-2 right-6 w-24 h-24 bg-yellow-500/10 rounded-full blur-2xl"
+                />
+                <motion.div
+                    animate={{ y: [0, 12, 0], x: [0, -10, 0] }}
+                    transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+                    className="absolute bottom-2 left-6 w-28 h-28 bg-purple-500/10 rounded-full blur-2xl"
+                />
+
+                <div className="relative z-10 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <motion.div
+                            animate={{ rotate: [0, 4, -4, 0] }}
+                            transition={{ duration: 3, repeat: Infinity }}
+                            className="w-12 h-12 rounded-2xl bg-gradient-to-br from-yellow-400 via-orange-500 to-red-500 flex items-center justify-center shadow-lg shadow-orange-500/30"
+                        >
+                            <Trophy size={24} className="text-white drop-shadow-lg" />
+                        </motion.div>
+                        <div>
+                            <h1 className="text-xl font-black tracking-tight" style={{ color: 'var(--text-primary)' }}>
+                                {t('ranking', 'Ranking')}
+                            </h1>
+                            <p className="text-[10px] opacity-60 font-medium" style={{ color: 'var(--text-primary)' }}>
+                                {t('compete_climb', 'Compete & Climb')}
+                            </p>
+                        </div>
+                    </div>
+                    {tournamentStatus?.isInTournament && (
+                        <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            className={`px-3 py-1.5 rounded-xl border backdrop-blur-md ${getLevelColor(tournamentStatus.rankTier)} bg-white/5 border-white/20 shadow-lg`}
+                        >
+                            <div className="text-[9px] font-bold opacity-60 uppercase tracking-wider">{t('your_tier')}</div>
+                            <div className="text-xs font-black">{t(getTierTranslationKey(tournamentStatus.levelName))}</div>
+                        </motion.div>
+                    )}
+                </div>
+            </div>
+
+            {/* Premium Segmented Control */}
+            <div className="p-1 rounded-2xl backdrop-blur-xl border relative shadow-lg" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
                 <div className="flex relative z-10">
                     <button
                         onClick={() => setActiveView('tournament')}
-                        className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-300 z-10`}
-                        style={{ color: activeView === 'tournament' ? '#ffffff' : 'var(--text-primary)', opacity: activeView === 'tournament' ? 1 : 0.6 }}
+                        className="flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all duration-300 z-10"
+                        style={{ color: activeView === 'tournament' ? '#ffffff' : 'var(--text-primary)', opacity: activeView === 'tournament' ? 1 : 0.5 }}
                     >
-                        <Trophy size={16} className={activeView === 'tournament' ? 'text-yellow-400 drop-shadow-md' : ''} />
-                        <span className="text-center leading-tight">{t('weekly_tournament')}</span>
+                        <Trophy size={15} className={activeView === 'tournament' ? 'text-yellow-300 drop-shadow-[0_0_6px_rgba(253,224,71,0.6)]' : ''} />
+                        <span>{t('weekly_tournament')}</span>
                     </button>
                     <button
                         onClick={() => setActiveView('global')}
-                        className={`flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all duration-300 z-10`}
-                        style={{ color: activeView === 'global' ? '#ffffff' : 'var(--text-primary)', opacity: activeView === 'global' ? 1 : 0.6 }}
+                        className="flex-1 py-3 rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all duration-300 z-10"
+                        style={{ color: activeView === 'global' ? '#ffffff' : 'var(--text-primary)', opacity: activeView === 'global' ? 1 : 0.5 }}
                     >
-                        <Crown size={16} className={activeView === 'global' ? 'text-purple-400 drop-shadow-md' : ''} />
-                        <span className="text-center leading-3 max-w-[100px]">{t('global_ranking')}</span>
+                        <Crown size={15} className={activeView === 'global' ? 'text-amber-300 drop-shadow-[0_0_6px_rgba(252,211,77,0.6)]' : ''} />
+                        <span>{t('global_ranking')}</span>
                     </button>
                 </div>
-                {/* Sliding Background */}
                 <motion.div
-                    className={`absolute top-1 bottom-1 rounded-xl shadow-lg transition-colors duration-300 ${activeView === 'tournament' ? 'bg-gradient-to-r from-blue-600 to-indigo-600 shadow-blue-500/20' : 'bg-gradient-to-r from-amber-500 to-orange-600 shadow-orange-500/20'}`}
+                    className={`absolute top-1 bottom-1 rounded-xl shadow-xl ${activeView === 'tournament' ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 shadow-indigo-500/25' : 'bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 shadow-orange-500/25'}`}
                     initial={false}
-                    animate={{
-                        left: activeView === 'tournament' ? '4px' : '50%',
-                        width: 'calc(50% - 4px)',
-                        x: activeView === 'global' ? '0%' : '0%'
-                    }}
-                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    animate={{ left: activeView === 'tournament' ? '4px' : '50%', width: 'calc(50% - 6px)' }}
+                    transition={{ type: "spring", stiffness: 400, damping: 35 }}
                 />
             </div>
 
@@ -179,115 +234,126 @@ export const Ranking: React.FC = () => {
                 {activeView === 'tournament' ? (
                     <motion.div
                         key="tournament"
-                        initial={{ opacity: 0, y: 20 }}
+                        initial={{ opacity: 0, y: 25 }}
                         animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
-                        transition={{ duration: 0.3 }}
-                        className="space-y-6"
+                        exit={{ opacity: 0, y: -25 }}
+                        transition={{ duration: 0.35, type: "spring" }}
+                        className="space-y-5"
                     >
                         {/* Tournament Status Card */}
-                        <div className="relative rounded-3xl overflow-hidden border shadow-2xl" style={{ borderColor: 'var(--card-border)' }}>
-                            <div className="absolute inset-0" style={{ backgroundColor: 'var(--card-bg)' }}></div>
-                            {/* Dynamic Background Gradients */}
-                            <div className="absolute top-0 right-0 w-64 h-64 bg-blue-500/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></div>
-                            <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></div>
+                        <div className="relative rounded-3xl overflow-hidden border shadow-2xl" style={{ borderColor: 'var(--card-border)', backgroundColor: 'var(--card-bg)' }}>
+                            <motion.div
+                                animate={{ scale: [1, 1.15, 1], opacity: [0.15, 0.25, 0.15] }}
+                                transition={{ duration: 4, repeat: Infinity }}
+                                className="absolute top-0 right-0 w-56 h-56 bg-blue-500/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"
+                            />
+                            <motion.div
+                                animate={{ scale: [1.15, 1, 1.15], opacity: [0.15, 0.25, 0.15] }}
+                                transition={{ duration: 5, repeat: Infinity }}
+                                className="absolute bottom-0 left-0 w-56 h-56 bg-purple-500/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"
+                            />
 
-                            <div className="relative p-6">
-                                <div className="flex justify-between items-start mb-6">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 rounded-xl bg-yellow-500/10 border border-yellow-500/20">
-                                            <Trophy size={20} className="text-yellow-400 drop-shadow-[0_0_10px_rgba(250,204,21,0.5)]" />
-                                        </div>
-                                        <h2 className="text-xl font-black tracking-tight" style={{ color: 'var(--text-primary)' }}>
-                                            {t('weekly_tournament')}
-                                        </h2>
-                                    </div>
-                                    {tournamentStatus?.isInTournament && (
-                                        <div className={`px-2 py-1 rounded-lg border bg-white/5 backdrop-blur-md ${getLevelColor(tournamentStatus.rankTier)} border-white/10 shadow-lg max-w-[100px] flex justify-center`}>
-                                            <span className="text-[10px] font-black uppercase tracking-wider truncate">
-                                                {t(getTierTranslationKey(tournamentStatus.levelName))}
-                                            </span>
-                                        </div>
-                                    )}
-                                </div>
-
+                            <div className="relative p-5">
                                 {!tournamentStatus?.isInTournament ? (
-                                    <div className="text-center py-8">
+                                    <div className="text-center py-6">
                                         <motion.div
-                                            animate={{ y: [0, -10, 0] }}
-                                            transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                                            className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center shadow-lg shadow-orange-500/30"
+                                            animate={{ y: [0, -12, 0], rotateZ: [0, 3, -3, 0] }}
+                                            transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+                                            className="w-20 h-20 mx-auto mb-5 rounded-2xl bg-gradient-to-br from-yellow-400 via-orange-500 to-red-500 flex items-center justify-center shadow-xl shadow-orange-500/35 border border-white/20"
                                         >
-                                            <Trophy size={40} className="text-white drop-shadow-md" />
+                                            <Trophy size={40} className="text-white drop-shadow-lg" />
                                         </motion.div>
-                                        <button
+                                        <h3 className="text-lg font-black mb-1.5" style={{ color: 'var(--text-primary)' }}>
+                                            {t('join_weekly_challenge', 'Join Weekly Challenge')}
+                                        </h3>
+                                        <p className="text-xs opacity-60 mb-5 max-w-[250px] mx-auto" style={{ color: 'var(--text-primary)' }}>
+                                            {t('tournament_desc', 'Compete with traders worldwide!')}
+                                        </p>
+                                        <motion.button
+                                            whileHover={{ scale: 1.02 }}
+                                            whileTap={{ scale: 0.98 }}
                                             onClick={handleRegister}
                                             disabled={registering}
-                                            className="w-full py-4 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-black uppercase tracking-wider shadow-xl shadow-blue-500/30 hover:shadow-blue-500/50 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group"
+                                            className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600 text-white font-black uppercase tracking-wider shadow-xl shadow-indigo-500/25 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group"
                                         >
-                                            <span className="relative z-10">{registering ? t('joining') : t('join_now')}</span>
-                                            <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
-                                        </button>
+                                            <span className="relative z-10 flex items-center justify-center gap-2 text-sm">
+                                                {registering ? t('joining') : t('join_now')}
+                                                <motion.span animate={{ x: [0, 4, 0] }} transition={{ duration: 1.2, repeat: Infinity }}>→</motion.span>
+                                            </span>
+                                            <motion.div
+                                                className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0"
+                                                animate={{ x: ['-100%', '100%'] }}
+                                                transition={{ duration: 2, repeat: Infinity }}
+                                            />
+                                        </motion.button>
                                     </div>
                                 ) : (
                                     <div className="space-y-4">
-                                        {/* Next Tier Card - Elongated & Prominent */}
-                                        <div className="p-5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-sm relative overflow-hidden">
-                                            <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
-
-                                            <div className="flex justify-between items-end relative z-10">
-                                                <div>
-                                                    <div className="flex items-center gap-2 mb-1 opacity-60">
-                                                        <Target size={14} />
-                                                        <span className="text-[10px] font-bold uppercase tracking-wider">{t('next_tier')}</span>
-                                                    </div>
-                                                    <div className={`text-2xl font-black ${getLevelColor(tournamentStatus.rankTier + 1)}`}>
-                                                        {t(getTierTranslationKey(tournamentStatus.nextLevelName))}
-                                                    </div>
+                                        {/* Stats Grid */}
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div className="p-3.5 rounded-2xl bg-gradient-to-br from-white/5 to-white/0 border border-white/10 backdrop-blur-sm">
+                                                <div className="flex items-center gap-1.5 mb-1.5 opacity-60">
+                                                    <TrendingUp size={12} />
+                                                    <span className="text-[9px] font-bold uppercase tracking-wider">{t('weekly_pnl')}</span>
                                                 </div>
-                                                <div className="text-right">
-                                                    <div className="text-xs font-medium opacity-50 text-emerald-400 mb-1">
-                                                        Target
-                                                    </div>
-                                                    <div className="text-lg font-bold text-white">
-                                                        ≥ {(tournamentStatus.requirements.promote * 100).toFixed(1)}%
-                                                    </div>
+                                                <div className={`text-xl font-black ${tournamentStatus.profit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                                    {tournamentStatus.profit >= 0 ? '+' : ''}{(tournamentStatus.profitPercent * 100).toFixed(2)}%
                                                 </div>
+                                                <div className="text-[10px] font-bold opacity-40 mt-0.5">${Math.abs(tournamentStatus.profit).toLocaleString()}</div>
                                             </div>
 
-                                            {/* Progress Bar inside Next Tier */}
-                                            <div className="relative pt-4">
-                                                <div className="h-2 bg-slate-700/50 rounded-full overflow-hidden">
-                                                    <motion.div
-                                                        initial={{ width: 0 }}
-                                                        animate={{ width: `${Math.min(Math.abs(tournamentStatus.profitPercent) * 100, 100)}%` }}
-                                                        transition={{ duration: 1, delay: 0.5 }}
-                                                        className={`h-full ${tournamentStatus.profit >= 0 ? 'bg-emerald-500' : 'bg-rose-500'} shadow-[0_0_10px_currentColor]`}
-                                                    />
+                                            <div className="p-3.5 rounded-2xl bg-gradient-to-br from-emerald-500/10 to-teal-500/5 border border-emerald-500/20 backdrop-blur-sm">
+                                                <div className="flex items-center gap-1.5 mb-1.5 opacity-70">
+                                                    <Target size={12} className="text-emerald-400" />
+                                                    <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-400">{t('target')}</span>
                                                 </div>
-                                                {tournamentStatus.requirements.demote !== null && (
-                                                    <p className="text-[10px] font-bold text-red-400 opacity-60 flex items-center gap-1.5 mt-2">
-                                                        <AlertTriangle size={10} />
-                                                        {t('demote_if')} &lt; {(tournamentStatus.requirements.demote * 100).toFixed(1)}%
-                                                    </p>
-                                                )}
+                                                <div className="text-xl font-black text-emerald-400">≥{(tournamentStatus.requirements.promote * 100).toFixed(0)}%</div>
+                                                <div className="text-[10px] font-bold opacity-40 mt-0.5" style={{ color: 'var(--text-primary)' }}>{t('to_rank_up', 'to rank up')}</div>
                                             </div>
                                         </div>
 
-                                        {/* Weekly P&L - Smaller, below */}
-                                        <div className="px-4 py-3 rounded-xl bg-white/5 border border-white/10 backdrop-blur-sm flex items-center justify-between">
-                                            <div className="flex items-center gap-2 opacity-60">
-                                                <TrendingUp size={14} />
-                                                <span className="text-[10px] font-bold uppercase tracking-wider">{t('weekly_pnl')}</span>
+                                        {/* Next Tier Progress */}
+                                        <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-500/10 via-indigo-500/10 to-blue-500/10 border border-white/10 backdrop-blur-sm relative overflow-hidden">
+                                            <motion.div
+                                                animate={{ x: ['-100%', '200%'] }}
+                                                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                                                className="absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-white/5 to-transparent"
+                                            />
+
+                                            <div className="flex justify-between items-center mb-3 relative z-10">
+                                                <div>
+                                                    <div className="text-[9px] font-bold uppercase tracking-wider opacity-50 mb-0.5">{t('next_tier')}</div>
+                                                    <div className={`text-lg font-black ${getLevelColor(tournamentStatus.rankTier + 1)}`}>
+                                                        {t(getTierTranslationKey(tournamentStatus.nextLevelName))}
+                                                    </div>
+                                                </div>
+                                                <motion.div
+                                                    animate={{ rotate: 360 }}
+                                                    transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                                                    className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500/20 to-indigo-500/20 border border-white/10 flex items-center justify-center"
+                                                >
+                                                    <Crown size={18} className={getLevelColor(tournamentStatus.rankTier + 1)} />
+                                                </motion.div>
                                             </div>
-                                            <div className="flex items-center gap-3">
-                                                <span className={`text-sm font-black ${tournamentStatus.profit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                                    {tournamentStatus.profit >= 0 ? '+' : ''}{(tournamentStatus.profitPercent * 100).toFixed(2)}%
-                                                </span>
-                                                <span className="text-xs font-medium opacity-50 border-l border-white/10 pl-3">
-                                                    ${Math.abs(tournamentStatus.profit).toLocaleString()}
-                                                </span>
+
+                                            <div className="h-2.5 bg-slate-700/50 rounded-full overflow-hidden">
+                                                <motion.div
+                                                    initial={{ width: 0 }}
+                                                    animate={{ width: `${Math.min(Math.abs(tournamentStatus.profitPercent / tournamentStatus.requirements.promote) * 100, 100)}%` }}
+                                                    transition={{ duration: 1.2, delay: 0.3, type: "spring" }}
+                                                    className={`h-full rounded-full ${tournamentStatus.profit >= 0 ? 'bg-gradient-to-r from-emerald-500 to-teal-400' : 'bg-gradient-to-r from-rose-500 to-red-400'} shadow-[0_0_12px_currentColor]`}
+                                                />
                                             </div>
+                                            {tournamentStatus.requirements.demote !== null && (
+                                                <motion.p
+                                                    initial={{ opacity: 0 }}
+                                                    animate={{ opacity: 1 }}
+                                                    className="text-[9px] font-bold text-red-400/70 flex items-center gap-1 mt-2"
+                                                >
+                                                    <AlertTriangle size={9} />
+                                                    {t('demote_if')} &lt;{(tournamentStatus.requirements.demote * 100).toFixed(1)}%
+                                                </motion.p>
+                                            )}
                                         </div>
                                     </div>
                                 )}
@@ -295,78 +361,100 @@ export const Ranking: React.FC = () => {
                         </div>
 
                         {/* Leaderboard Section */}
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between px-2">
-                                <h3 className="text-sm font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                                    <Users size={14} />
-                                    {t('league_standings')}
-                                </h3>
+                        <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/30 flex items-center justify-center shadow-lg shadow-indigo-500/10">
+                                        <Users size={16} className="text-indigo-400" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xs font-black uppercase tracking-wider" style={{ color: 'var(--text-primary)' }}>{t('league_standings')}</h3>
+                                        <p className="text-[9px] opacity-50" style={{ color: 'var(--text-primary)' }}>{tournamentPlayers.length} {t('participants', 'participants')}</p>
+                                    </div>
+                                </div>
 
-                                {/* Tier Navigator */}
-                                <div className="flex items-center gap-2 bg-slate-800/50 rounded-lg p-1 border border-white/5">
-                                    <button
-                                        onClick={() => changeTier(-1)}
-                                        disabled={selectedTier <= 1}
-                                        className="p-1 hover:bg-white/10 rounded-md disabled:opacity-30 transition-colors"
-                                    >
-                                        <ChevronLeft size={14} />
+                                <div className="flex items-center gap-0.5 p-1 rounded-xl bg-gradient-to-r from-slate-800/80 to-slate-900/80 border border-white/10 backdrop-blur-sm">
+                                    <button onClick={() => changeTier(-1)} disabled={selectedTier <= 1} className="w-6 h-6 flex items-center justify-center rounded-lg hover:bg-white/10 disabled:opacity-30 transition-all active:scale-90">
+                                        <ChevronLeft size={12} />
                                     </button>
-                                    <span className={`text-xs font-bold px-2 ${getLevelColor(selectedTier)}`}>
+                                    <div className={`px-2.5 py-1 rounded-lg text-[10px] font-black ${getLevelColor(selectedTier)} bg-white/5 min-w-[70px] text-center`}>
                                         {selectedLevelConfig.name}
-                                    </span>
-                                    <button
-                                        onClick={() => changeTier(1)}
-                                        disabled={selectedTier >= 15}
-                                        className="p-1 hover:bg-white/10 rounded-md disabled:opacity-30 transition-colors"
-                                    >
-                                        <ChevronRight size={14} />
+                                    </div>
+                                    <button onClick={() => changeTier(1)} disabled={selectedTier >= 15} className="w-6 h-6 flex items-center justify-center rounded-lg hover:bg-white/10 disabled:opacity-30 transition-all active:scale-90">
+                                        <ChevronRight size={12} />
                                     </button>
                                 </div>
                             </div>
 
                             <div className="space-y-2">
                                 {tournamentPlayers.length === 0 ? (
-                                    <div className="text-center py-12 opacity-50">
-                                        <Shield size={32} className="mx-auto mb-3 opacity-30" />
-                                        <p className="text-sm">{t('no_players_yet')}</p>
-                                    </div>
+                                    <motion.div
+                                        initial={{ opacity: 0, scale: 0.95 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        className="text-center py-14 rounded-2xl border border-dashed border-white/10"
+                                        style={{ backgroundColor: 'var(--card-bg)' }}
+                                    >
+                                        <motion.div animate={{ rotate: [0, 8, -8, 0] }} transition={{ duration: 2.5, repeat: Infinity }} className="w-14 h-14 mx-auto mb-3 rounded-xl bg-gradient-to-br from-slate-700/50 to-slate-800/50 flex items-center justify-center border border-white/10">
+                                            <Shield size={24} className="text-slate-500" />
+                                        </motion.div>
+                                        <p className="text-sm font-bold opacity-60" style={{ color: 'var(--text-primary)' }}>{t('no_players_yet')}</p>
+                                        <p className="text-[10px] opacity-40 mt-0.5" style={{ color: 'var(--text-primary)' }}>{t('be_first', 'Be the first!')}</p>
+                                    </motion.div>
                                 ) : (
                                     tournamentPlayers.map((player, idx) => {
                                         const isUser = user?.username === player.username;
+                                        const isTop3 = idx < 3;
+
                                         return (
                                             <motion.div
                                                 key={idx}
-                                                initial={{ opacity: 0, x: -20 }}
-                                                animate={{ opacity: 1, x: 0 }}
-                                                transition={{ delay: idx * 0.05 }}
+                                                initial={{ opacity: 0, x: -30, scale: 0.95 }}
+                                                animate={{ opacity: 1, x: 0, scale: 1 }}
+                                                transition={{ delay: idx * 0.06, type: "spring", stiffness: 180 }}
                                                 onClick={() => navigate(`/profile/${player.username}`)}
-                                                className={`relative p-3 rounded-xl border flex items-center justify-between group transition-all duration-300 cursor-pointer ${isUser
-                                                    ? 'bg-blue-500/10 border-blue-500/30 shadow-[0_0_15px_rgba(59,130,246,0.1)]'
-                                                    : 'hover:opacity-80'
+                                                className={`relative overflow-hidden rounded-2xl border cursor-pointer group transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] ${isUser ? 'bg-gradient-to-r from-blue-500/15 to-indigo-500/15 border-blue-500/40 shadow-[0_0_18px_rgba(59,130,246,0.12)]'
+                                                    : idx === 0 ? 'bg-gradient-to-r from-yellow-400/15 to-orange-500/15 border-yellow-500/40 shadow-lg shadow-yellow-500/10'
+                                                        : idx === 1 ? 'bg-gradient-to-r from-slate-300/15 to-slate-500/15 border-slate-400/40 shadow-lg shadow-slate-400/10'
+                                                            : idx === 2 ? 'bg-gradient-to-r from-orange-600/15 to-orange-800/15 border-orange-600/40 shadow-lg shadow-orange-500/10'
+                                                                : ''
                                                     }`}
-                                                style={{
-                                                    backgroundColor: isUser ? undefined : 'var(--card-bg)',
-                                                    borderColor: isUser ? undefined : 'var(--card-border)'
-                                                }}
+                                                style={{ backgroundColor: (!isUser && !isTop3) ? 'var(--card-bg)' : undefined, borderColor: (!isUser && !isTop3) ? 'var(--card-border)' : undefined }}
                                             >
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-black text-xs ${idx === 0 ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/30' :
-                                                        idx === 1 ? 'bg-slate-400/20 text-slate-400 border border-slate-400/30' :
-                                                            idx === 2 ? 'bg-orange-700/20 text-orange-600 border border-orange-700/30' :
-                                                                'bg-white/5 text-slate-500'
-                                                        }`}>
-                                                        {idx + 1}
-                                                    </div>
-                                                    <div>
-                                                        <div className={`font-bold text-sm ${isUser ? 'text-blue-400' : ''}`} style={{ color: isUser ? undefined : 'var(--text-primary)' }}>
-                                                            {player.username}
+                                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700" />
+
+                                                <div className="relative p-3.5 flex items-center justify-between">
+                                                    <div className="flex items-center gap-3">
+                                                        <motion.div
+                                                            whileHover={{ scale: 1.08, rotate: 3 }}
+                                                            className={`relative w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs shadow-lg ${idx === 0 ? 'bg-gradient-to-br from-yellow-400 via-amber-500 to-orange-500 text-yellow-900 shadow-yellow-500/25'
+                                                                : idx === 1 ? 'bg-gradient-to-br from-slate-300 via-slate-400 to-slate-500 text-slate-800 shadow-slate-400/25'
+                                                                    : idx === 2 ? 'bg-gradient-to-br from-orange-500 via-orange-600 to-red-600 text-orange-100 shadow-orange-500/25'
+                                                                        : 'bg-white/10 text-slate-400 border border-white/10'
+                                                                }`}
+                                                        >
+                                                            {idx + 1}
+                                                            {idx === 0 && (
+                                                                <motion.div animate={{ scale: [1, 1.25, 1], rotate: [0, 8, -8, 0] }} transition={{ duration: 2, repeat: Infinity }} className="absolute -top-1.5 -right-1.5">
+                                                                    <Crown size={11} className="text-yellow-300 drop-shadow-[0_0_5px_rgba(253,224,71,0.8)]" />
+                                                                </motion.div>
+                                                            )}
+                                                        </motion.div>
+
+                                                        <div>
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span className={`font-bold text-sm ${isUser ? 'text-blue-400' : ''}`} style={{ color: isUser ? undefined : 'var(--text-primary)' }}>{player.username}</span>
+                                                                {player.isPremium && (
+                                                                    <BadgeCheck size={14} className="text-yellow-400 drop-shadow-[0_0_4px_rgba(250,204,21,0.6)]" />
+                                                                )}
+                                                                {isUser && <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[8px] font-black uppercase border border-blue-500/30">{t('you')}</span>}
+                                                            </div>
+                                                            {isTop3 && <div className="text-[9px] font-bold opacity-50 mt-0.5" style={{ color: 'var(--text-primary)' }}>{idx === 0 ? '🏆' : idx === 1 ? '🥈' : '🥉'} {t('top_performer', 'Top Performer')}</div>}
                                                         </div>
-                                                        {isUser && <div className="text-[9px] font-bold text-blue-500/60 uppercase tracking-wider">{t('you')}</div>}
                                                     </div>
-                                                </div>
-                                                <div className="text-right">
-                                                    <div className="font-mono font-bold text-sm" style={{ color: 'var(--text-primary)' }}>
-                                                        ${player.portfolioValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+
+                                                    <div className="text-right">
+                                                        <div className="font-mono font-black text-sm" style={{ color: 'var(--text-primary)' }}>${player.portfolioValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}</div>
+                                                        <div className="text-[9px] font-bold text-emerald-400/70">{t('total_value', 'Total Value')}</div>
                                                     </div>
                                                 </div>
                                             </motion.div>
@@ -379,59 +467,57 @@ export const Ranking: React.FC = () => {
                 ) : (
                     <motion.div
                         key="global"
-                        initial={{ opacity: 0, y: 20 }}
+                        initial={{ opacity: 0, y: 25 }}
                         animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
-                        transition={{ duration: 0.3 }}
-                        className="space-y-4"
+                        exit={{ opacity: 0, y: -25 }}
+                        transition={{ duration: 0.35 }}
+                        className="space-y-3"
                     >
                         {loading ? (
-                            <div className="flex justify-center py-12">
-                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                            <div className="flex justify-center py-16">
+                                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
                             </div>
                         ) : error ? (
-                            <div className="text-center py-12 text-red-500 text-sm font-medium">{error}</div>
+                            <div className="text-center py-16 text-red-500 text-sm font-medium">{error}</div>
                         ) : leaderboard.length === 0 ? (
-                            <div className="text-center opacity-50 py-12 text-sm" style={{ color: 'var(--text-primary)' }}>
-                                {t('no_players_yet')}
-                            </div>
+                            <div className="text-center opacity-50 py-16 text-sm" style={{ color: 'var(--text-primary)' }}>{t('no_players_yet')}</div>
                         ) : (
                             leaderboard.map((player, index) => {
                                 const isCurrentUser = user && player.username === user.username;
                                 const isTop3 = index < 3;
+
                                 return (
                                     <motion.div
                                         key={index}
-                                        initial={{ opacity: 0, y: 10 }}
+                                        initial={{ opacity: 0, y: 15 }}
                                         animate={{ opacity: 1, y: 0 }}
-                                        transition={{ delay: index * 0.05 }}
+                                        transition={{ delay: index * 0.04 }}
                                         onClick={() => navigate(`/profile/${player.username}`)}
-                                        className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer ${isCurrentUser
-                                            ? 'bg-blue-500/10 border-blue-500/30'
-                                            : 'hover:opacity-80'
+                                        className={`p-3.5 rounded-2xl border flex items-center justify-between cursor-pointer group transition-all duration-300 hover:scale-[1.01] ${isCurrentUser ? 'bg-gradient-to-r from-blue-500/15 to-indigo-500/15 border-blue-500/40 shadow-[0_0_18px_rgba(59,130,246,0.12)]'
+                                            : index === 0 ? 'bg-gradient-to-r from-yellow-400/15 to-orange-500/15 border-yellow-500/40'
+                                                : index === 1 ? 'bg-gradient-to-r from-slate-300/15 to-slate-500/15 border-slate-400/40'
+                                                    : index === 2 ? 'bg-gradient-to-r from-orange-600/15 to-orange-800/15 border-orange-600/40'
+                                                        : ''
                                             }`}
-                                        style={{
-                                            backgroundColor: isCurrentUser ? undefined : 'var(--card-bg)',
-                                            borderColor: isCurrentUser ? undefined : 'var(--card-border)'
-                                        }}
+                                        style={{ backgroundColor: (!isCurrentUser && !isTop3) ? 'var(--card-bg)' : undefined, borderColor: (!isCurrentUser && !isTop3) ? 'var(--card-border)' : undefined }}
                                     >
                                         <div className="flex items-center gap-3">
-                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs ${index === 0 ? 'bg-yellow-500 text-black shadow-lg shadow-yellow-500/50' :
-                                                index === 1 ? 'bg-slate-300 text-black shadow-lg shadow-slate-300/50' :
-                                                    index === 2 ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/50' :
-                                                        'bg-white/5 text-slate-500'
+                                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs shadow-lg ${index === 0 ? 'bg-gradient-to-br from-yellow-400 to-amber-600 text-yellow-900'
+                                                : index === 1 ? 'bg-gradient-to-br from-slate-300 to-slate-500 text-slate-800'
+                                                    : index === 2 ? 'bg-gradient-to-br from-orange-500 to-orange-700 text-orange-100'
+                                                        : 'bg-white/10 text-slate-400 border border-white/10'
                                                 }`}>
                                                 {index + 1}
                                             </div>
                                             <div>
-                                                <div className="flex items-center gap-2">
-                                                    <span className={`font-bold text-sm ${isCurrentUser ? 'text-blue-400' : ''}`} style={{ color: isCurrentUser ? undefined : 'var(--text-primary)' }}>
-                                                        {player.username}
-                                                    </span>
-                                                    {player.isInTournament && (
-                                                        <Shield size={10} className={getLevelColor(player.rankTier)} />
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className={`font-bold text-sm ${isCurrentUser ? 'text-blue-400' : ''}`} style={{ color: isCurrentUser ? undefined : 'var(--text-primary)' }}>{player.username}</span>
+                                                    {player.isPremium && (
+                                                        <BadgeCheck size={14} className="text-yellow-400 drop-shadow-[0_0_4px_rgba(250,204,21,0.6)]" />
                                                     )}
+                                                    {player.isInTournament && <Shield size={10} className={getLevelColor(player.rankTier)} />}
                                                 </div>
+                                                {isCurrentUser && <span className="text-[8px] font-bold text-blue-500/60 uppercase">{t('you')}</span>}
                                             </div>
                                         </div>
                                         <div className={`font-black text-sm ${isTop3 ? 'text-emerald-400' : 'text-slate-400'}`}>

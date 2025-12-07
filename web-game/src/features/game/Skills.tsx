@@ -5,7 +5,7 @@ import {
     Zap, Lock, Unlock, PlayCircle,
     Shield, TrendingDown, BarChart3, Clock,
     LineChart, PieChart, Target, AlertCircle, Eye,
-    ChevronDown, ChevronUp, ExternalLink, Crown
+    ChevronDown, ChevronUp, ExternalLink, Crown, ArrowLeft
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore, SKILL_DEFINITIONS, type SkillKey } from '../../store/gameStore';
@@ -56,6 +56,15 @@ export const Skills: React.FC = () => {
 
     return (
         <div className="pb-24 space-y-4">
+            {/* Back Button */}
+            <button
+                onClick={() => navigate(-1)}
+                className="flex items-center gap-2 text-sm opacity-70 hover:opacity-100 transition-opacity"
+                style={{ color: 'var(--text-primary)' }}
+            >
+                <ArrowLeft size={18} />
+                {t('back')}
+            </button>
             {/* Header */}
             <div className="flex justify-between items-center p-2 rounded-2xl shadow-sm border" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
                 <h2 className="text-lg font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
@@ -99,42 +108,70 @@ export const Skills: React.FC = () => {
 
             {/* Premium Unlock Offer */}
             {!Object.values(skills).every(Boolean) && (
-                <div className="relative overflow-hidden rounded-2xl p-4 shadow-lg">
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="relative overflow-hidden rounded-2xl p-5 shadow-xl"
+                >
                     {/* Gold Gradient Background */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-amber-200 via-yellow-400 to-amber-500"></div>
-
+                    <div className="absolute inset-0 bg-gradient-to-r from-amber-200 via-yellow-400 to-amber-500" />
                     {/* Shine Effect */}
-                    <div className="absolute inset-0 bg-gradient-to-tr from-white/40 to-transparent opacity-50"></div>
+                    <div className="absolute inset-0 bg-gradient-to-tr from-white/40 to-transparent opacity-50" />
+                    {/* Animated Sparkle */}
+                    <motion.div
+                        animate={{ x: ['0%', '100%'], opacity: [0, 1, 0] }}
+                        transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
+                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
+                    />
 
-                    <div className="relative flex justify-between items-center">
-                        <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                                <div className="p-1.5 bg-black/10 rounded-lg backdrop-blur-sm">
-                                    <Crown size={20} className="text-black/80 fill-black/20" />
+                    <div className="relative">
+                        <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-4">
+                            <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <div className="p-2 bg-black/10 rounded-xl backdrop-blur-sm">
+                                        <Crown size={22} className="text-black/80 fill-black/20" />
+                                    </div>
+                                    <h3 className="font-black text-lg text-black/80 tracking-tight uppercase">
+                                        {t('unlock_all_skills')}
+                                    </h3>
                                 </div>
-                                <h3 className="font-black text-lg text-black/80 tracking-tight uppercase">{t('unlock_all_skills')}</h3>
+                                <p className="text-xs font-bold text-black/60 leading-relaxed">
+                                    {t('premium_learning_desc', 'Get instant access to 100+ premium lessons. Skip 90+ ads and master trading like a pro!')}
+                                </p>
                             </div>
-                            <p className="text-xs font-bold text-black/60 leading-tight max-w-[200px]">
-                                {t('premium_offer_desc')}
-                            </p>
-                        </div>
 
-                        <div className="flex flex-col items-end gap-1">
-                            <div className="bg-black/80 text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm">
-                                {t('best_value')}
+                            <div className="flex flex-col sm:items-end gap-2 w-full sm:w-auto">
+                                <div className="bg-black/80 text-amber-400 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm self-end">
+                                    {t('best_value')}
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        unlockAllSkills();
+                                    }}
+                                    className="bg-black text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-xl shadow-black/20 active:scale-95 transition-transform flex items-center justify-center gap-1 whitespace-nowrap w-full sm:w-auto"
+                                >
+                                    <span>$4.99</span>
+                                    <span className="opacity-60 text-xs font-normal">| {t('unlock_now')}</span>
+                                </button>
+                                {/* Mini badges under price */}
+                                <div className="flex flex-col items-end gap-1 mt-1 pr-1 sm:pr-0">
+                                    <div className="flex items-center gap-1 px-2 py-0.5 bg-black/10 rounded-full">
+                                        <PlayCircle size={10} className="text-black/60" />
+                                        <span className="text-[9px] font-bold text-black/70">{t('no_ads', 'No Ads')}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1 px-2 py-0.5 bg-black/10 rounded-full">
+                                        <Target size={10} className="text-black/60" />
+                                        <span className="text-[9px] font-bold text-black/70">135+ {t('lessons', 'Lessons')}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1 px-2 py-0.5 bg-black/10 rounded-full">
+                                        <Zap size={10} className="text-black/60 fill-black/20" />
+                                        <span className="text-[9px] font-bold text-black/70">{t('unlock_skills', 'All Skills')}</span>
+                                    </div>
+                                </div>
                             </div>
-                            <button
-                                onClick={() => {
-                                    unlockAllSkills();
-                                }}
-                                className="bg-black text-white px-4 py-2 rounded-xl font-bold text-sm shadow-xl shadow-black/20 active:scale-95 transition-transform flex items-center gap-1"
-                            >
-                                <span>$4.99</span>
-                                <span className="opacity-60 text-xs font-normal">| {t('unlock_now')}</span>
-                            </button>
                         </div>
                     </div>
-                </div>
+                </motion.div>
             )}
 
             {/* Skills Grid */}

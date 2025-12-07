@@ -12,6 +12,8 @@ export interface User {
     rankTier: number;
     weeklyStartBalance: number;
     isInTournament: boolean;
+    isPremium: boolean;
+    registrationDate: string;
 }
 
 export interface MarketData {
@@ -42,7 +44,9 @@ export const initDB = async () => {
                 last_active TIMESTAMP,
                 rank_tier INTEGER DEFAULT 1,
                 weekly_start_balance NUMERIC DEFAULT 0,
-                is_in_tournament BOOLEAN DEFAULT FALSE
+                is_in_tournament BOOLEAN DEFAULT FALSE,
+                is_premium BOOLEAN DEFAULT FALSE,
+                registration_date TIMESTAMP DEFAULT NOW()
             );
         `);
 
@@ -51,6 +55,8 @@ export const initDB = async () => {
             await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS rank_tier INTEGER DEFAULT 1`);
             await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS weekly_start_balance NUMERIC DEFAULT 0`);
             await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_in_tournament BOOLEAN DEFAULT FALSE`);
+            await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_premium BOOLEAN DEFAULT FALSE`);
+            await query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS registration_date TIMESTAMP DEFAULT NOW()`);
         } catch (e) {
             console.log('Migration note: User columns might already exist');
         }
@@ -167,7 +173,9 @@ export const getUsers = async (): Promise<User[]> => {
             lastActive: row.last_active,
             rankTier: row.rank_tier || 1,
             weeklyStartBalance: Number(row.weekly_start_balance) || 0,
-            isInTournament: row.is_in_tournament || false
+            isInTournament: row.is_in_tournament || false,
+            isPremium: row.is_premium || false,
+            registrationDate: row.registration_date || row.last_active || new Date().toISOString()
         }));
     } catch (error) {
         console.error('Error fetching users:', error);
@@ -195,7 +203,9 @@ export const getUser = async (username: string): Promise<User | undefined> => {
             lastActive: row.last_active,
             rankTier: row.rank_tier || 1,
             weeklyStartBalance: Number(row.weekly_start_balance) || 0,
-            isInTournament: row.is_in_tournament || false
+            isInTournament: row.is_in_tournament || false,
+            isPremium: row.is_premium || false,
+            registrationDate: row.registration_date || row.last_active || new Date().toISOString()
         };
     } catch (error) {
         console.error('Error fetching user:', error);
@@ -217,7 +227,9 @@ export const getUsersByIp = async (ip: string): Promise<User[]> => {
             lastActive: row.last_active,
             rankTier: row.rank_tier || 1,
             weeklyStartBalance: Number(row.weekly_start_balance) || 0,
-            isInTournament: row.is_in_tournament || false
+            isInTournament: row.is_in_tournament || false,
+            isPremium: row.is_premium || false,
+            registrationDate: row.registration_date || row.last_active || new Date().toISOString()
         }));
     } catch (error) {
         console.error('Error fetching users by IP:', error);
@@ -228,9 +240,9 @@ export const getUsersByIp = async (ip: string): Promise<User[]> => {
 export const createUser = async (user: User): Promise<void> => {
     try {
         const res = await query(
-            `INSERT INTO users (id, username, password, ip, email, game_state, portfolio_value, last_active, rank_tier, weekly_start_balance, is_in_tournament)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
-            [user.id, user.username, user.password, user.ip, user.email, user.gameState, user.portfolioValue, user.lastActive, user.rankTier || 1, user.weeklyStartBalance || 0, user.isInTournament || false]
+            `INSERT INTO users (id, username, password, ip, email, game_state, portfolio_value, last_active, rank_tier, weekly_start_balance, is_in_tournament, is_premium, registration_date)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+            [user.id, user.username, user.password, user.ip, user.email, user.gameState, user.portfolioValue, user.lastActive, user.rankTier || 1, user.weeklyStartBalance || 0, user.isInTournament || false, user.isPremium || false, user.registrationDate || new Date().toISOString()]
         );
         console.log(`createUser: Inserted ${res.rowCount} row(s) for user ${user.username}`);
     } catch (error) {
@@ -254,6 +266,7 @@ export const updateUser = async (username: string, updates: Partial<User>): Prom
         if (updates.rankTier !== undefined) { fields.push(`rank_tier = $${idx++}`); values.push(updates.rankTier); }
         if (updates.weeklyStartBalance !== undefined) { fields.push(`weekly_start_balance = $${idx++}`); values.push(updates.weeklyStartBalance); }
         if (updates.isInTournament !== undefined) { fields.push(`is_in_tournament = $${idx++}`); values.push(updates.isInTournament); }
+        if (updates.isPremium !== undefined) { fields.push(`is_premium = $${idx++}`); values.push(updates.isPremium); }
 
         if (fields.length === 0) return false;
 

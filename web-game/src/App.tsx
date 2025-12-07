@@ -7,7 +7,7 @@ import { House } from './features/game/House';
 import { MarketPage } from './features/game/MarketPage';
 import { Ranking } from './features/game/Ranking';
 import { Skills } from './features/game/Skills';
-import { NewsPage } from './features/game/NewsPage';
+import Learning from './features/game/Learning';
 import { StockDetail } from './features/game/StockDetail';
 import { TradePage } from './features/game/TradePage';
 import { BatchClosePage } from './features/game/BatchClosePage';
@@ -15,6 +15,7 @@ import { Portfolio } from './features/game/Portfolio'; // Assuming Portfolio is 
 import { Profile } from './features/game/Profile';
 import { UserProfile } from './features/game/UserProfile';
 import { FavoritesPage } from './features/game/FavoritesPage';
+import Glossary from './features/game/Glossary';
 
 import { App as CapacitorApp } from '@capacitor/app';
 
@@ -89,10 +90,11 @@ function App() {
             <Route path="/portfolio" element={<Portfolio />} />
             <Route path="/skills" element={<Skills />} />
             <Route path="/ranking" element={<Ranking />} />
-            <Route path="/news" element={<NewsPage />} />
+            <Route path="/learning" element={<Learning />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/profile/:username" element={<UserProfile />} />
             <Route path="/favorites" element={<FavoritesPage />} />
+            <Route path="/glossary" element={<Glossary />} />
           </Route>
         </Routes>
       </AnimatePresence>

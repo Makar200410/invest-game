@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { TrendingUp, Trophy, Zap, Newspaper, User as UserIcon, Home } from 'lucide-react';
+import { TrendingUp, Trophy, Zap, GraduationCap, User as UserIcon, Home } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../../store/gameStore';
 import { AuthModal } from '../auth/AuthModal';
@@ -14,6 +14,15 @@ type OnboardingStep = 'language' | 'intro' | 'auth' | 'tutorial-confirm' | 'tour
 export const AppLayout = () => {
     const { t } = useTranslation();
     const location = useLocation();
+    const prevPathRef = useRef(location.pathname);
+
+    // Scroll to top when route changes
+    useEffect(() => {
+        if (location.pathname !== prevPathRef.current) {
+            window.scrollTo({ top: 0, behavior: 'instant' });
+            prevPathRef.current = location.pathname;
+        }
+    }, [location.pathname]);
     const { user, login, startTutorial, completeTutorial, hasCompletedTutorial, tutorialActive, settings } = useGameStore();
 
     // Onboarding State
@@ -94,7 +103,7 @@ export const AppLayout = () => {
         { path: '/house', icon: Home, label: t('house', 'House'), id: 'nav-house' },
         { path: '/ranking', icon: Trophy, label: t('rank'), id: 'nav-ranking' },
         { path: '/skills', icon: Zap, label: t('skills'), id: 'nav-skills' },
-        { path: '/news', icon: Newspaper, label: t('news'), id: 'nav-news' },
+        { path: '/learning', icon: GraduationCap, label: t('learning', 'Learning'), id: 'nav-learning' },
     ];
 
     return (
@@ -180,6 +189,10 @@ export const AppLayout = () => {
                             key={path}
                             id={id}
                             to={path}
+                            onClick={() => {
+                                // Always scroll to top when clicking on a tab
+                                window.scrollTo({ top: 0, behavior: 'instant' });
+                            }}
                             className={`flex flex-col items-center justify-center w-16 h-14 rounded-xl transition-all duration-300 ${isActive
                                 ? '-translate-y-1 shadow-lg'
                                 : 'opacity-70 hover:opacity-100'

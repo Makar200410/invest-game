@@ -156,6 +156,7 @@ interface GameState {
     tutorialActive: boolean;
     tutorialStep: number;
     hasCompletedTutorial: boolean;
+    isPremium: boolean;
 
     setTutorialActive: (active: boolean) => void;
     setTutorialStep: (step: number) => void;
@@ -179,6 +180,7 @@ interface GameState {
     logout: () => void;
     sync: () => Promise<void>;
     unlockAllSkills: () => void;
+    unlockPremium: () => void;
     notifications: Notification[];
     settings: GameSettings;
     favorites: string[];
@@ -216,6 +218,7 @@ export const useGameStore = create<GameState>()(
             tutorialActive: false,
             tutorialStep: 0,
             hasCompletedTutorial: false,
+            isPremium: false,
             lastLogin: null,
             skillPoints: 0,
             user: null,
@@ -729,6 +732,25 @@ export const useGameStore = create<GameState>()(
             },
             unlockAllSkills: () => {
                 set({
+                    skills: {
+                        stopLossMaster: true,
+                        leverageTrading: true,
+                        shortSelling: true,
+                        multiTimeframe: true,
+                        dayTrader: true,
+                        technicalAnalyst: true,
+                        fundamentalAnalyst: true,
+                        portfolioManager: true,
+                        marketTimer: true,
+                        riskManager: true,
+                        newsAlert: true,
+                        insiderInfo: true
+                    }
+                });
+            },
+            unlockPremium: () => {
+                set({
+                    isPremium: true,
                     skills: {
                         stopLossMaster: true,
                         leverageTrading: true,

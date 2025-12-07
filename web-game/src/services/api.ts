@@ -230,6 +230,8 @@ export const fetchTournamentStatus = async (username: string) => {
 export interface UserProfile {
     username: string;
     joinDate: string;
+    registrationDate?: string;
+    lastActive?: string;
     rankTier: number;
     portfolioValue: number;
     levelName?: string;
@@ -242,6 +244,8 @@ export interface UserProfile {
     skillPoints?: number;
     tradesToday?: number;
     lastTradeDate?: string;
+    isPremium?: boolean;
+    isInTournament?: boolean;
     shortPositions?: {
         id: string;
         amount: number;

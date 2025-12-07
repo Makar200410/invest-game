@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { RefreshCcw, Lock, TrendingUp, TrendingDown, BarChart2, Store } from 'lucide-react';
+import { RefreshCcw, Lock, TrendingUp, TrendingDown, BarChart2, Store, ArrowLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useGameStore } from '../../store/gameStore';
 import { fetchCryptoMarket, type MarketItem, updateScore } from '../../services/api';
@@ -181,6 +181,17 @@ export const House: React.FC = () => {
 
     return (
         <div className="space-y-3 pb-24">
+            {/* Back Button */}
+            <div className="px-4 pt-2">
+                <button
+                    onClick={() => navigate(-1)}
+                    className="flex items-center gap-2 text-sm opacity-70 hover:opacity-100 transition-opacity"
+                    style={{ color: 'var(--text-primary)' }}
+                >
+                    <ArrowLeft size={18} />
+                    {t('back')}
+                </button>
+            </div>
             {/* Balance Card */}
             <div className="px-4 pt-0 pb-2">
                 <div id="tutorial-balance-card" className="rounded-3xl overflow-hidden relative shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] border" style={{ borderColor: 'var(--card-border)' }}>
@@ -223,14 +234,6 @@ export const House: React.FC = () => {
                         </div>
 
                         <div className="flex flex-wrap gap-2">
-                            {/* Selected Assets Badge */}
-                            <div
-                                onClick={() => navigate('/favorites')}
-                                className="px-3 py-2 rounded-lg border text-[10px] font-bold uppercase tracking-wide flex items-center gap-2 transition-all cursor-pointer select-none bg-gradient-to-b from-amber-500/10 to-amber-900/20 border-amber-500/20 text-amber-400 shadow-[0_4px_12px_rgba(245,158,11,0.1)] hover:bg-amber-500/20"
-                            >
-                                <div className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]"></div>
-                                {t('selected_assets', 'Selected Assets')} ({favorites.length})
-                            </div>
                             {/* Portfolio Manager Badge */}
                             <div
                                 onClick={() => !skills.portfolioManager && navigate('/skills')}
@@ -353,6 +356,66 @@ export const House: React.FC = () => {
                     </div>
                 </button>
             </motion.div>
+
+            {/* Favorites Preview */}
+            {favorites.length > 0 && (
+                <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="px-4"
+                >
+                    <div className="rounded-2xl border overflow-hidden" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
+                        <div className="flex items-center justify-between p-3 border-b" style={{ borderColor: 'var(--card-border)' }}>
+                            <h3 className="text-xs font-bold uppercase tracking-widest flex items-center gap-2" style={{ color: 'var(--text-primary)', opacity: 0.7 }}>
+                                <div className="w-1.5 h-1.5 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]"></div>
+                                {t('favorites', 'Favorites')}
+                            </h3>
+                            <button
+                                onClick={() => navigate('/favorites')}
+                                className="text-[10px] font-bold text-amber-400 hover:text-amber-300 transition-colors"
+                            >
+                                {t('view_all', 'View All')} →
+                            </button>
+                        </div>
+                        <div className="p-2 space-y-1">
+                            {favorites.slice(0, 3).map(assetId => {
+                                const asset = items.find(i => i.id === assetId);
+                                if (!asset) return null;
+                                return (
+                                    <div
+                                        key={assetId}
+                                        onClick={() => navigate(`/stock/${assetId}`)}
+                                        className="flex items-center justify-between p-2 rounded-xl cursor-pointer hover:bg-white/5 transition-colors"
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <AssetIcon symbol={asset.symbol} className="w-7 h-7" />
+                                            <div>
+                                                <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{asset.symbol}</p>
+                                                <p className="text-[10px] opacity-60 truncate max-w-[100px]" style={{ color: 'var(--text-primary)' }}>{asset.name}</p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{formatPrice(asset.price)}</p>
+                                            <p className={`text-[10px] font-bold ${asset.change24h >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                {asset.change24h >= 0 ? '+' : ''}{asset.change24h.toFixed(2)}%
+                                            </p>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                            {favorites.length > 3 && (
+                                <button
+                                    onClick={() => navigate('/favorites')}
+                                    className="w-full text-center text-xs font-bold py-2 text-amber-400 hover:text-amber-300 transition-colors"
+                                >
+                                    +{favorites.length - 3} {t('more', 'more')}
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </motion.div>
+            )}
 
             {/* Active Assets Section */}
             {allPositions.length > 0 ? (

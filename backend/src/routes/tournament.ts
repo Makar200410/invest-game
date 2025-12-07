@@ -99,7 +99,8 @@ router.get('/leaderboard', async (req, res) => {
                 username: u.username,
                 portfolioValue: u.portfolioValue,
                 rankTier: u.rankTier || 1,
-                isInTournament: u.isInTournament || false
+                isInTournament: u.isInTournament || false,
+                isPremium: u.isPremium || false
             }))
             .slice(0, 100); // Top 100
 

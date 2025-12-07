@@ -69,12 +69,12 @@ const STEPS: TutorialStep[] = [
         path: '/skills'
     },
     {
-        id: 'news',
-        targetId: 'nav-news',
-        titleKey: 'tutorial_news_title',
-        contentKey: 'tutorial_news_content',
+        id: 'learning',
+        targetId: 'nav-learning',
+        titleKey: 'tutorial_learning_title',
+        contentKey: 'tutorial_learning_content',
         position: 'screen-top',
-        path: '/news'
+        path: '/learning'
     }
 ];
 

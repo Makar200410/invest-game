@@ -1,17 +1,28 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../../store/gameStore';
 import { Card } from '../../components/ui/Card';
-import { PieChart } from 'lucide-react';
+import { PieChart, ArrowLeft } from 'lucide-react';
 import { AssetIcon } from '../../components/ui/AssetIcon';
 
 export const Portfolio: React.FC = () => {
     const { t } = useTranslation();
+    const navigate = useNavigate();
     const { portfolio, balance, getPortfolioValue } = useGameStore();
     const totalValue = getPortfolioValue(portfolio) + balance;
 
     return (
         <div className="pb-24 space-y-4">
+            {/* Back Button */}
+            <button
+                onClick={() => navigate(-1)}
+                className="flex items-center gap-2 text-sm opacity-70 hover:opacity-100 transition-opacity"
+                style={{ color: 'var(--text-primary)' }}
+            >
+                <ArrowLeft size={18} />
+                {t('back')}
+            </button>
             <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
                 {t('portfolio_title')}
             </h1>

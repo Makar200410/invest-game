@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { Search, ArrowUpDown } from 'lucide-react';
+import { Search, ArrowUpDown, Briefcase, GraduationCap } from 'lucide-react';
 import { useGameStore } from '../../store/gameStore';
 import { fetchCryptoMarket, fetchMarketChartByInterval, type MarketItem } from '../../services/api';
 import { formatPrice } from '../../utils/format';
@@ -230,6 +230,53 @@ export const MarketPage: React.FC = () => {
                                 {t('virtual_account_desc', 'This is a virtual brokerage account where you trade real assets in real-time. All prices and data are live, but your account balance is virtual for practice and learning.')}
                             </p>
                         </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-3 mt-4">
+                        {/* View Portfolio Button */}
+                        <button
+                            onClick={() => navigate('/house')}
+                            className="flex-1 group relative overflow-hidden rounded-xl p-3 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+                        >
+                            {/* Gradient Background */}
+                            <div className="absolute inset-0 bg-gradient-to-r from-emerald-600 via-teal-500 to-cyan-500 opacity-90" />
+                            {/* Shine Effect */}
+                            <div className="absolute inset-0 bg-gradient-to-tr from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                            {/* Animated Glow */}
+                            <div className="absolute -inset-1 bg-gradient-to-r from-emerald-400 to-cyan-400 rounded-xl opacity-0 group-hover:opacity-30 blur-lg transition-opacity duration-300" />
+
+                            <div className="relative flex items-center justify-center gap-2">
+                                <div className="w-8 h-8 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                                    <Briefcase size={18} className="text-white drop-shadow-md" />
+                                </div>
+                                <span className="font-bold text-sm text-white drop-shadow-md">
+                                    {t('view_portfolio', 'View Portfolio')}
+                                </span>
+                            </div>
+                        </button>
+
+                        {/* Complete Training Button */}
+                        <button
+                            onClick={() => navigate('/learning')}
+                            className="flex-1 group relative overflow-hidden rounded-xl p-3 transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+                        >
+                            {/* Gradient Background */}
+                            <div className="absolute inset-0 bg-gradient-to-r from-violet-600 via-purple-500 to-fuchsia-500 opacity-90" />
+                            {/* Shine Effect */}
+                            <div className="absolute inset-0 bg-gradient-to-tr from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                            {/* Animated Glow */}
+                            <div className="absolute -inset-1 bg-gradient-to-r from-violet-400 to-fuchsia-400 rounded-xl opacity-0 group-hover:opacity-30 blur-lg transition-opacity duration-300" />
+
+                            <div className="relative flex items-center justify-center gap-2">
+                                <div className="w-8 h-8 rounded-lg bg-white/20 backdrop-blur-sm flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                                    <GraduationCap size={18} className="text-white drop-shadow-md" />
+                                </div>
+                                <span className="font-bold text-sm text-white drop-shadow-md">
+                                    {t('complete_training', 'Training')}
+                                </span>
+                            </div>
+                        </button>
                     </div>
                 </div>
             </div>

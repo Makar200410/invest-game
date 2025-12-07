@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
     User, Moon, Sun, Globe, LogOut,
-    RotateCcw, ChevronRight, Shield, Award, Bell
+    RotateCcw, ChevronRight, Shield, Award, Bell, ArrowLeft, BadgeCheck
 } from 'lucide-react';
 import { useGameStore } from '../../store/gameStore';
 import { Card } from '../../components/ui/Card';
@@ -12,7 +12,7 @@ import { Card } from '../../components/ui/Card';
 export const Profile = () => {
     const { t, i18n } = useTranslation();
     const navigate = useNavigate();
-    const { user, logout, startTutorial, balance, settings, toggleNotifications } = useGameStore();
+    const { user, logout, startTutorial, balance, settings, toggleNotifications, isPremium, lastLogin } = useGameStore();
 
     // Theme State
     const [theme, setTheme] = useState<'swiss' | 'dark'>(() => {
@@ -70,6 +70,15 @@ export const Profile = () => {
 
     return (
         <div className="space-y-4 pb-20">
+            {/* Back Button */}
+            <button
+                onClick={() => navigate(-1)}
+                className="flex items-center gap-2 text-sm opacity-70 hover:opacity-100 transition-opacity"
+                style={{ color: 'var(--text-primary)' }}
+            >
+                <ArrowLeft size={18} />
+                {t('back')}
+            </button>
             {/* Header */}
             <header className="flex items-center justify-between mb-4">
                 <h1 className="text-xl font-bold">{t('profile')}</h1>
@@ -94,10 +103,15 @@ export const Profile = () => {
                         {user.username.substring(0, 2).toUpperCase()}
                     </div>
                     <div>
-                        <h2 className="text-xl font-bold">{user.username}</h2>
+                        <div className="flex items-center gap-2">
+                            <h2 className="text-xl font-bold">{user.username}</h2>
+                            {isPremium && (
+                                <BadgeCheck size={18} className="text-yellow-400 drop-shadow-[0_0_4px_rgba(250,204,21,0.6)]" />
+                            )}
+                        </div>
                         <p className="opacity-80 text-xs flex items-center gap-1">
                             <Award size={12} />
-                            {t('investor_level')}
+                            {isPremium ? t('pro_investor', 'PRO Investor') : t('investor_level')}
                         </p>
                     </div>
                 </div>
@@ -108,8 +122,8 @@ export const Profile = () => {
                         <p className="text-base font-bold">${balance?.toLocaleString() || '0'}</p>
                     </div>
                     <div className="bg-white/10 rounded-xl p-2 flex-1 backdrop-blur-sm">
-                        <p className="text-[10px] opacity-70 uppercase tracking-wider">{t('joined')}</p>
-                        <p className="text-base font-bold">{new Date().toLocaleDateString()}</p>
+                        <p className="text-[10px] opacity-70 uppercase tracking-wider">{t('last_active', 'Last Active')}</p>
+                        <p className="text-base font-bold">{lastLogin ? new Date(lastLogin).toLocaleDateString() : new Date().toLocaleDateString()}</p>
                     </div>
                 </div>
             </motion.div>

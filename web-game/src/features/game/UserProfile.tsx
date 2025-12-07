@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Shield, Award, Wallet, Activity, Briefcase, TrendingDown, Zap, TrendingUp, List } from 'lucide-react';
+import { ArrowLeft, Shield, Award, Wallet, Activity, Briefcase, TrendingDown, Zap, TrendingUp, List, BadgeCheck } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { AssetIcon } from '../../components/ui/AssetIcon';
 import { fetchUserProfile, type UserProfile as IUserProfile } from '../../services/api';
@@ -127,11 +127,16 @@ export const UserProfile: React.FC = () => {
                         {profile.username.substring(0, 2).toUpperCase()}
                     </div>
                     <div>
-                        <h2 className="text-2xl font-bold">{profile.username}</h2>
+                        <div className="flex items-center justify-center gap-2">
+                            <h2 className="text-2xl font-bold">{profile.username}</h2>
+                            {profile.isPremium && (
+                                <BadgeCheck size={20} className="text-yellow-400 drop-shadow-[0_0_4px_rgba(250,204,21,0.6)]" />
+                            )}
+                        </div>
                         <div className="flex items-center justify-center gap-2 mt-1 opacity-90">
                             <Award size={16} className={getLevelColor(profile.rankTier)} />
                             <span className={`font-bold uppercase tracking-wider text-sm ${getLevelColor(profile.rankTier)}`}>
-                                {profile.levelName ? t(profile.levelName.toLowerCase().replace(/ /g, '_'), profile.levelName) : t('investor')}
+                                {profile.isPremium ? t('pro_investor', 'PRO Investor') : (profile.levelName ? t(profile.levelName.toLowerCase().replace(/ /g, '_'), profile.levelName) : t('investor'))}
                             </span>
                         </div>
                     </div>
@@ -143,8 +148,8 @@ export const UserProfile: React.FC = () => {
                         <p className="text-lg font-bold">${formatPrice(profile.portfolioValue)}</p>
                     </div>
                     <div className="bg-white/10 rounded-xl p-3 backdrop-blur-sm text-center">
-                        <p className="text-[10px] opacity-70 uppercase tracking-wider mb-1">{t('joined', 'Joined')}</p>
-                        <p className="text-lg font-bold">{new Date(profile.joinDate).toLocaleDateString()}</p>
+                        <p className="text-[10px] opacity-70 uppercase tracking-wider mb-1">{t('last_active', 'Last Active')}</p>
+                        <p className="text-lg font-bold">{profile.lastActive ? new Date(profile.lastActive).toLocaleDateString() : new Date(profile.joinDate).toLocaleDateString()}</p>
                     </div>
                 </div>
             </motion.div>

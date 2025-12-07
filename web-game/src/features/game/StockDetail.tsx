@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, TrendingUp, Lock, Target, MessageCircle, ThumbsUp, Send, Trash2, X, CandlestickChart, LineChart } from 'lucide-react';
+import { ArrowLeft, TrendingUp, Lock, Target, MessageCircle, ThumbsUp, Send, Trash2, X, CandlestickChart, LineChart, BadgeCheck } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Card } from '../../components/ui/Card';
 import { useGameStore } from '../../store/gameStore';
@@ -27,7 +27,7 @@ export const StockDetail: React.FC = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const { balance, buyAsset, portfolio, skills, shortPositions, user, addNotification, favorites, toggleFavorite } = useGameStore();
+    const { balance, buyAsset, portfolio, skills, shortPositions, user, addNotification, favorites, toggleFavorite, isPremium } = useGameStore();
 
     // State
     const [asset, setAsset] = useState<MarketItem | null>(null);
@@ -90,6 +90,11 @@ export const StockDetail: React.FC = () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [companyNews, setCompanyNews] = useState<any[]>([]);
     const [chartLoaded, setChartLoaded] = useState(false);
+
+    // Scroll to top when switching tabs
+    useEffect(() => {
+        window.scrollTo({ top: 0, behavior: 'instant' });
+    }, [activeTab]);
 
     // Zoom and Pan state
     const [candleCount, setCandleCount] = useState(60); // Initial display of 60 candles
@@ -830,7 +835,7 @@ export const StockDetail: React.FC = () => {
 
                         {/* Indicator Interval Selector */}
                         <div className="flex justify-between items-center px-1">
-                            <h3 className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>{t('technical_analysis')}</h3>
+                            <h3 className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>{t('technical_analysis_label')}</h3>
                             <div className="flex gap-1 p-1 rounded-lg" style={{ backgroundColor: 'var(--bg-primary)' }}>
                                 {['5m', '15m', '1h', '3h', '1d'].map((t) => (
                                     <button
@@ -1435,7 +1440,7 @@ export const StockDetail: React.FC = () => {
                                             {/* Content */}
                                             <div className="flex-1">
                                                 <div className="flex justify-between items-start mb-1">
-                                                    <div className="flex items-baseline gap-2">
+                                                    <div className="flex items-center gap-2">
                                                         <span
                                                             onClick={() => navigate(`/profile/${comment.username}`)}
                                                             className="font-bold text-sm cursor-pointer hover:underline"
@@ -1443,6 +1448,9 @@ export const StockDetail: React.FC = () => {
                                                         >
                                                             {comment.username}
                                                         </span>
+                                                        {user?.username === comment.username && isPremium && (
+                                                            <BadgeCheck size={14} className="text-yellow-400 drop-shadow-[0_0_4px_rgba(250,204,21,0.6)]" />
+                                                        )}
                                                         <span className="text-xs opacity-40" style={{ color: 'var(--text-primary)' }}>{new Date(comment.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                                     </div>
                                                     {user?.username === comment.username && (
@@ -1504,7 +1512,7 @@ export const StockDetail: React.FC = () => {
                                                 {/* Content */}
                                                 <div className="flex-1">
                                                     <div className="flex justify-between items-start mb-1">
-                                                        <div className="flex items-baseline gap-2">
+                                                        <div className="flex items-center gap-2">
                                                             <span
                                                                 onClick={() => navigate(`/profile/${reply.username}`)}
                                                                 className="font-bold text-xs cursor-pointer hover:underline"
@@ -1512,6 +1520,9 @@ export const StockDetail: React.FC = () => {
                                                             >
                                                                 {reply.username}
                                                             </span>
+                                                            {user?.username === reply.username && isPremium && (
+                                                                <BadgeCheck size={12} className="text-yellow-400 drop-shadow-[0_0_4px_rgba(250,204,21,0.6)]" />
+                                                            )}
                                                             <span className="text-[10px] opacity-40" style={{ color: 'var(--text-primary)' }}>{new Date(reply.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                                         </div>
                                                         {user?.username === reply.username && (

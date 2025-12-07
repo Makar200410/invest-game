@@ -570,7 +570,9 @@ app.post('/api/register', async (req, res) => {
             lastActive: new Date().toISOString(),
             rankTier: 1,
             weeklyStartBalance: 0,
-            isInTournament: false
+            isInTournament: false,
+            isPremium: false,
+            registrationDate: new Date().toISOString()
         };
 
         await createUser(newUser);
@@ -680,10 +682,50 @@ app.get('/api/leaderboard', async (req, res) => {
         .sort((a, b) => b.portfolioValue - a.portfolioValue)
         .map(u => ({
             username: u.username,
-            portfolioValue: u.portfolioValue
+            portfolioValue: u.portfolioValue,
+            isPremium: u.isPremium || false
         }));
 
     res.json(leaderboard);
+});
+
+// User Profile Endpoint
+app.get('/api/users/:username', async (req, res) => {
+    const { username } = req.params;
+
+    try {
+        const user = await getUser(username);
+
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Return public profile data (exclude password, ip, email)
+        res.json({
+            username: user.username,
+            joinDate: user.registrationDate || user.lastActive || new Date().toISOString(),
+            registrationDate: user.registrationDate || user.lastActive || new Date().toISOString(),
+            lastActive: user.lastActive || new Date().toISOString(),
+            rankTier: user.rankTier || 1,
+            portfolioValue: user.portfolioValue || 10000,
+            isInTournament: user.isInTournament || false,
+            isPremium: user.isPremium || false,
+            balance: user.gameState?.balance || 10000,
+            loan: user.gameState?.loan || 0,
+            skillPoints: user.gameState?.skillPoints || 0,
+            skills: user.gameState?.skills || {},
+            portfolio: user.gameState?.portfolio || [],
+            shortPositions: user.gameState?.shortPositions || [],
+            leveragedPositions: user.gameState?.leveragedPositions || [],
+            orders: user.gameState?.orders || [],
+            tradesToday: user.gameState?.tradesToday || 0,
+            lastTradeDate: user.gameState?.lastTradeDate || null,
+            lastLogin: user.lastActive || new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('Error fetching user profile:', error);
+        res.status(500).json({ error: 'Failed to fetch user profile' });
+    }
 });
 
 app.get('/api/debug/update-news', async (req, res) => {

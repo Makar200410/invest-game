@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Wallet, Lock, Shield, Briefcase } from 'lucide-react';
+import { ArrowLeft, Wallet, Lock, Shield, Briefcase, AlertTriangle, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../../store/gameStore';
 import { formatPrice } from '../../utils/format';
@@ -18,6 +19,7 @@ export const TradePage: React.FC = () => {
     const [amount, setAmount] = useState('1');
     const [leverage, setLeverage] = useState(1);
     const [tradeType, setTradeType] = useState<'buy' | 'sell' | 'short'>(initialType);
+    const [showInsufficientFunds, setShowInsufficientFunds] = useState(false);
 
     useEffect(() => {
         const loadData = async () => {
@@ -89,24 +91,36 @@ export const TradePage: React.FC = () => {
 
     const handleTrade = () => {
         if (tradeType === 'buy') {
-            if (canBuy) {
-                // If shorted, clamp to shortedAmount to prevent opening long
-                const finalAmount = shortedAmount > 0 ? Math.min(numAmount, shortedAmount) : numAmount;
-                buyAsset(asset.id, asset.price, finalAmount, leverage);
-                navigate(-1);
+            if (!canBuy) {
+                setShowInsufficientFunds(true);
+                return;
             }
+            // If shorted, clamp to shortedAmount to prevent opening long
+            const finalAmount = shortedAmount > 0 ? Math.min(numAmount, shortedAmount) : numAmount;
+            buyAsset(asset.id, asset.price, finalAmount, leverage);
+            navigate(-1);
         } else if (tradeType === 'sell') {
             if (amountToSell > 0) {
                 sellAsset(asset.id, asset.price, amountToSell);
             }
             if (amountToShort > 0) {
-                if (canShort) {
-                    sellAsset(asset.id, asset.price, amountToShort, undefined, true, leverage);
+                if (!skills.shortSelling) return; // Skill locked
+                if (marginRequired > projectedBalance) {
+                    setShowInsufficientFunds(true);
+                    return;
                 }
+                sellAsset(asset.id, asset.price, amountToShort, undefined, true, leverage);
             }
             navigate(-1);
         } else if (tradeType === 'short') {
-            if (canShort && owned === 0) {
+            if (!skills.shortSelling || owned > 0) return; // Logic handled by UI state
+
+            if (marginRequired > projectedBalance) {
+                setShowInsufficientFunds(true);
+                return;
+            }
+
+            if (owned === 0) {
                 sellAsset(asset.id, asset.price, numAmount, undefined, true, leverage);
                 navigate(-1);
             }
@@ -334,9 +348,9 @@ export const TradePage: React.FC = () => {
                         <button
                             onClick={handleTrade}
                             disabled={
-                                tradeType === 'buy' ? !canBuy :
-                                    tradeType === 'sell' ? (amountToShort > 0 && !canShort) :
-                                        (!canShort || owned > 0)
+                                tradeType === 'buy' ? false : // Funds check in handler
+                                    tradeType === 'sell' ? (amountToShort > 0 && !skills.shortSelling) :
+                                        (!skills.shortSelling || owned > 0)
                             }
                             className={`w-full py-2 rounded-xl font-black text-sm shadow-lg transition-all transform active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed`}
                             style={{
@@ -351,6 +365,47 @@ export const TradePage: React.FC = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Insufficient Funds Modal */}
+            <AnimatePresence>
+                {showInsufficientFunds && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-6 w-full max-w-sm relative shadow-2xl"
+                        >
+                            <button
+                                onClick={() => setShowInsufficientFunds(false)}
+                                className="absolute top-4 right-4 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+
+                            <div className="flex flex-col items-center text-center gap-4">
+                                <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center text-red-500">
+                                    <AlertTriangle size={24} />
+                                </div>
+
+                                <div>
+                                    <h3 className="text-lg font-bold mb-2" style={{ color: 'var(--text-primary)' }}>{t('insufficient_balance')}</h3>
+                                    <p className="text-sm opacity-70 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                                        {t('insufficient_funds_message')}
+                                    </p>
+                                </div>
+
+                                <button
+                                    onClick={() => setShowInsufficientFunds(false)}
+                                    className="w-full py-3 rounded-xl font-bold bg-[var(--text-primary)] text-[var(--bg-primary)] mt-2 hover:opacity-90 transition-opacity"
+                                >
+                                    {t('close')}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };
