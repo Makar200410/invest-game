@@ -187,24 +187,26 @@ export const UserProfile: React.FC = () => {
                 </div>
             </div>
 
-            {/* Activity */}
-            <div className="space-y-2">
-                <h3 className="text-sm font-bold opacity-50 uppercase tracking-wider px-2 flex items-center gap-2">
-                    <Activity size={16} />
-                    {t('activity', 'Activity')}
-                </h3>
-                <Card className="p-4 space-y-3">
-                    <div className="flex justify-between items-center">
-                        <span className="text-sm opacity-70">{t('last_active', 'Last Active')}</span>
-                        <span className="font-bold">{profile.lastLogin || '-'}</span>
-                    </div>
+            {/* Activity - Only show for own profile */}
+            {user && user.username === username && (
+                <div className="space-y-2">
+                    <h3 className="text-sm font-bold opacity-50 uppercase tracking-wider px-2 flex items-center gap-2">
+                        <Activity size={16} />
+                        {t('activity', 'Activity')}
+                    </h3>
+                    <Card className="p-4 space-y-3">
+                        <div className="flex justify-between items-center">
+                            <span className="text-sm opacity-70">{t('last_active', 'Last Active')}</span>
+                            <span className="font-bold">{profile.lastLogin || '-'}</span>
+                        </div>
 
-                    <div className="flex justify-between items-center">
-                        <span className="text-sm opacity-70">{t('last_trade', 'Last Trade')}</span>
-                        <span className="font-bold">{profile.lastTradeDate || '-'}</span>
-                    </div>
-                </Card>
-            </div>
+                        <div className="flex justify-between items-center">
+                            <span className="text-sm opacity-70">{t('last_trade', 'Last Trade')}</span>
+                            <span className="font-bold">{profile.lastTradeDate || '-'}</span>
+                        </div>
+                    </Card>
+                </div>
+            )}
 
             {/* Skills */}
             {profile.skills && Object.keys(profile.skills).length > 0 && (
@@ -224,26 +226,47 @@ export const UserProfile: React.FC = () => {
 
             {/* Portfolio */}
             {profile.portfolio && profile.portfolio.length > 0 && (
-                <div className="space-y-2">
-                    <h3 className="text-sm font-bold opacity-50 uppercase tracking-wider px-2 flex items-center gap-2">
-                        <Briefcase size={16} />
-                        {t('portfolio', 'Portfolio')}
-                    </h3>
-                    <div className="space-y-2">
+                <div className="space-y-3">
+                    <div className="flex items-center justify-between px-2">
+                        <h3 className="text-sm font-bold opacity-50 uppercase tracking-wider flex items-center gap-2">
+                            <Briefcase size={16} className="text-emerald-400" />
+                            {t('portfolio', 'Portfolio')}
+                        </h3>
+                        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            {profile.portfolio.length} {t('assets', 'assets')}
+                        </span>
+                    </div>
+                    <div className="grid gap-2">
                         {profile.portfolio.map((asset) => (
-                            <Card key={asset.id} className="p-3 flex justify-between items-center">
-                                <div className="flex items-center gap-3">
-                                    <AssetIcon symbol={asset.id} className="w-8 h-8" />
-                                    <div>
-                                        <p className="font-bold">{asset.id}</p>
-                                        <p className="text-xs opacity-50">{asset.amount} {t('units', 'Units')}</p>
+                            <div
+                                key={asset.id}
+                                className="relative overflow-hidden rounded-xl p-3 border transition-all duration-300 hover:scale-[1.02] hover:shadow-lg"
+                                style={{
+                                    backgroundColor: 'var(--card-bg)',
+                                    borderColor: 'var(--card-border)'
+                                }}
+                            >
+                                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-transparent pointer-events-none" />
+                                <div className="relative flex justify-between items-center">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/20 to-blue-500/20 flex items-center justify-center border border-white/10">
+                                            <AssetIcon symbol={asset.id} className="w-6 h-6" />
+                                        </div>
+                                        <div>
+                                            <p className="font-bold" style={{ color: 'var(--text-primary)' }}>{asset.id}</p>
+                                            <p className="text-xs opacity-60" style={{ color: 'var(--text-primary)' }}>
+                                                {asset.amount.toFixed(4)} {t('units', 'Units')}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className="font-bold text-emerald-400">${formatPrice(asset.avgPrice * asset.amount)}</p>
+                                        <p className="text-[10px] opacity-50" style={{ color: 'var(--text-primary)' }}>
+                                            @ ${formatPrice(asset.avgPrice)}
+                                        </p>
                                     </div>
                                 </div>
-                                <div className="text-right">
-                                    <p className="font-bold">${formatPrice(asset.avgPrice)}</p>
-                                    <p className="text-xs opacity-50">{t('avg_price', 'Avg Price')}</p>
-                                </div>
-                            </Card>
+                            </div>
                         ))}
                     </div>
                 </div>

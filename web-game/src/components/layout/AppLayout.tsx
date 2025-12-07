@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { Outlet, NavLink, useLocation } from 'react-router-dom';
+import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { TrendingUp, Trophy, Zap, GraduationCap, User as UserIcon, Home } from 'lucide-react';
+import { TrendingUp, Trophy, Zap, GraduationCap, User as UserIcon, Home, ArrowLeft } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../../store/gameStore';
 import { AuthModal } from '../auth/AuthModal';
@@ -14,6 +14,7 @@ type OnboardingStep = 'language' | 'intro' | 'auth' | 'tutorial-confirm' | 'tour
 export const AppLayout = () => {
     const { t } = useTranslation();
     const location = useLocation();
+    const navigate = useNavigate();
     const prevPathRef = useRef(location.pathname);
 
     // Scroll to top when route changes
@@ -114,23 +115,16 @@ export const AppLayout = () => {
                     backgroundColor: 'var(--card-bg)',
                     borderColor: 'var(--card-border)'
                 }}>
-                {/* New Rectangular Logo - 3D Gradient Style */}
+                {/* Logo */}
                 <div className="flex items-center">
                     <div
-                        className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-600 via-violet-600 to-fuchsia-600 shadow-lg shadow-violet-500/30 group cursor-pointer transform transition-all duration-300 hover:scale-105 hover:shadow-violet-500/50 border-t border-white/30 border-b-2 border-black/10"
+                        className="flex items-center gap-2 cursor-pointer transform transition-all duration-300 hover:scale-105"
                         onClick={() => window.location.href = '/'}
                     >
-                        {/* Glossy Overlay */}
-                        <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/10 to-white/20 opacity-100 pointer-events-none" />
-
-                        <div className="flex items-center px-3 py-1.5 gap-2 relative z-10">
-                            <div className="bg-black/10 p-1.5 rounded-lg backdrop-blur-sm shadow-inner border border-white/10">
-                                <TrendingUp size={16} className="text-white drop-shadow-md" />
-                            </div>
-                            <span className="text-white font-extrabold tracking-wide text-sm drop-shadow-sm" style={{ textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
-                                InvestGame
-                            </span>
-                        </div>
+                        <img src="/logo.png" alt="Logo" className="w-8 h-8 object-contain" />
+                        <span className="font-extrabold tracking-wide text-sm" style={{ color: 'var(--text-primary)' }}>
+                            InvestGame
+                        </span>
                     </div>
                 </div>
 
@@ -163,6 +157,23 @@ export const AppLayout = () => {
                     )}
                 </div>
             </header>
+
+            {/* Floating Back Button - shown on all pages except market */}
+            {location.pathname !== '/' && (
+                <motion.button
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    onClick={() => navigate(-1)}
+                    className="fixed top-16 left-4 z-40 w-10 h-10 rounded-full flex items-center justify-center shadow-lg backdrop-blur-md transition-all duration-300 active:scale-90 hover:scale-105"
+                    style={{
+                        background: 'linear-gradient(135deg, var(--accent-color), #8b5cf6)',
+                        boxShadow: '0 4px 15px rgba(139, 92, 246, 0.3)'
+                    }}
+                >
+                    <ArrowLeft size={20} className="text-white" />
+                </motion.button>
+            )}
 
             {/* Main Content */}
             <main className="pt-24 pb-28 px-4 max-w-md mx-auto min-h-screen relative z-10">

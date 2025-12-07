@@ -18,8 +18,7 @@ import {
     ArrowLeft,
     Lock,
     Crown,
-    Sparkles,
-    Zap
+    Sparkles
 } from 'lucide-react';
 import type { Module, Lesson } from './data/learningData';
 import { learningModules } from './data/learningData';
@@ -195,63 +194,33 @@ const Learning: React.FC = () => {
                             <motion.div
                                 initial={{ opacity: 0, y: 20 }}
                                 animate={{ opacity: 1, y: 0 }}
-                                className="relative overflow-hidden rounded-2xl p-5 shadow-xl"
+                                className="relative overflow-hidden rounded-xl p-3 shadow-lg"
                             >
                                 {/* Gold Gradient Background */}
                                 <div className="absolute inset-0 bg-gradient-to-r from-amber-200 via-yellow-400 to-amber-500" />
                                 {/* Shine Effect */}
                                 <div className="absolute inset-0 bg-gradient-to-tr from-white/40 to-transparent opacity-50" />
-                                {/* Animated Sparkle */}
-                                <motion.div
-                                    animate={{ x: ['0%', '100%'], opacity: [0, 1, 0] }}
-                                    transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
-                                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
-                                />
 
-                                <div className="relative">
-                                    <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-4">
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <div className="p-2 bg-black/10 rounded-xl backdrop-blur-sm">
-                                                    <Crown size={22} className="text-black/80 fill-black/20" />
-                                                </div>
-                                                <h3 className="font-black text-lg text-black/80 tracking-tight uppercase">
-                                                    {t('unlock_all_lessons', 'Unlock All Lessons')}
-                                                </h3>
-                                            </div>
-                                            <p className="text-xs font-bold text-black/60 leading-relaxed">
-                                                {t('premium_learning_desc', 'Get instant access to 100+ premium lessons. Skip 90+ ads and master trading like a pro!')}
+                                <div className="relative flex items-center justify-between gap-3">
+                                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                                        <div className="p-1.5 bg-black/10 rounded-lg backdrop-blur-sm flex-shrink-0">
+                                            <Crown size={18} className="text-black/80 fill-black/20" />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <h3 className="font-bold text-sm text-black/80 leading-tight">
+                                                {t('unlock_all_lessons', 'Unlock All Lessons')}
+                                            </h3>
+                                            <p className="text-[10px] font-medium text-black/60 leading-tight truncate">
+                                                {t('no_ads', 'No Ads')} • 135+ {t('lessons', 'Lessons')} • {t('unlock_skills', 'All Skills')}
                                             </p>
                                         </div>
-
-                                        <div className="flex flex-col sm:items-end gap-2 w-full sm:w-auto">
-                                            <div className="bg-black/80 text-amber-400 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider shadow-sm self-end">
-                                                {t('best_value')}
-                                            </div>
-                                            <button
-                                                onClick={unlockPremium}
-                                                className="bg-black text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-xl shadow-black/20 active:scale-95 transition-transform flex items-center justify-center gap-1 whitespace-nowrap w-full sm:w-auto"
-                                            >
-                                                <span>$4.99</span>
-                                                <span className="opacity-60 text-xs font-normal">| {t('unlock_now')}</span>
-                                            </button>
-                                            {/* Mini badges under price */}
-                                            <div className="flex flex-col items-end gap-1 mt-1 pr-1 sm:pr-0">
-                                                <div className="flex items-center gap-1 px-2 py-0.5 bg-black/10 rounded-full">
-                                                    <Sparkles size={10} className="text-black/60" />
-                                                    <span className="text-[9px] font-bold text-black/70">{t('no_ads', 'No Ads')}</span>
-                                                </div>
-                                                <div className="flex items-center gap-1 px-2 py-0.5 bg-black/10 rounded-full">
-                                                    <BookOpen size={10} className="text-black/60" />
-                                                    <span className="text-[9px] font-bold text-black/70">135+ {t('lessons', 'Lessons')}</span>
-                                                </div>
-                                                <div className="flex items-center gap-1 px-2 py-0.5 bg-black/10 rounded-full">
-                                                    <Zap size={10} className="text-black/60" />
-                                                    <span className="text-[9px] font-bold text-black/70">{t('unlock_skills', 'All Skills')}</span>
-                                                </div>
-                                            </div>
-                                        </div>
                                     </div>
+                                    <button
+                                        onClick={unlockPremium}
+                                        className="bg-black text-white px-3 py-2 rounded-lg font-bold text-xs shadow-xl active:scale-95 transition-transform flex-shrink-0"
+                                    >
+                                        $4.99
+                                    </button>
                                 </div>
                             </motion.div>
                         )}
@@ -706,37 +675,30 @@ const Learning: React.FC = () => {
                             <motion.div
                                 initial={{ opacity: 0, scale: 0.95 }}
                                 animate={{ opacity: 1, scale: 1 }}
-                                className="relative overflow-hidden rounded-2xl p-5 shadow-xl"
+                                className="relative overflow-hidden rounded-xl p-3 shadow-lg"
                             >
                                 <div className="absolute inset-0 bg-gradient-to-r from-amber-200 via-yellow-400 to-amber-500" />
                                 <div className="absolute inset-0 bg-gradient-to-tr from-white/40 to-transparent opacity-50" />
-                                <motion.div
-                                    animate={{ x: ['0%', '100%'], opacity: [0, 1, 0] }}
-                                    transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
-                                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent"
-                                />
 
-                                <div className="relative">
-                                    <div className="flex items-center gap-3 mb-3">
-                                        <div className="p-2 bg-black/10 rounded-xl backdrop-blur-sm">
-                                            <Crown size={24} className="text-black/80 fill-black/20" />
+                                <div className="relative flex items-center justify-between gap-3">
+                                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                                        <div className="p-1.5 bg-black/10 rounded-lg backdrop-blur-sm flex-shrink-0">
+                                            <Crown size={18} className="text-black/80 fill-black/20" />
                                         </div>
-                                        <div>
-                                            <h3 className="font-black text-lg text-black/80">{t('go_pro', 'Go Pro')}</h3>
-                                            <p className="text-xs font-bold text-black/60">{t('unlock_everything', 'Unlock Everything')}</p>
+                                        <div className="min-w-0">
+                                            <h3 className="font-bold text-sm text-black/80 leading-tight">
+                                                {t('go_pro', 'Go Pro')}
+                                            </h3>
+                                            <p className="text-[10px] font-medium text-black/60 leading-tight truncate">
+                                                {t('unlock_everything', 'Unlock Everything')}
+                                            </p>
                                         </div>
                                     </div>
-
-                                    <p className="text-sm font-medium text-black/70 mb-4 leading-relaxed">
-                                        ✨ {t('premium_cta_text', 'Say goodbye to 90+ interruptions. Unlock all lessons, skills, and master the art of trading with zero distractions!')}
-                                    </p>
-
                                     <button
                                         onClick={unlockPremium}
-                                        className="w-full bg-black text-white py-3 rounded-xl font-bold text-sm shadow-xl shadow-black/20 active:scale-95 transition-transform flex items-center justify-center gap-2"
+                                        className="bg-black text-white px-3 py-2 rounded-lg font-bold text-xs shadow-xl active:scale-95 transition-transform flex-shrink-0"
                                     >
-                                        <Sparkles size={16} />
-                                        <span>{t('unlock_for', 'Unlock for')} $4.99</span>
+                                        $4.99
                                     </button>
                                 </div>
                             </motion.div>

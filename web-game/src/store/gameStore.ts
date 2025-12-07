@@ -664,12 +664,18 @@ export const useGameStore = create<GameState>()(
                 // Hydrate state if gameState exists
                 if ((user as any).gameState) {
                     const savedState = (user as any).gameState;
+                    // Also check for isPremium from both gameState and direct user property
+                    const isPremiumFromBackend = (user as any).isPremium || savedState.isPremium || false;
                     set({
                         ...savedState,
                         user: { id: user.id, username: user.username }, // Ensure user obj is fresh
+                        isPremium: isPremiumFromBackend, // Ensure isPremium is set from backend
                     });
                 } else {
-                    set({ user });
+                    set({
+                        user,
+                        isPremium: (user as any).isPremium || false
+                    });
                 }
             },
             logout: () => {
@@ -721,7 +727,8 @@ export const useGameStore = create<GameState>()(
                             skillPoints: state.skillPoints,
                             tradesToday: state.tradesToday,
                             lastTradeDate: state.lastTradeDate,
-                            lastLogin: state.lastLogin
+                            lastLogin: state.lastLogin,
+                            isPremium: state.isPremium
                         };
                         const { syncGameState } = await import('../services/api'); // Dynamic import to avoid circular dep if any
                         await syncGameState(state.user.username, gameState);
@@ -766,6 +773,8 @@ export const useGameStore = create<GameState>()(
                         insiderInfo: true
                     }
                 });
+                // Sync to database
+                get().sync();
             }
         }),
         {

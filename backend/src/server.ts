@@ -22,7 +22,8 @@ import {
     getInsiderTips,
     addInsiderTip,
     deleteAssetComment,
-    pruneMarketHistory
+    pruneMarketHistory,
+    pruneOldNews
 } from './services/storage.js';
 import { updateMarketData, fetchHistory, fetchYahooAnalysis, updateDailyCandles, updateMonthlyCandles, updateFundamentals, updateMarketNews } from './services/fetcher.js';
 
@@ -151,6 +152,16 @@ initDB().then(async () => {
                 console.error('Error processing tournament:', error);
             }
         });
+
+        // Schedule daily news cleanup (every day at 3 AM)
+        cron.schedule('0 3 * * *', () => {
+            console.log('Running daily news cleanup...');
+            pruneOldNews();
+        });
+
+        // Run news cleanup on startup
+        console.log('Running initial news cleanup...');
+        await pruneOldNews();
 
     } catch (e) {
         console.error('Startup DB Check Failed:', e);
@@ -609,7 +620,16 @@ app.post('/api/login', async (req, res) => {
         }
 
         console.log('User logged in successfully:', username);
-        res.json({ success: true, user: { id: user.id, username: user.username, portfolioValue: user.portfolioValue, gameState: user.gameState } });
+        res.json({
+            success: true,
+            user: {
+                id: user.id,
+                username: user.username,
+                portfolioValue: user.portfolioValue,
+                gameState: user.gameState,
+                isPremium: user.isPremium || false
+            }
+        });
     } catch (error) {
         console.error('Login error:', error);
         res.status(500).json({ error: 'Internal server error during login' });
@@ -625,11 +645,19 @@ app.post('/api/sync', async (req, res) => {
     // Update portfolio value for leaderboard
     const portfolioValue = gameState.balance + (gameState.portfolio ? gameState.portfolio.reduce((acc: number, item: any) => acc + (item.amount * item.avgPrice), 0) : 0);
 
-    const updated = await updateUser(username, {
+    // Build update object - include isPremium if it's in the gameState
+    const updateData: any = {
         gameState,
         portfolioValue: gameState.netWorth || portfolioValue,
         lastActive: new Date().toISOString()
-    });
+    };
+
+    // If isPremium is explicitly set in gameState, save it to the dedicated column
+    if (typeof gameState.isPremium === 'boolean') {
+        updateData.isPremium = gameState.isPremium;
+    }
+
+    const updated = await updateUser(username, updateData);
 
     if (!updated) {
         return res.status(404).json({ error: 'User not found' });

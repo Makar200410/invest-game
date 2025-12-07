@@ -503,9 +503,12 @@ export const getMarketFundamentals = async (symbol: string): Promise<any | null>
     }
 };
 
-// Market News Functions
+// Market News Functions - keeps max 30 news per symbol
 export const saveMarketNews = async (newsItems: any[]) => {
     try {
+        // Group news by symbol
+        const symbolsToClean = new Set<string>();
+
         for (const item of newsItems) {
             await query(
                 `INSERT INTO market_news (id, symbol, title, url, site, time, image_url, summary)
@@ -513,7 +516,26 @@ export const saveMarketNews = async (newsItems: any[]) => {
                  ON CONFLICT (id) DO NOTHING`,
                 [item.id, item.symbol, item.title, item.url, item.site, item.time, item.imageUrl || '', item.summary || '']
             );
+            if (item.symbol) {
+                symbolsToClean.add(item.symbol);
+            }
         }
+
+        // Clean up old news for each affected symbol - keep only latest 30
+        for (const symbol of symbolsToClean) {
+            await query(`
+                DELETE FROM market_news 
+                WHERE symbol = $1 
+                AND id NOT IN (
+                    SELECT id FROM market_news 
+                    WHERE symbol = $1 
+                    ORDER BY time DESC 
+                    LIMIT 30
+                )
+            `, [symbol]);
+        }
+
+        console.log(`saveMarketNews: Saved ${newsItems.length} items, cleaned up old news for ${symbolsToClean.size} symbols`);
     } catch (error) {
         console.error('Error saving market news:', error);
     }
@@ -529,7 +551,7 @@ export const getMarketNews = async (symbol?: string): Promise<any[]> => {
             params.push(symbol);
         }
 
-        queryStr += ' ORDER BY time DESC LIMIT 50';
+        queryStr += ' ORDER BY time DESC LIMIT 30';
 
         const res = await query(queryStr, params);
         return res.rows.map(row => ({
@@ -546,5 +568,39 @@ export const getMarketNews = async (symbol?: string): Promise<any[]> => {
     } catch (error) {
         console.error('Error fetching market news:', error);
         return [];
+    }
+};
+
+// Prune old news - keeps only 30 most recent per symbol and removes news older than 7 days
+export const pruneOldNews = async () => {
+    try {
+        console.log('Pruning old news...');
+
+        // Remove news older than 7 days
+        const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+        const deleteOld = await query('DELETE FROM market_news WHERE time < $1', [sevenDaysAgo]);
+        console.log(`Deleted ${deleteOld.rowCount || 0} news items older than 7 days`);
+
+        // Get all unique symbols
+        const symbolsRes = await query('SELECT DISTINCT symbol FROM market_news');
+        const symbols = symbolsRes.rows.map(r => r.symbol).filter(Boolean);
+
+        // For each symbol, keep only latest 30
+        for (const symbol of symbols) {
+            await query(`
+                DELETE FROM market_news 
+                WHERE symbol = $1 
+                AND id NOT IN (
+                    SELECT id FROM market_news 
+                    WHERE symbol = $1 
+                    ORDER BY time DESC 
+                    LIMIT 30
+                )
+            `, [symbol]);
+        }
+
+        console.log(`Pruned news for ${symbols.length} symbols, keeping max 30 per symbol`);
+    } catch (error) {
+        console.error('Error pruning old news:', error);
     }
 };
