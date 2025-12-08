@@ -114,6 +114,8 @@ export const updateFundamentals = async () => {
                         'earnings',
                         'recommendationTrend'
                     ] as any
+                }, {
+                    validateResult: false  // Disable validation to handle schema mismatches from Yahoo
                 });
 
                 if (result) {
@@ -151,6 +153,8 @@ export const fetchYahooAnalysis = async (symbol: string) => {
                 'earnings',
                 'recommendationTrend'
             ] as any
+        }, {
+            validateResult: false  // Disable validation to handle schema mismatches from Yahoo
         });
 
         if (result) {

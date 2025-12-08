@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { RefreshCcw, Lock, TrendingUp, TrendingDown, BarChart2, Store, ArrowLeft } from 'lucide-react';
+import { RefreshCcw, Lock, TrendingUp, TrendingDown, BarChart2, Store } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useGameStore } from '../../store/gameStore';
 import { fetchCryptoMarket, type MarketItem, updateScore } from '../../services/api';
@@ -120,15 +120,36 @@ export const House: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        if (user) {
-            const portfolioValue = portfolio.reduce((acc, item) => {
+        if (user && items.length > 0) {
+            // Spot portfolio value
+            const spotValue = portfolio.reduce((acc, item) => {
                 const marketItem = items.find(i => i.id === item.id);
                 return acc + (marketItem ? marketItem.price * item.amount : 0);
             }, 0);
-            const totalValue = balance + portfolioValue;
-            updateScore(user.username, totalValue);
+
+            // Leveraged positions equity (current value - borrowed)
+            const leveragedEquity = leveragedPositions.reduce((acc, pos) => {
+                const marketItem = items.find(i => i.id === pos.assetId);
+                if (!marketItem) return acc;
+                const currentValue = marketItem.price * pos.amount;
+                const borrowed = (pos.entryPrice * pos.amount) * (pos.leverage - 1) / pos.leverage;
+                return acc + (currentValue - borrowed);
+            }, 0);
+
+            // Short positions equity (margin + PnL)
+            const shortEquity = shortPositions.reduce((acc, pos) => {
+                const marketItem = items.find(i => i.id === pos.assetId);
+                if (!marketItem) return acc;
+                const basePnL = (pos.entryPrice - marketItem.price) * pos.amount;
+                const pnl = basePnL * (pos.leverage || 1);
+                return acc + ((pos.marginLocked || 0) + pnl);
+            }, 0);
+
+            // Total net worth = balance + all position equities
+            const totalNetWorth = balance + spotValue + leveragedEquity + shortEquity;
+            updateScore(user.username, totalNetWorth);
         }
-    }, [user, balance, portfolio, items]);
+    }, [user, balance, portfolio, leveragedPositions, shortPositions, items]);
 
     // Calculations
     const currentPortfolioValue = portfolio.reduce((acc, item) => {
@@ -147,7 +168,9 @@ export const House: React.FC = () => {
     const shortEquity = shortPositions.reduce((acc, pos) => {
         const marketItem = items.find(i => i.id === pos.assetId);
         if (!marketItem) return acc;
-        const pnl = (pos.entryPrice - marketItem.price) * pos.amount;
+        // PnL must be multiplied by leverage for leveraged short positions
+        const basePnL = (pos.entryPrice - marketItem.price) * pos.amount;
+        const pnl = basePnL * (pos.leverage || 1);
         return acc + (pos.marginLocked + pnl);
     }, 0);
 
@@ -159,13 +182,17 @@ export const House: React.FC = () => {
     const leveragedPnL = leveragedPositions.reduce((acc, pos) => {
         const marketItem = items.find(i => i.id === pos.assetId);
         if (!marketItem) return acc;
-        return acc + (marketItem.price - pos.entryPrice) * pos.amount;
+        // PnL is amplified by leverage for leveraged long positions
+        const basePnL = (marketItem.price - pos.entryPrice) * pos.amount;
+        return acc + (basePnL * pos.leverage);
     }, 0);
 
     const shortPnL = shortPositions.reduce((acc, pos) => {
         const marketItem = items.find(i => i.id === pos.assetId);
         if (!marketItem) return acc;
-        return acc + (pos.entryPrice - marketItem.price) * pos.amount;
+        // PnL must be multiplied by leverage for leveraged short positions
+        const basePnL = (pos.entryPrice - marketItem.price) * pos.amount;
+        return acc + (basePnL * (pos.leverage || 1));
     }, 0);
 
     const totalPnL = portfolioPnL + leveragedPnL + shortPnL;
@@ -181,17 +208,6 @@ export const House: React.FC = () => {
 
     return (
         <div className="space-y-3 pb-24">
-            {/* Back Button */}
-            <div className="px-4 pt-2">
-                <button
-                    onClick={() => navigate(-1)}
-                    className="flex items-center gap-2 text-sm opacity-70 hover:opacity-100 transition-opacity"
-                    style={{ color: 'var(--text-primary)' }}
-                >
-                    <ArrowLeft size={18} />
-                    {t('back')}
-                </button>
-            </div>
             {/* Balance Card */}
             <div className="px-4 pt-0 pb-2">
                 <div id="tutorial-balance-card" className="rounded-3xl overflow-hidden relative shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] border" style={{ borderColor: 'var(--card-border)' }}>
@@ -467,9 +483,21 @@ export const House: React.FC = () => {
                             const entryVal = pos.entryPrice * pos.amount;
 
                             if (pos.type === 'short') {
-                                pnl = entryVal - currentVal;
-                                pnlPercent = (pnl / entryVal) * 100;
+                                // For shorts, PnL is amplified by leverage
+                                const basePnL = entryVal - currentVal;
+                                pnl = basePnL * pos.leverage;
+                                // Calculate percent based on margin, not full entry value
+                                const marginUsed = entryVal / pos.leverage;
+                                pnlPercent = (pnl / marginUsed) * 100;
+                            } else if (pos.type === 'leverage') {
+                                // For leveraged longs, PnL is amplified by leverage
+                                const basePnL = currentVal - entryVal;
+                                pnl = basePnL * pos.leverage;
+                                // Calculate percent based on margin (what user actually invested)
+                                const marginUsed = entryVal / pos.leverage;
+                                pnlPercent = (pnl / marginUsed) * 100;
                             } else {
+                                // Regular spot positions
                                 pnl = currentVal - entryVal;
                                 pnlPercent = (pnl / entryVal) * 100;
                             }
@@ -498,9 +526,11 @@ export const House: React.FC = () => {
                                                             pos.type === 'leverage' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/20' :
                                                                 'bg-blue-500/20 text-blue-400 border border-blue-500/20'
                                                             }`}>
-                                                            {pos.type === 'short' ? t('short') :
-                                                                pos.type === 'leverage' ? t('leverage_fmt', { x: pos.leverage }) :
-                                                                    t('long')}
+                                                            {pos.type === 'short'
+                                                                ? (pos.leverage > 1 ? `${pos.leverage}x ${t('short')}` : t('short'))
+                                                                : pos.type === 'leverage'
+                                                                    ? `${pos.leverage}x ${t('long')}`
+                                                                    : t('long')}
                                                         </span>
                                                     </div>
                                                     <div className="text-xs font-medium mt-0.5" style={{ color: 'var(--text-primary)', opacity: 0.6 }}>

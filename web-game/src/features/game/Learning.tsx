@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
@@ -11,11 +10,10 @@ import {
     ChevronRight,
     ChevronDown,
     ChevronUp,
-    Award,
+
     Lightbulb,
     Clock,
     Target,
-    ArrowLeft,
     Lock,
     Crown,
     Sparkles
@@ -71,8 +69,15 @@ const isLessonAvailable = (moduleIndex: number, lessonIndex: number, isPremium: 
 
 const Learning: React.FC = () => {
     const { t, i18n } = useTranslation();
-    const navigate = useNavigate();
-    const { isPremium, unlockPremium } = useGameStore();
+    const {
+        isPremium,
+        unlockPremium,
+        completedLessons,
+        markLessonComplete: storeMarkLessonComplete,
+        userLevel,
+        experience,
+        getLevelProgress
+    } = useGameStore();
 
     const glossaryTerms = useMemo(() => {
         return getGlossaryTermsForLanguage(i18n.language);
@@ -81,26 +86,52 @@ const Learning: React.FC = () => {
     const [selectedModule, setSelectedModule] = useState<Module | null>(null);
     const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
     const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
-    const [completedLessons, setCompletedLessons] = useState<Set<string>>(() => {
-        const saved = localStorage.getItem('completedLessons');
-        return saved ? new Set(JSON.parse(saved)) : new Set();
-    });
+    const [showLevelUp, setShowLevelUp] = useState(false);
 
-    useEffect(() => {
-        localStorage.setItem('completedLessons', JSON.stringify(Array.from(completedLessons)));
-    }, [completedLessons]);
+    // Convert array to Set for quick lookups
+    const completedLessonsSet = useMemo(() => new Set(completedLessons), [completedLessons]);
 
     // Scroll to top when navigating between views
     useEffect(() => {
         window.scrollTo({ top: 0, behavior: 'instant' });
     }, [selectedModule, selectedLesson]);
 
-    const markLessonComplete = (lessonId: string) => {
-        setCompletedLessons(prev => new Set([...prev, lessonId]));
+    // Handle hardware back button for proper navigation within Learning component
+    useEffect(() => {
+        const handlePopState = () => {
+            if (selectedLesson) {
+                // If viewing a lesson, go back to module's lessons list
+                setSelectedLesson(null);
+                window.history.pushState({ learning: 'module' }, '');
+            } else if (selectedModule) {
+                // If viewing a module's lessons, go back to modules list
+                setSelectedModule(null);
+                window.history.pushState({ learning: 'modules' }, '');
+            }
+            // If on modules list, let browser handle navigation normally
+        };
+
+        // Push initial state when entering a sub-view
+        if (selectedLesson) {
+            window.history.pushState({ learning: 'lesson' }, '');
+        } else if (selectedModule) {
+            window.history.pushState({ learning: 'module' }, '');
+        }
+
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+    }, [selectedModule, selectedLesson]);
+
+    const handleMarkLessonComplete = (lessonId: string, xpReward: number = 100) => {
+        const leveledUp = storeMarkLessonComplete(lessonId, xpReward);
+        if (leveledUp) {
+            setShowLevelUp(true);
+            setTimeout(() => setShowLevelUp(false), 3000);
+        }
     };
 
     const getModuleProgress = (module: Module) => {
-        const completed = module.lessons.filter(l => completedLessons.has(l.id)).length;
+        const completed = module.lessons.filter(l => completedLessonsSet.has(l.id)).length;
         return (completed / module.lessons.length) * 100;
     };
 
@@ -141,9 +172,49 @@ const Learning: React.FC = () => {
         }
     };
 
-    const totalLessons = learningModules.reduce((acc, m) => acc + m.lessons.length, 0);
-    const totalCompleted = completedLessons.size;
-    const overallProgress = Math.round((totalCompleted / totalLessons) * 100) || 0;
+    const goToNextLesson = () => {
+        if (!selectedModule || !selectedLesson) return;
+
+        const currentModuleIndex = learningModules.findIndex(m => m.id === selectedModule.id);
+        const currentLessonIndex = selectedModule.lessons.findIndex(l => l.id === selectedLesson.id);
+
+        if (currentModuleIndex === -1 || currentLessonIndex === -1) return;
+
+        // Try next lesson in current module
+        if (currentLessonIndex < selectedModule.lessons.length - 1) {
+            const nextLessonIndex = currentLessonIndex + 1;
+            if (isLessonAvailable(currentModuleIndex, nextLessonIndex, isPremium)) {
+                setSelectedLesson(selectedModule.lessons[nextLessonIndex]);
+            } else {
+                unlockPremium();
+            }
+        }
+        // Try next module
+        else if (currentModuleIndex < learningModules.length - 1) {
+            const nextModuleIndex = currentModuleIndex + 1;
+            const nextModule = learningModules[nextModuleIndex];
+            if (nextModule.lessons.length > 0) {
+                if (isLessonAvailable(nextModuleIndex, 0, isPremium)) {
+                    setSelectedModule(nextModule);
+                    setSelectedLesson(nextModule.lessons[0]);
+                } else {
+                    unlockPremium();
+                }
+            }
+        }
+    };
+
+    const hasNextLesson = () => {
+        if (!selectedModule || !selectedLesson) return false;
+        const currentModuleIndex = learningModules.findIndex(m => m.id === selectedModule.id);
+        const currentLessonIndex = selectedModule.lessons.findIndex(l => l.id === selectedLesson.id);
+
+        if (currentLessonIndex < selectedModule.lessons.length - 1) return true;
+        if (currentModuleIndex < learningModules.length - 1) return true;
+        return false;
+    };
+
+
 
     // Count available lessons
     const availableLessonsCount = learningModules.reduce((acc, module, moduleIndex) => {
@@ -165,17 +236,6 @@ const Learning: React.FC = () => {
                         exit={{ opacity: 0 }}
                         className="p-4 space-y-6"
                     >
-                        {/* Back Button */}
-                        <button
-                            onClick={() => navigate(-1)}
-                            className="flex items-center gap-2 text-sm opacity-70 hover:opacity-100 transition-opacity"
-                            style={{ color: 'var(--text-primary)' }}
-                        >
-                            <ArrowLeft size={18} />
-                            {t('back')}
-                        </button>
-
-
                         {/* Header */}
                         <div className="text-center space-y-2 pt-4">
                             <div className="flex items-center justify-center gap-3">
@@ -225,38 +285,64 @@ const Learning: React.FC = () => {
                             </motion.div>
                         )}
 
-                        {/* Progress Overview */}
-                        <div className="bg-gradient-to-br from-purple-500/20 to-blue-500/20 rounded-2xl p-6 border border-purple-500/30">
-                            <div className="flex items-center justify-between mb-4">
+                        {/* Level Card */}
+                        <div className="bg-gradient-to-br from-indigo-500/20 to-purple-500/10 rounded-2xl p-4 border border-indigo-500/30">
+                            <div className="flex items-center justify-between mb-3">
                                 <div className="flex items-center gap-3">
-                                    <Award className="w-6 h-6 text-yellow-400" />
+                                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                                        <span className="text-xl font-black text-white">{userLevel}</span>
+                                    </div>
                                     <div>
-                                        <h3 className="font-bold" style={{ color: 'var(--text-primary)' }}>
-                                            {t('your_progress')}
-                                        </h3>
-                                        <p className="text-xs opacity-70" style={{ color: 'var(--text-primary)' }}>
-                                            {totalCompleted} {t('lessons_completed')}
-                                        </p>
+                                        <h3 className="font-bold text-indigo-300">{t('level', 'Level')} {userLevel}</h3>
+                                        <p className="text-xs text-indigo-400/70">{experience} XP</p>
                                     </div>
                                 </div>
                                 <div className="text-right">
-                                    <div className="text-2xl font-black text-purple-400">
-                                        {overallProgress}%
-                                    </div>
-                                    <div className="text-xs opacity-70" style={{ color: 'var(--text-primary)' }}>
-                                        {t('overall')}
-                                    </div>
+                                    {userLevel < 20 ? (
+                                        <>
+                                            <div className="text-sm font-bold text-purple-300">
+                                                {getLevelProgress().nextLevelXP - experience} XP
+                                            </div>
+                                            <div className="text-xs text-purple-400/70">{t('to_next_level', 'to next level')}</div>
+                                        </>
+                                    ) : (
+                                        <div className="text-sm font-bold text-yellow-400">MAX LEVEL</div>
+                                    )}
                                 </div>
                             </div>
-                            <div className="w-full bg-black/30 rounded-full h-3 overflow-hidden">
+                            <div className="w-full bg-black/30 rounded-full h-2.5 overflow-hidden">
                                 <motion.div
-                                    className="h-full bg-gradient-to-r from-purple-500 to-blue-500"
+                                    className="h-full bg-gradient-to-r from-indigo-500 to-purple-500"
                                     initial={{ width: 0 }}
-                                    animate={{ width: `${overallProgress}%` }}
+                                    animate={{ width: `${getLevelProgress().progress}%` }}
                                     transition={{ duration: 1, ease: "easeOut" }}
                                 />
                             </div>
+                            <div className="flex justify-between text-[10px] mt-1 text-indigo-400/50 font-medium">
+                                <span>{t('level', 'LVL')} {userLevel}</span>
+                                <span>{userLevel < 20 ? `${t('level', 'LVL')} ${userLevel + 1}` : 'MAX'}</span>
+                            </div>
                         </div>
+
+                        {/* Level Up Notification */}
+                        <AnimatePresence>
+                            {showLevelUp && (
+                                <motion.div
+                                    initial={{ opacity: 0, scale: 0.8, y: -20 }}
+                                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                                    exit={{ opacity: 0, scale: 0.8, y: -20 }}
+                                    className="fixed top-20 left-1/2 -translate-x-1/2 z-50 bg-gradient-to-r from-indigo-600 to-purple-600 text-white px-6 py-4 rounded-2xl shadow-2xl shadow-purple-500/50 flex items-center gap-3"
+                                >
+                                    <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+                                        <span className="text-2xl font-black">{userLevel}</span>
+                                    </div>
+                                    <div>
+                                        <div className="text-lg font-black">{t('level_up', 'LEVEL UP!')}</div>
+                                        <div className="text-sm opacity-80">{t('reached_level', 'Reached Level')} {userLevel}</div>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
 
                         {/* Learning Modules */}
                         <div className="space-y-4">
@@ -347,7 +433,7 @@ const Learning: React.FC = () => {
                                             {/* First 3 lessons always shown */}
                                             {previewLessons.map((lesson, lessonIndex) => {
                                                 const isAccessible = isLessonAvailable(moduleIndex, lessonIndex, isPremium);
-                                                const lessonCompleted = completedLessons.has(lesson.id);
+                                                const lessonCompleted = completedLessonsSet.has(lesson.id);
 
                                                 return (
                                                     <div
@@ -400,7 +486,7 @@ const Learning: React.FC = () => {
                                                         {module.lessons.slice(3).map((lesson, idx) => {
                                                             const lessonIndex = idx + 3;
                                                             const isAccessible = isLessonAvailable(moduleIndex, lessonIndex, isPremium);
-                                                            const lessonCompleted = completedLessons.has(lesson.id);
+                                                            const lessonCompleted = completedLessonsSet.has(lesson.id);
 
                                                             return (
                                                                 <div
@@ -576,7 +662,7 @@ const Learning: React.FC = () => {
                         <div className="space-y-3">
                             {selectedModule.lessons.map((lesson, index) => {
                                 const currentModuleIndex = learningModules.findIndex(m => m.id === selectedModule.id);
-                                const isCompleted = completedLessons.has(lesson.id);
+                                const isCompleted = completedLessonsSet.has(lesson.id);
                                 const isAccessible = isLessonAvailable(currentModuleIndex, index, isPremium);
 
                                 return (
@@ -767,16 +853,30 @@ const Learning: React.FC = () => {
                             </div>
                         )}
 
-                        {/* Complete Button */}
-                        {!completedLessons.has(selectedLesson.id) && (
-                            <button
-                                onClick={() => markLessonComplete(selectedLesson.id)}
-                                className="w-full bg-gradient-to-r from-purple-500 to-blue-500 text-white font-bold py-4 rounded-xl hover:from-purple-600 hover:to-blue-600 transition-all duration-300 flex items-center justify-center gap-2"
-                            >
-                                <CheckCircle2 className="w-5 h-5" />
-                                {t('mark_as_complete')}
-                            </button>
-                        )}
+                        {/* Actions */}
+                        <div className="space-y-3 pt-4">
+                            {/* Complete Button */}
+                            {!completedLessonsSet.has(selectedLesson.id) && (
+                                <button
+                                    onClick={() => handleMarkLessonComplete(selectedLesson.id, selectedLesson.xp || 100)}
+                                    className="w-full bg-gradient-to-r from-purple-500 to-blue-500 text-white font-bold py-4 rounded-xl hover:from-purple-600 hover:to-blue-600 transition-all duration-300 flex items-center justify-center gap-2 shadow-lg shadow-purple-500/20"
+                                >
+                                    <CheckCircle2 className="w-5 h-5" />
+                                    {t('mark_as_complete')}
+                                </button>
+                            )}
+
+                            {/* Next Lesson Button */}
+                            {completedLessonsSet.has(selectedLesson.id) && hasNextLesson() && (
+                                <button
+                                    onClick={goToNextLesson}
+                                    className="w-full bg-white/10 text-white font-bold py-4 rounded-xl hover:bg-white/20 transition-all duration-300 flex items-center justify-center gap-2 border border-white/20"
+                                >
+                                    {t('next_lesson', 'Next Lesson')}
+                                    <ChevronRight className="w-5 h-5" />
+                                </button>
+                            )}
+                        </div>
                     </motion.div>
                 )}
             </AnimatePresence >

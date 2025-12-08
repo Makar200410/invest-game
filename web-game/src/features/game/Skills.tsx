@@ -5,7 +5,7 @@ import {
     Zap, Lock, Unlock, PlayCircle,
     Shield, TrendingDown, BarChart3, Clock,
     LineChart, PieChart, Target, AlertCircle, Eye,
-    ChevronDown, ChevronUp, ExternalLink, Crown, ArrowLeft
+    ChevronDown, ChevronUp, ExternalLink, Crown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore, SKILL_DEFINITIONS, type SkillKey } from '../../store/gameStore';
@@ -56,15 +56,6 @@ export const Skills: React.FC = () => {
 
     return (
         <div className="pb-24 space-y-4">
-            {/* Back Button */}
-            <button
-                onClick={() => navigate(-1)}
-                className="flex items-center gap-2 text-sm opacity-70 hover:opacity-100 transition-opacity"
-                style={{ color: 'var(--text-primary)' }}
-            >
-                <ArrowLeft size={18} />
-                {t('back')}
-            </button>
             {/* Header */}
             <div className="flex justify-between items-center p-2 rounded-2xl shadow-sm border" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
                 <h2 className="text-lg font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>

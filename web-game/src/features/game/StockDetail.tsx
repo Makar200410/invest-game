@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, TrendingUp, Lock, Target, MessageCircle, ThumbsUp, Send, Trash2, X, CandlestickChart, LineChart, BadgeCheck } from 'lucide-react';
+import { ArrowLeft, TrendingUp, Lock, Target, MessageCircle, ThumbsUp, Send, Trash2, X, CandlestickChart, LineChart } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Card } from '../../components/ui/Card';
+import { ProBadge } from '../../components/ui/ProBadge';
 import { useGameStore } from '../../store/gameStore';
 import { formatPrice } from '../../utils/format';
 import {
@@ -21,16 +22,19 @@ import {
     type Comment
 } from '../../services/api';
 import { OrderForm } from '../../components/trading/OrderForm';
+import { MarketTimingModal } from './MarketTimingModal';
+import { analyzeMarket } from '../../utils/marketAnalysis';
 
 export const StockDetail: React.FC = () => {
     const { t } = useTranslation();
     const { id } = useParams();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const { balance, buyAsset, portfolio, skills, shortPositions, user, addNotification, favorites, toggleFavorite, isPremium } = useGameStore();
+    const { balance, closeShortPosition, portfolio, skills, shortPositions, user, addNotification, favorites, toggleFavorite, isPremium } = useGameStore();
 
     // State
     const [asset, setAsset] = useState<MarketItem | null>(null);
+    const [showMarketTiming, setShowMarketTiming] = useState(false);
     const [newsLoading, setNewsLoading] = useState(false);
     const [comments, setComments] = useState<Comment[]>([]);
     const [commentInput, setCommentInput] = useState('');
@@ -105,6 +109,7 @@ export const StockDetail: React.FC = () => {
 
     // Derived State
     const assetShorts = shortPositions.filter(p => p.assetId === asset?.id);
+    const marketAnalysis = useMemo(() => analyzeMarket(history), [history]);
 
     // Fetch Data
     // Fetch Data
@@ -298,7 +303,7 @@ export const StockDetail: React.FC = () => {
 
     const handleCoverShort = (positionId: string, positionAmount: number) => {
         if (!asset) return;
-        buyAsset(asset.id, asset.price, positionAmount, 1, positionId);
+        closeShortPosition(positionId, asset.price, positionAmount);
     };
 
     // Reset zoom/pan when interval changes
@@ -432,7 +437,13 @@ export const StockDetail: React.FC = () => {
                     </div>
                 </div>
                 <div className="flex gap-3">
-                    <button className="opacity-70 hover:opacity-100"><TrendingUp size={20} /></button>
+                    <button
+                        onClick={() => skills.marketTimer ? setShowMarketTiming(true) : navigate('/skills')}
+                        className={`transition-colors relative ${skills.marketTimer ? 'opacity-70 hover:opacity-100' : 'opacity-40'}`}
+                    >
+                        <TrendingUp size={20} />
+                        {!skills.marketTimer && <Lock size={10} className="absolute -top-1 -right-1 text-white" />}
+                    </button>
                     <button
                         onClick={() => asset && toggleFavorite(asset.id)}
                         className={`transition-colors ${asset && favorites.includes(asset.id) ? 'text-yellow-400 opacity-100' : 'opacity-70 hover:opacity-100'}`}
@@ -441,6 +452,13 @@ export const StockDetail: React.FC = () => {
                     </button>
                 </div>
             </div>
+
+            <MarketTimingModal
+                isOpen={showMarketTiming}
+                onClose={() => setShowMarketTiming(false)}
+                history={history}
+                symbol={asset?.symbol || ''}
+            />
 
             {/* Tabs */}
             <div className="flex gap-2 border-b border-white/10 pb-1 overflow-x-auto no-scrollbar">
@@ -689,7 +707,7 @@ export const StockDetail: React.FC = () => {
                         {/* Hover Info Tooltip */}
                         {hoverData && (
                             <div
-                                className="absolute top-0 left-1/2 transform -translate-x-1/2 bg-black/80 text-white text-xs px-2 py-1 rounded pointer-events-none"
+                                className="absolute top-0 left-1/2 transform -translate-x-1/2 bg-black/80 text-white text-xs px-2 py-1 rounded pointer-events-none whitespace-nowrap z-20"
                             >
                                 {(() => {
                                     const date = new Date(hoverData.date);
@@ -700,6 +718,26 @@ export const StockDetail: React.FC = () => {
                                         // For short intervals, show Date AND Time
                                         dateStr = `${date.toLocaleDateString([], { month: 'short', day: 'numeric' })} ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
                                     }
+
+                                    // Display percentage change if open/close data is available AND chart is candle
+                                    if (chartType === 'candle' && typeof hoverData.open === 'number' && typeof hoverData.close === 'number' && hoverData.open !== 0) {
+                                        const change = ((hoverData.close - hoverData.open) / hoverData.open) * 100;
+                                        const isPositive = change >= 0;
+                                        const sign = isPositive ? '+' : '';
+                                        const color = isPositive ? '#4ade80' : '#f87171'; // green-400 : red-400
+
+                                        return (
+                                            <div className="flex items-center gap-2">
+                                                <span>{dateStr}</span>
+                                                <span className="opacity-50">|</span>
+                                                <span>${formatPrice(hoverData.price)}</span>
+                                                <span style={{ color }} className="font-bold">
+                                                    {sign}{change.toFixed(2)}%
+                                                </span>
+                                            </div>
+                                        );
+                                    }
+
                                     return `${dateStr} • $${formatPrice(hoverData.price)}`;
                                 })()}
                             </div>
@@ -1035,11 +1073,15 @@ export const StockDetail: React.FC = () => {
                             <div className="grid grid-cols-2 gap-3">
                                 <div className="p-2 rounded-xl bg-black/20 border border-white/5 text-center">
                                     <p className="text-[10px] opacity-50 uppercase mb-0.5">{t('signal')}</p>
-                                    <p className="font-bold text-base text-green-400">{t('strong_buy')}</p>
+                                    <p className={`font-bold text-base ${marketAnalysis?.verdict.includes('buy') ? 'text-green-400' :
+                                        marketAnalysis?.verdict.includes('sell') ? 'text-red-400' : 'text-gray-400'
+                                        }`}>
+                                        {marketAnalysis ? t(marketAnalysis.verdict) : '-'}
+                                    </p>
                                 </div>
                                 <div className="p-2 rounded-xl bg-black/20 border border-white/5 text-center">
                                     <p className="text-[10px] opacity-50 uppercase mb-0.5">{t('confidence')}</p>
-                                    <p className="font-bold text-base">87%</p>
+                                    <p className="font-bold text-base">{marketAnalysis ? `${marketAnalysis.confidence}%` : '-'}</p>
                                 </div>
                             </div>
                             <p className="text-[10px] opacity-50 mt-2 text-center">
@@ -1276,6 +1318,14 @@ export const StockDetail: React.FC = () => {
                                 </div>
                             )}
 
+                            {/* Company Description */}
+                            <div className="mt-8 pt-6 border-t border-white/10">
+                                <h4 className="text-xs font-bold opacity-50 uppercase tracking-wider mb-4">{t('about')} {asset.name}</h4>
+                                <p className="text-sm leading-relaxed opacity-80">
+                                    {t(`desc_${asset.id.replace(/[^a-zA-Z0-9]/g, '_')}`, { defaultValue: asset.description || '' })}
+                                </p>
+                            </div>
+
                         </Card>
 
                     </>
@@ -1449,7 +1499,7 @@ export const StockDetail: React.FC = () => {
                                                             {comment.username}
                                                         </span>
                                                         {user?.username === comment.username && isPremium && (
-                                                            <BadgeCheck size={14} className="text-yellow-400 drop-shadow-[0_0_4px_rgba(250,204,21,0.6)]" />
+                                                            <ProBadge size="xs" />
                                                         )}
                                                         <span className="text-xs opacity-40" style={{ color: 'var(--text-primary)' }}>{new Date(comment.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                                     </div>
@@ -1521,7 +1571,7 @@ export const StockDetail: React.FC = () => {
                                                                 {reply.username}
                                                             </span>
                                                             {user?.username === reply.username && isPremium && (
-                                                                <BadgeCheck size={12} className="text-yellow-400 drop-shadow-[0_0_4px_rgba(250,204,21,0.6)]" />
+                                                                <ProBadge size="xs" />
                                                             )}
                                                             <span className="text-[10px] opacity-40" style={{ color: 'var(--text-primary)' }}>{new Date(reply.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                                                         </div>
@@ -1580,36 +1630,61 @@ export const StockDetail: React.FC = () => {
                 activeTab !== 'comments' && createPortal(
                     <div className="fixed bottom-[72px] left-0 right-0 px-4 pb-2 bg-gradient-to-t from-black via-black/90 to-transparent z-40 pointer-events-none">
                         <div id="tutorial-trade-buttons" className="max-w-md mx-auto grid grid-cols-2 gap-4 pointer-events-auto">
-                            {owned > 0 ? (
-                                <button
-                                    onClick={() => navigate(`/trade/${asset.id}?type=sell`)}
-                                    className="py-4 rounded-2xl bg-red-500 text-white font-bold shadow-lg shadow-red-500/20 hover:bg-red-400 transition-all active:scale-95"
-                                >
-                                    {t('sell')}
-                                </button>
-                            ) : (
-                                skills.shortSelling ? (
+                            {assetShorts.length > 0 ? (
+                                <>
+                                    <button
+                                        onClick={() => navigate(`/trade/${asset.id}?type=cover`)}
+                                        className="py-4 rounded-2xl bg-blue-500 text-white font-bold shadow-lg shadow-blue-500/20 hover:bg-blue-400 transition-all active:scale-95"
+                                    >
+                                        {t('close_short', 'Close Short')}
+                                    </button>
                                     <button
                                         onClick={() => navigate(`/trade/${asset.id}?type=short`)}
                                         className="py-4 rounded-2xl bg-yellow-500 text-black font-bold shadow-lg shadow-yellow-500/20 hover:bg-yellow-400 transition-all active:scale-95"
                                     >
-                                        {t('short_sell')}
+                                        {t('short')}
                                     </button>
-                                ) : (
+                                </>
+                            ) : owned > 0 ? (
+                                <>
                                     <button
-                                        onClick={() => navigate('/skills')}
-                                        className="py-4 rounded-2xl bg-white/5 text-white/20 font-bold cursor-pointer border border-white/5 flex items-center justify-center gap-2 hover:bg-white/10 transition-colors"
+                                        onClick={() => navigate(`/trade/${asset.id}?type=sell`)}
+                                        className="py-4 rounded-2xl bg-red-500 text-white font-bold shadow-lg shadow-red-500/20 hover:bg-red-400 transition-all active:scale-95"
                                     >
-                                        {t('short_sell')} <Lock size={14} />
+                                        {t('sell')}
                                     </button>
-                                )
+                                    <button
+                                        onClick={() => navigate(`/trade/${asset.id}?type=buy`)}
+                                        className="py-4 rounded-2xl bg-white text-black font-bold shadow-lg shadow-white/10 hover:bg-gray-200 transition-all active:scale-95"
+                                    >
+                                        {t('buy')}
+                                    </button>
+                                </>
+                            ) : (
+                                <>
+                                    {skills.shortSelling ? (
+                                        <button
+                                            onClick={() => navigate(`/trade/${asset.id}?type=short`)}
+                                            className="py-4 rounded-2xl bg-yellow-500 text-black font-bold shadow-lg shadow-yellow-500/20 hover:bg-yellow-400 transition-all active:scale-95"
+                                        >
+                                            {t('short_sell')}
+                                        </button>
+                                    ) : (
+                                        <button
+                                            onClick={() => navigate('/skills')}
+                                            className="py-4 rounded-2xl bg-white/5 text-white/20 font-bold cursor-pointer border border-white/5 flex items-center justify-center gap-2 hover:bg-white/10 transition-colors"
+                                        >
+                                            {t('short_sell')} <Lock size={14} />
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={() => navigate(`/trade/${asset.id}?type=buy`)}
+                                        className="py-4 rounded-2xl bg-white text-black font-bold shadow-lg shadow-white/10 hover:bg-gray-200 transition-all active:scale-95"
+                                    >
+                                        {t('buy')}
+                                    </button>
+                                </>
                             )}
-                            <button
-                                onClick={() => navigate(`/trade/${asset.id}?type=buy`)}
-                                className="py-4 rounded-2xl bg-white text-black font-bold shadow-lg shadow-white/10 hover:bg-gray-200 transition-all active:scale-95"
-                            >
-                                {t('buy')}
-                            </button>
                         </div>
                     </div>,
                     document.body
@@ -1625,26 +1700,38 @@ export const StockDetail: React.FC = () => {
                             {assetShorts.map(short => {
                                 const currentVal = short.amount * asset.price;
                                 const entryVal = short.amount * short.entryPrice;
-                                const pnl = entryVal - currentVal;
-                                const pnlPercent = ((entryVal - currentVal) / entryVal) * 100;
+                                const basePnL = entryVal - currentVal;
+                                const pnl = basePnL * (short.leverage || 1);
+                                // Calculate percent based on margin invested
+                                const marginUsed = entryVal / (short.leverage || 1);
+                                const pnlPercent = (pnl / marginUsed) * 100;
 
                                 return (
-                                    <div key={short.id} className="p-3 rounded-lg bg-black/20 border border-white/10 flex justify-between items-center">
-                                        <div>
-                                            <div className="text-sm font-bold">{short.amount} {asset.symbol}</div>
-                                            <div className="text-xs opacity-50">Entry: ${formatPrice(short.entryPrice)}</div>
-                                        </div>
-                                        <div className="text-right">
-                                            <div className={`font-bold ${pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                                {pnl >= 0 ? '+' : ''}{formatPrice(pnl)} ({pnlPercent.toFixed(2)}%)
+                                    <div key={short.id} className="p-3 rounded-lg bg-black/20 border border-white/10">
+                                        <div className="flex justify-between items-center">
+                                            <div>
+                                                <div className="text-sm font-bold flex items-center gap-2">
+                                                    {short.amount} {asset.symbol}
+                                                    {short.leverage > 1 && (
+                                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-orange-500/20 text-orange-400">
+                                                            {short.leverage}x
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="text-xs opacity-50">Entry: ${formatPrice(short.entryPrice)}</div>
                                             </div>
-                                            <button
-                                                onClick={() => handleCoverShort(short.id, short.amount)}
-                                                className="text-xs bg-white/10 hover:bg-white/20 px-2 py-1 rounded mt-1 transition-colors"
-                                            >
-                                                {t('cover')}
-                                            </button>
+                                            <div className="text-right">
+                                                <div className={`font-bold ${pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                                    {pnl >= 0 ? '+' : ''}{formatPrice(pnl)} ({pnlPercent.toFixed(2)}%)
+                                                </div>
+                                            </div>
                                         </div>
+                                        <button
+                                            onClick={() => handleCoverShort(short.id, short.amount)}
+                                            className="w-full mt-2 text-xs bg-blue-500 hover:bg-blue-400 text-white font-bold px-3 py-2 rounded-lg transition-colors"
+                                        >
+                                            {t('close_short', 'Close Short')}
+                                        </button>
                                     </div>
                                 );
                             })}

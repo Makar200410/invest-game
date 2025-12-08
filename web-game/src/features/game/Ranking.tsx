@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Trophy, Target, AlertTriangle, Shield, ChevronLeft, ChevronRight, Crown, Users, TrendingUp, ArrowLeft, BadgeCheck } from 'lucide-react';
+import { Trophy, Target, AlertTriangle, Shield, ChevronLeft, ChevronRight, Crown, Users, TrendingUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '../../store/gameStore';
-import { fetchLeaderboard, registerForTournament, fetchTournamentStatus } from '../../services/api';
+import { fetchLeaderboard, registerForTournament, fetchTournamentStatus, fetchCryptoMarket, type MarketItem } from '../../services/api';
 import { useTranslation } from 'react-i18next';
+import { ProBadge } from '../../components/ui/ProBadge';
 
 interface LeaderboardUser {
     username: string;
@@ -40,7 +41,7 @@ const getLevelColor = (tier: number) => {
 
 export const Ranking: React.FC = () => {
     const { t } = useTranslation();
-    const { user } = useGameStore();
+    const { user, isPremium: isCurrentUserPremium, balance, portfolio, leveragedPositions, shortPositions } = useGameStore();
     const navigate = useNavigate();
 
     const LEVELS = [
@@ -89,6 +90,44 @@ export const Ranking: React.FC = () => {
     const [registering, setRegistering] = useState(false);
     const [selectedTier, setSelectedTier] = useState<number>(1);
     const [activeView, setActiveView] = useState<'tournament' | 'global'>('tournament');
+    const [marketItems, setMarketItems] = useState<MarketItem[]>([]);
+
+    // Calculate local portfolio value (same as House page) - this is the correct value
+    const localTotalNetWorth = useMemo(() => {
+        if (marketItems.length === 0) {
+            console.log('Ranking - No market items, fallback to balance:', balance);
+            return balance; // Fallback if no market data
+        }
+
+        // Spot portfolio value
+        const spotValue = portfolio.reduce((acc, item) => {
+            const marketItem = marketItems.find(i => i.id === item.id);
+            return acc + (marketItem ? marketItem.price * item.amount : 0);
+        }, 0);
+
+        // Leveraged positions equity
+        const leveragedEquity = leveragedPositions.reduce((acc, pos) => {
+            const marketItem = marketItems.find(i => i.id === pos.assetId);
+            if (!marketItem) return acc;
+            const currentValue = marketItem.price * pos.amount;
+            const borrowed = (pos.entryPrice * pos.amount) * (pos.leverage - 1) / pos.leverage;
+            return acc + (currentValue - borrowed);
+        }, 0);
+
+        // Short positions equity (margin + PnL)
+        const shortEquity = shortPositions.reduce((acc, pos) => {
+            const marketItem = marketItems.find(i => i.id === pos.assetId);
+            if (!marketItem) return acc;
+            const basePnL = (pos.entryPrice - marketItem.price) * pos.amount;
+            const pnl = basePnL * (pos.leverage || 1);
+            return acc + ((pos.marginLocked || 0) + pnl);
+        }, 0);
+
+        const total = balance + spotValue + leveragedEquity + shortEquity;
+        console.log('Ranking - Calculated: balance=', balance, 'spot=', spotValue, 'leveraged=', leveragedEquity, 'short=', shortEquity, 'TOTAL=', total);
+
+        return total;
+    }, [balance, portfolio, leveragedPositions, shortPositions, marketItems]);
 
     // Scroll to top when switching views
     useEffect(() => {
@@ -98,12 +137,20 @@ export const Ranking: React.FC = () => {
     const loadData = async () => {
         try {
             setLoading(true);
-            const [lbData, statusData] = await Promise.all([
+            const [lbData, statusData, marketData] = await Promise.all([
                 fetchLeaderboard(),
-                user ? fetchTournamentStatus(user.username) : Promise.resolve(null)
+                user ? fetchTournamentStatus(user.username) : Promise.resolve(null),
+                fetchCryptoMarket(false) // Fetch FULL market data including IDs
             ]);
             setLeaderboard(lbData);
             setTournamentStatus(statusData);
+            setMarketItems(marketData);
+
+            // Debug log to verify data
+            console.log('Ranking - Market items loaded:', marketData.length);
+            console.log('Ranking - Portfolio:', portfolio);
+            console.log('Ranking - Leveraged:', leveragedPositions);
+            console.log('Ranking - Shorts:', shortPositions);
 
             if (statusData?.rankTier) {
                 setSelectedTier(statusData.rankTier);
@@ -146,16 +193,6 @@ export const Ranking: React.FC = () => {
 
     return (
         <div className="space-y-5 pb-24 pt-4 px-4">
-            {/* Back Button */}
-            <button
-                onClick={() => navigate(-1)}
-                className="flex items-center gap-2 text-sm opacity-70 hover:opacity-100 transition-opacity"
-                style={{ color: 'var(--text-primary)' }}
-            >
-                <ArrowLeft size={18} />
-                {t('back')}
-            </button>
-
             {/* Premium Header Card */}
             <div className="relative overflow-hidden rounded-3xl p-5 border shadow-xl" style={{ borderColor: 'var(--card-border)', backgroundColor: 'var(--card-bg)' }}>
                 {/* Animated Background */}
@@ -287,76 +324,86 @@ export const Ranking: React.FC = () => {
                                             />
                                         </motion.button>
                                     </div>
-                                ) : (
-                                    <div className="space-y-4">
-                                        {/* Stats Grid */}
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <div className="p-3.5 rounded-2xl bg-gradient-to-br from-white/5 to-white/0 border border-white/10 backdrop-blur-sm">
-                                                <div className="flex items-center gap-1.5 mb-1.5 opacity-60">
-                                                    <TrendingUp size={12} />
-                                                    <span className="text-[9px] font-bold uppercase tracking-wider">{t('weekly_pnl')}</span>
-                                                </div>
-                                                <div className={`text-xl font-black ${tournamentStatus.profit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                                                    {tournamentStatus.profit >= 0 ? '+' : ''}{(tournamentStatus.profitPercent * 100).toFixed(2)}%
-                                                </div>
-                                                <div className="text-[10px] font-bold opacity-40 mt-0.5">${Math.abs(tournamentStatus.profit).toLocaleString()}</div>
-                                            </div>
+                                ) : (() => {
+                                    // Calculate local P&L using the correct total net worth
+                                    const startBalance = tournamentStatus.startBalance;
+                                    const currentValue = localTotalNetWorth;
+                                    const localProfit = currentValue - startBalance;
+                                    const localProfitPercent = startBalance > 0 ? localProfit / startBalance : 0;
 
-                                            <div className="p-3.5 rounded-2xl bg-gradient-to-br from-emerald-500/10 to-teal-500/5 border border-emerald-500/20 backdrop-blur-sm">
-                                                <div className="flex items-center gap-1.5 mb-1.5 opacity-70">
-                                                    <Target size={12} className="text-emerald-400" />
-                                                    <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-400">{t('target')}</span>
-                                                </div>
-                                                <div className="text-xl font-black text-emerald-400">≥{(tournamentStatus.requirements.promote * 100).toFixed(0)}%</div>
-                                                <div className="text-[10px] font-bold opacity-40 mt-0.5" style={{ color: 'var(--text-primary)' }}>{t('to_rank_up', 'to rank up')}</div>
-                                            </div>
-                                        </div>
+                                    console.log('Ranking P&L Display - startBalance:', startBalance, 'currentValue:', currentValue, 'profit:', localProfit, 'percent:', localProfitPercent);
 
-                                        {/* Next Tier Progress */}
-                                        <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-500/10 via-indigo-500/10 to-blue-500/10 border border-white/10 backdrop-blur-sm relative overflow-hidden">
-                                            <motion.div
-                                                animate={{ x: ['-100%', '200%'] }}
-                                                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                                                className="absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-white/5 to-transparent"
-                                            />
-
-                                            <div className="flex justify-between items-center mb-3 relative z-10">
-                                                <div>
-                                                    <div className="text-[9px] font-bold uppercase tracking-wider opacity-50 mb-0.5">{t('next_tier')}</div>
-                                                    <div className={`text-lg font-black ${getLevelColor(tournamentStatus.rankTier + 1)}`}>
-                                                        {t(getTierTranslationKey(tournamentStatus.nextLevelName))}
+                                    return (
+                                        <div className="space-y-4">
+                                            {/* Stats Grid */}
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div className="p-3.5 rounded-2xl bg-gradient-to-br from-white/5 to-white/0 border border-white/10 backdrop-blur-sm">
+                                                    <div className="flex items-center gap-1.5 mb-1.5 opacity-60">
+                                                        <TrendingUp size={12} />
+                                                        <span className="text-[9px] font-bold uppercase tracking-wider">{t('weekly_pnl')}</span>
                                                     </div>
+                                                    <div className={`text-xl font-black ${localProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                                        {localProfit >= 0 ? '+' : ''}{(localProfitPercent * 100).toFixed(2)}%
+                                                    </div>
+                                                    <div className="text-[10px] font-bold opacity-40 mt-0.5">${Math.abs(localProfit).toLocaleString()}</div>
                                                 </div>
-                                                <motion.div
-                                                    animate={{ rotate: 360 }}
-                                                    transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                                                    className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500/20 to-indigo-500/20 border border-white/10 flex items-center justify-center"
-                                                >
-                                                    <Crown size={18} className={getLevelColor(tournamentStatus.rankTier + 1)} />
-                                                </motion.div>
+
+                                                <div className="p-3.5 rounded-2xl bg-gradient-to-br from-emerald-500/10 to-teal-500/5 border border-emerald-500/20 backdrop-blur-sm">
+                                                    <div className="flex items-center gap-1.5 mb-1.5 opacity-70">
+                                                        <Target size={12} className="text-emerald-400" />
+                                                        <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-400">{t('target')}</span>
+                                                    </div>
+                                                    <div className="text-xl font-black text-emerald-400">≥{(tournamentStatus.requirements.promote * 100).toFixed(0)}%</div>
+                                                    <div className="text-[10px] font-bold opacity-40 mt-0.5" style={{ color: 'var(--text-primary)' }}>{t('to_rank_up', 'to rank up')}</div>
+                                                </div>
                                             </div>
 
-                                            <div className="h-2.5 bg-slate-700/50 rounded-full overflow-hidden">
+                                            {/* Next Tier Progress */}
+                                            <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-500/10 via-indigo-500/10 to-blue-500/10 border border-white/10 backdrop-blur-sm relative overflow-hidden">
                                                 <motion.div
-                                                    initial={{ width: 0 }}
-                                                    animate={{ width: `${Math.min(Math.abs(tournamentStatus.profitPercent / tournamentStatus.requirements.promote) * 100, 100)}%` }}
-                                                    transition={{ duration: 1.2, delay: 0.3, type: "spring" }}
-                                                    className={`h-full rounded-full ${tournamentStatus.profit >= 0 ? 'bg-gradient-to-r from-emerald-500 to-teal-400' : 'bg-gradient-to-r from-rose-500 to-red-400'} shadow-[0_0_12px_currentColor]`}
+                                                    animate={{ x: ['-100%', '200%'] }}
+                                                    transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                                                    className="absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-white/5 to-transparent"
                                                 />
+
+                                                <div className="flex justify-between items-center mb-3 relative z-10">
+                                                    <div>
+                                                        <div className="text-[9px] font-bold uppercase tracking-wider opacity-50 mb-0.5">{t('next_tier')}</div>
+                                                        <div className={`text-lg font-black ${getLevelColor(tournamentStatus.rankTier + 1)}`}>
+                                                            {t(getTierTranslationKey(tournamentStatus.nextLevelName))}
+                                                        </div>
+                                                    </div>
+                                                    <motion.div
+                                                        animate={{ rotate: 360 }}
+                                                        transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                                                        className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500/20 to-indigo-500/20 border border-white/10 flex items-center justify-center"
+                                                    >
+                                                        <Crown size={18} className={getLevelColor(tournamentStatus.rankTier + 1)} />
+                                                    </motion.div>
+                                                </div>
+
+                                                <div className="h-2.5 bg-slate-700/50 rounded-full overflow-hidden">
+                                                    <motion.div
+                                                        initial={{ width: 0 }}
+                                                        animate={{ width: `${Math.min(Math.abs(localProfitPercent / tournamentStatus.requirements.promote) * 100, 100)}%` }}
+                                                        transition={{ duration: 1.2, delay: 0.3, type: "spring" }}
+                                                        className={`h-full rounded-full ${localProfit >= 0 ? 'bg-gradient-to-r from-emerald-500 to-teal-400' : 'bg-gradient-to-r from-rose-500 to-red-400'} shadow-[0_0_12px_currentColor]`}
+                                                    />
+                                                </div>
+                                                {tournamentStatus.requirements.demote !== null && (
+                                                    <motion.p
+                                                        initial={{ opacity: 0 }}
+                                                        animate={{ opacity: 1 }}
+                                                        className="text-[9px] font-bold text-red-400/70 flex items-center gap-1 mt-2"
+                                                    >
+                                                        <AlertTriangle size={9} />
+                                                        {t('demote_if')} &lt;{(tournamentStatus.requirements.demote * 100).toFixed(1)}%
+                                                    </motion.p>
+                                                )}
                                             </div>
-                                            {tournamentStatus.requirements.demote !== null && (
-                                                <motion.p
-                                                    initial={{ opacity: 0 }}
-                                                    animate={{ opacity: 1 }}
-                                                    className="text-[9px] font-bold text-red-400/70 flex items-center gap-1 mt-2"
-                                                >
-                                                    <AlertTriangle size={9} />
-                                                    {t('demote_if')} &lt;{(tournamentStatus.requirements.demote * 100).toFixed(1)}%
-                                                </motion.p>
-                                            )}
                                         </div>
-                                    </div>
-                                )}
+                                    );
+                                })()}
                             </div>
                         </div>
 
@@ -404,6 +451,7 @@ export const Ranking: React.FC = () => {
                                     tournamentPlayers.map((player, idx) => {
                                         const isUser = user?.username === player.username;
                                         const isTop3 = idx < 3;
+                                        const isPremium = isUser ? (player.isPremium || isCurrentUserPremium) : player.isPremium;
 
                                         return (
                                             <motion.div
@@ -443,8 +491,8 @@ export const Ranking: React.FC = () => {
                                                         <div>
                                                             <div className="flex items-center gap-1.5">
                                                                 <span className={`font-bold text-sm ${isUser ? 'text-blue-400' : ''}`} style={{ color: isUser ? undefined : 'var(--text-primary)' }}>{player.username}</span>
-                                                                {player.isPremium && (
-                                                                    <BadgeCheck size={14} className="text-yellow-400 drop-shadow-[0_0_4px_rgba(250,204,21,0.6)]" />
+                                                                {isPremium && (
+                                                                    <ProBadge size="xs" />
                                                                 )}
                                                                 {isUser && <span className="px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-[8px] font-black uppercase border border-blue-500/30">{t('you')}</span>}
                                                             </div>
@@ -512,8 +560,8 @@ export const Ranking: React.FC = () => {
                                             <div>
                                                 <div className="flex items-center gap-1.5">
                                                     <span className={`font-bold text-sm ${isCurrentUser ? 'text-blue-400' : ''}`} style={{ color: isCurrentUser ? undefined : 'var(--text-primary)' }}>{player.username}</span>
-                                                    {player.isPremium && (
-                                                        <BadgeCheck size={14} className="text-yellow-400 drop-shadow-[0_0_4px_rgba(250,204,21,0.6)]" />
+                                                    {(isCurrentUser ? (player.isPremium || isCurrentUserPremium) : player.isPremium) && (
+                                                        <ProBadge size="xs" />
                                                     )}
                                                     {player.isInTournament && <Shield size={10} className={getLevelColor(player.rankTier)} />}
                                                 </div>

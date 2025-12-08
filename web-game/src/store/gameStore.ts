@@ -140,6 +140,49 @@ export interface GameSettings {
     notificationsEnabled: boolean;
 }
 
+// 20 Levels with progressive XP requirements
+// Total lessons: ~144, XP per lesson: 100, Total XP: ~14400
+const LEVEL_THRESHOLDS = [
+    0,      // Level 1
+    100,    // Level 2 (1 lesson)
+    250,    // Level 3
+    450,    // Level 4
+    700,    // Level 5
+    1000,   // Level 6
+    1400,   // Level 7
+    1900,   // Level 8
+    2500,   // Level 9
+    3200,   // Level 10
+    4000,   // Level 11
+    5000,   // Level 12
+    6100,   // Level 13
+    7300,   // Level 14
+    8600,   // Level 15
+    10000,  // Level 16
+    11500,  // Level 17
+    13100,  // Level 18
+    14800,  // Level 19
+    16600,  // Level 20 (max)
+];
+
+export const getLevelFromXP = (xp: number): number => {
+    for (let i = LEVEL_THRESHOLDS.length - 1; i >= 0; i--) {
+        if (xp >= LEVEL_THRESHOLDS[i]) {
+            return i + 1;
+        }
+    }
+    return 1;
+};
+
+export const getXPForLevel = (level: number): number => {
+    return LEVEL_THRESHOLDS[Math.min(level - 1, LEVEL_THRESHOLDS.length - 1)] || 0;
+};
+
+export const getXPForNextLevel = (level: number): number => {
+    if (level >= 20) return LEVEL_THRESHOLDS[19];
+    return LEVEL_THRESHOLDS[level] || LEVEL_THRESHOLDS[LEVEL_THRESHOLDS.length - 1];
+};
+
 interface GameState {
     balance: number;
     loan: number;
@@ -157,6 +200,12 @@ interface GameState {
     tutorialStep: number;
     hasCompletedTutorial: boolean;
     isPremium: boolean;
+    profilePhoto: string | null; // Base64 encoded photo or null
+
+    // Learning/Level system
+    experience: number;
+    userLevel: number;
+    completedLessons: string[];
 
     setTutorialActive: (active: boolean) => void;
     setTutorialStep: (step: number) => void;
@@ -165,6 +214,7 @@ interface GameState {
 
     buyAsset: (id: string, price: number, amount: number, leverage?: number, shortPositionId?: string) => void;
     sellAsset: (id: string, price: number, amount: number, positionId?: string, isShort?: boolean, leverage?: number) => void;
+    closeShortPosition: (positionId: string, currentPrice: number, amount?: number) => void;
     createOrder: (assetId: string, type: 'stop-loss' | 'take-profit', triggerPrice: number, amount: number) => void;
     cancelOrder: (orderId: string) => void;
     checkOrders: (assetId: string, currentPrice: number) => void;
@@ -189,6 +239,12 @@ interface GameState {
     markNotificationAsRead: (id: string) => void;
     clearNotifications: () => void;
     toggleNotifications: () => void;
+    setProfilePhoto: (photo: string | null) => void;
+
+    // Learning/Level functions
+    addExperience: (xp: number) => void;
+    markLessonComplete: (lessonId: string, xpReward?: number) => boolean; // Returns true if level up
+    getLevelProgress: () => { currentXP: number; levelXP: number; nextLevelXP: number; progress: number };
 }
 
 export const useGameStore = create<GameState>()(
@@ -218,6 +274,7 @@ export const useGameStore = create<GameState>()(
             tutorialActive: false,
             tutorialStep: 0,
             hasCompletedTutorial: false,
+            profilePhoto: null,
             isPremium: false,
             lastLogin: null,
             skillPoints: 0,
@@ -228,6 +285,11 @@ export const useGameStore = create<GameState>()(
             settings: {
                 notificationsEnabled: true
             },
+
+            // Learning/Level system defaults
+            experience: 0,
+            userLevel: 1,
+            completedLessons: [],
 
             toggleFavorite: (assetId) => {
                 const state = get();
@@ -289,6 +351,56 @@ export const useGameStore = create<GameState>()(
             completeTutorial: () => set({ tutorialActive: false, hasCompletedTutorial: true }),
             startTutorial: () => set({ tutorialActive: true, tutorialStep: 0, hasCompletedTutorial: false }),
 
+            // Experience/Level Functions
+            addExperience: (xp) => {
+                const state = get();
+                const newXP = state.experience + xp;
+                const newLevel = getLevelFromXP(newXP);
+                set({
+                    experience: newXP,
+                    userLevel: newLevel
+                });
+            },
+
+            markLessonComplete: (lessonId, xpReward = 100) => {
+                const state = get();
+
+                // Don't give XP if already completed
+                if (state.completedLessons.includes(lessonId)) {
+                    return false;
+                }
+
+                const newCompletedLessons = [...state.completedLessons, lessonId];
+                const newXP = state.experience + xpReward;
+                const oldLevel = state.userLevel;
+                const newLevel = getLevelFromXP(newXP);
+                const leveledUp = newLevel > oldLevel;
+
+                set({
+                    completedLessons: newCompletedLessons,
+                    experience: newXP,
+                    userLevel: newLevel
+                });
+
+                return leveledUp;
+            },
+
+            getLevelProgress: () => {
+                const state = get();
+                const currentXP = state.experience;
+                const level = state.userLevel;
+                const levelXP = getXPForLevel(level);
+                const nextLevelXP = getXPForNextLevel(level);
+                const progress = level >= 20 ? 100 : ((currentXP - levelXP) / (nextLevelXP - levelXP)) * 100;
+
+                return {
+                    currentXP,
+                    levelXP,
+                    nextLevelXP,
+                    progress: Math.min(Math.max(progress, 0), 100)
+                };
+            },
+
             buyAsset: (id, price, amount, leverage = 1, _shortPositionId) => {
                 const state = get();
                 const { balance, portfolio, leveragedPositions, shortPositions, skills, loan, tradesToday } = state;
@@ -306,6 +418,7 @@ export const useGameStore = create<GameState>()(
                 if (assetShorts.length > 0) {
                     let remainingAmountToBuy = amount;
                     let currentBalance = balance;
+                    let currentLoan = loan;
                     let updatedShorts = [...shortPositions];
 
                     // Sort by entry time (FIFO) - assuming order in array is chronological
@@ -315,16 +428,37 @@ export const useGameStore = create<GameState>()(
 
                         const amountToCover = Math.min(remainingAmountToBuy, shortPos.amount);
 
-                        // Calculate PnL: (Entry Price - Current Price) * Amount
-                        const pnl = (shortPos.entryPrice - price) * amountToCover;
+                        // Calculate PnL: (Entry Price - Current Price) * Amount * Leverage
+                        const basePnL = (shortPos.entryPrice - price) * amountToCover;
+                        let pnl = basePnL * (shortPos.leverage || 1);
+
+                        // Risk Manager: 20% loss reduction
+                        if (skills.riskManager && pnl < 0) {
+                            const saved = Math.abs(pnl) * 0.2;
+                            pnl += saved;
+                            state.addNotification('Risk Manager', `Saved $${saved.toFixed(2)}`, 'success');
+                        }
+
+                        // Portfolio Manager: 5% profit bonus (>5 assets)
+                        // Note: pnl here is the realized profit/loss
+                        if (skills.portfolioManager && portfolio.length > 5 && pnl > 0) {
+                            const bonus = pnl * 0.05;
+                            pnl += bonus;
+                            state.addNotification('Portfolio Manager', `Bonus: +$${bonus.toFixed(2)}`, 'success');
+                        }
 
                         // Calculate Margin to Return (Proportional)
                         // Default to 0 if marginLocked is undefined (legacy positions)
                         const lockedMargin = shortPos.marginLocked || 0;
                         const marginToReturn = (amountToCover / shortPos.amount) * lockedMargin;
 
+                        // Calculate borrowed amount to repay (for leveraged shorts)
+                        const positionValue = shortPos.entryPrice * amountToCover;
+                        const borrowedPart = (shortPos.leverage || 1) > 1 ? positionValue - marginToReturn : 0;
+
                         // Update Balance with PnL and Returned Margin
                         currentBalance += pnl + marginToReturn;
+                        currentLoan = Math.max(0, currentLoan - borrowedPart);
 
                         remainingAmountToBuy -= amountToCover;
 
@@ -347,6 +481,7 @@ export const useGameStore = create<GameState>()(
                     // Apply changes for the covered part
                     set({
                         balance: currentBalance,
+                        loan: currentLoan,
                         shortPositions: updatedShorts
                     });
                     state.incrementTrades();
@@ -475,8 +610,14 @@ export const useGameStore = create<GameState>()(
                         newShortPositions = [...shortPositions, newShort];
                     }
 
+                    // Calculate borrowed amount for leveraged shorts
+                    // For shorts with leverage > 1, the borrowed exposure is position value - margin
+                    const positionValue = price * amount;
+                    const borrowedAmount = leverage > 1 ? positionValue - marginRequired : 0;
+
                     set({
                         balance: balance - marginRequired, // Deduct margin
+                        loan: loan + borrowedAmount, // Add borrowed exposure to loan (for leveraged shorts)
                         shortPositions: newShortPositions
                     });
                     state.incrementTrades();
@@ -484,6 +625,7 @@ export const useGameStore = create<GameState>()(
                     return;
                 }
 
+                // Handle leveraged position sale (Specific Position)
                 // Handle leveraged position sale (Specific Position)
                 if (positionId) {
                     const position = leveragedPositions.find(p => p.id === positionId);
@@ -495,7 +637,25 @@ export const useGameStore = create<GameState>()(
                     const borrowedPart = initialValue * (position.leverage - 1) / position.leverage;
 
                     const currentValue = price * sellAmount;
-                    const equity = currentValue - borrowedPart;
+                    const initialMargin = initialValue / position.leverage;
+                    let equity = currentValue - borrowedPart;
+                    let pnl = equity - initialMargin;
+
+                    // Risk Manager: 20% loss reduction
+                    if (skills.riskManager && pnl < 0) {
+                        const lossReduction = Math.abs(pnl) * 0.2;
+                        pnl += lossReduction;
+                        equity += lossReduction;
+                        state.addNotification('Risk Manager', `Saved $${lossReduction.toFixed(2)}`, 'success');
+                    }
+
+                    // Portfolio Manager: 5% profit bonus (>5 assets)
+                    if (skills.portfolioManager && portfolio.length > 5 && pnl > 0) {
+                        const bonus = pnl * 0.05;
+                        pnl += bonus;
+                        equity += bonus;
+                        state.addNotification('Portfolio Manager', `Bonus: +$${bonus.toFixed(2)}`, 'success');
+                    }
 
                     let newPositions;
                     if (sellAmount >= position.amount - 0.000001) {
@@ -528,7 +688,17 @@ export const useGameStore = create<GameState>()(
                     if (skills.riskManager && price < portfolioItem.avgPrice) {
                         const loss = (portfolioItem.avgPrice - price) * amountToSell;
                         const reducedLoss = loss * 0.8;
+                        const saved = loss - reducedLoss;
                         revenue = portfolioItem.avgPrice * amountToSell - reducedLoss;
+                        state.addNotification('Risk Manager', `Saved $${saved.toFixed(2)}`, 'success');
+                    }
+
+                    // Portfolio Manager: +5% profit if > 5 assets
+                    if (skills.portfolioManager && portfolio.length > 5 && price > portfolioItem.avgPrice) {
+                        const profit = (price - portfolioItem.avgPrice) * amountToSell;
+                        const bonus = profit * 0.05;
+                        revenue += bonus;
+                        state.addNotification('Portfolio Manager', `Bonus: +$${bonus.toFixed(2)}`, 'success');
                     }
 
                     const newPortfolio = portfolio.map(p =>
@@ -548,6 +718,81 @@ export const useGameStore = create<GameState>()(
                     state.sellAsset(id, price, amount, oldestPosition.id);
                     return;
                 }
+            },
+
+            // Close a short position directly without balance check
+            // This is used when the user wants to cover/close their short
+            closeShortPosition: (positionId, currentPrice, amount) => {
+                const state = get();
+                const { balance, loan, shortPositions, skills, tradesToday, portfolio } = state;
+
+                // Check Day Trader limit
+                if (!skills.dayTrader && tradesToday >= 50) {
+                    console.warn("Daily trade limit reached");
+                    return;
+                }
+
+                const position = shortPositions.find(p => p.id === positionId);
+                if (!position) {
+                    console.warn("Short position not found");
+                    return;
+                }
+
+                const amountToClose = amount !== undefined ? Math.min(amount, position.amount) : position.amount;
+
+                // Calculate PnL: (Entry Price - Current Price) * Amount * Leverage
+                const basePnL = (position.entryPrice - currentPrice) * amountToClose;
+                let pnl = basePnL * (position.leverage || 1);
+
+                // Risk Manager: 20% loss reduction
+                if (skills.riskManager && pnl < 0) {
+                    const saved = Math.abs(pnl) * 0.2;
+                    pnl += saved;
+                    state.addNotification('Risk Manager', `Saved $${saved.toFixed(2)}`, 'success');
+                }
+
+                // Portfolio Manager: 5% profit bonus (>5 assets)
+                if (skills.portfolioManager && portfolio.length > 5 && pnl > 0) {
+                    const bonus = pnl * 0.05;
+                    pnl += bonus;
+                    state.addNotification('Portfolio Manager', `Bonus: +$${bonus.toFixed(2)}`, 'success');
+                }
+
+                // Calculate Margin to Return (Proportional)
+                const lockedMargin = position.marginLocked || 0;
+                const marginToReturn = (amountToClose / position.amount) * lockedMargin;
+
+                // Calculate borrowed amount to repay (for leveraged shorts)
+                const positionValue = position.entryPrice * amountToClose;
+                const borrowedPart = (position.leverage || 1) > 1 ? positionValue - marginToReturn : 0;
+
+                // New balance = current balance + returned margin + PnL (could be negative)
+                const newBalance = balance + marginToReturn + pnl;
+
+                // Update shortPositions
+                let updatedShorts;
+                if (amountToClose >= position.amount - 0.000001) {
+                    // Fully closed
+                    updatedShorts = shortPositions.filter(p => p.id !== positionId);
+                } else {
+                    // Partially closed
+                    updatedShorts = shortPositions.map(p =>
+                        p.id === positionId ? {
+                            ...p,
+                            amount: p.amount - amountToClose,
+                            marginLocked: lockedMargin - marginToReturn
+                        } : p
+                    );
+                }
+
+                set({
+                    balance: newBalance,
+                    loan: Math.max(0, loan - borrowedPart), // Reduce loan for leveraged shorts
+                    shortPositions: updatedShorts
+                });
+
+                state.incrementTrades();
+                get().sync();
             },
 
             createOrder: (assetId, type, triggerPrice, amount) => {
@@ -714,6 +959,37 @@ export const useGameStore = create<GameState>()(
                 const state = get();
                 if (state.user) {
                     try {
+                        // Fetch current market prices
+                        const { fetchCryptoMarket, syncGameState } = await import('../services/api');
+                        const marketItems = await fetchCryptoMarket(true); // prices only for speed
+
+                        // Calculate spot portfolio value
+                        const spotValue = state.portfolio.reduce((acc, item) => {
+                            const marketItem = marketItems.find((i: any) => i.id === item.id);
+                            return acc + (marketItem ? marketItem.price * item.amount : 0);
+                        }, 0);
+
+                        // Calculate leveraged positions equity
+                        const leveragedEquity = state.leveragedPositions.reduce((acc, pos) => {
+                            const marketItem = marketItems.find((i: any) => i.id === pos.assetId);
+                            if (!marketItem) return acc;
+                            const currentValue = marketItem.price * pos.amount;
+                            const borrowed = (pos.entryPrice * pos.amount) * (pos.leverage - 1) / pos.leverage;
+                            return acc + (currentValue - borrowed);
+                        }, 0);
+
+                        // Calculate short positions equity (margin + PnL)
+                        const shortEquity = state.shortPositions.reduce((acc, pos) => {
+                            const marketItem = marketItems.find((i: any) => i.id === pos.assetId);
+                            if (!marketItem) return acc;
+                            const basePnL = (pos.entryPrice - marketItem.price) * pos.amount;
+                            const pnl = basePnL * (pos.leverage || 1);
+                            return acc + ((pos.marginLocked || 0) + pnl);
+                        }, 0);
+
+                        // Total net worth = balance + all position equities
+                        const totalNetWorth = state.balance + spotValue + leveragedEquity + shortEquity;
+
                         // Serialize state (excluding functions and transient data)
                         const gameState = {
                             balance: state.balance,
@@ -728,9 +1004,10 @@ export const useGameStore = create<GameState>()(
                             tradesToday: state.tradesToday,
                             lastTradeDate: state.lastTradeDate,
                             lastLogin: state.lastLogin,
-                            isPremium: state.isPremium
+                            isPremium: state.isPremium,
+                            portfolioValue: totalNetWorth // Add calculated total value
                         };
-                        const { syncGameState } = await import('../services/api'); // Dynamic import to avoid circular dep if any
+
                         await syncGameState(state.user.username, gameState);
                     } catch (error) {
                         console.error("Failed to sync game state", error);
@@ -775,6 +1052,9 @@ export const useGameStore = create<GameState>()(
                 });
                 // Sync to database
                 get().sync();
+            },
+            setProfilePhoto: (photo: string | null) => {
+                set({ profilePhoto: photo });
             }
         }),
         {

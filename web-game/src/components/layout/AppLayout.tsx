@@ -8,6 +8,9 @@ import { AuthModal } from '../auth/AuthModal';
 import { TutorialManager } from '../tutorial/TutorialManager';
 import { TutorialWelcomeModal } from '../tutorial/TutorialWelcomeModal';
 import { LanguageSelectionModal } from '../auth/LanguageSelectionModal';
+import { Avatar } from '../ui/Avatar';
+import { ProBadge } from '../ui/ProBadge';
+import { ToastContainer } from '../ui/ToastContainer';
 
 type OnboardingStep = 'language' | 'intro' | 'auth' | 'tutorial-confirm' | 'tour' | 'complete';
 
@@ -24,7 +27,19 @@ export const AppLayout = () => {
             prevPathRef.current = location.pathname;
         }
     }, [location.pathname]);
-    const { user, login, startTutorial, completeTutorial, hasCompletedTutorial, tutorialActive, settings } = useGameStore();
+    const { user, login, startTutorial, completeTutorial, hasCompletedTutorial, tutorialActive, settings, isPremium } = useGameStore();
+
+    // Scroll tracking for floating back button
+    const [showFloatingBack, setShowFloatingBack] = useState(false);
+    useEffect(() => {
+        const handleScroll = () => {
+            // Show floating button when scrolled past 100px (header + a bit more)
+            setShowFloatingBack(window.scrollY > 100);
+        };
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        handleScroll(); // Check initial position
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, []);
 
     // Onboarding State
     const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>('complete');
@@ -142,8 +157,13 @@ export const AppLayout = () => {
                                 <p className="text-xs font-bold leading-none">{user.username}</p>
                                 <p className="text-[10px] opacity-50 leading-none mt-0.5 hidden sm:block">{t('profile', 'Profile')}</p>
                             </div>
-                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shadow-md border-2 border-white/10">
-                                {user.username.substring(0, 2).toUpperCase()}
+                            <div className="relative">
+                                <Avatar username={user.username} size="sm" />
+                                {isPremium && (
+                                    <div className="absolute -top-1 -right-1">
+                                        <ProBadge size="xs" />
+                                    </div>
+                                )}
                             </div>
                         </NavLink>
                     ) : (
@@ -158,25 +178,31 @@ export const AppLayout = () => {
                 </div>
             </header>
 
-            {/* Floating Back Button - shown on all pages except market */}
-            {location.pathname !== '/' && (
+            {/* Floating Back Button - Shows only when scrolled down past 100px */}
+            {location.pathname !== '/' && showFloatingBack && (
                 <motion.button
-                    initial={{ opacity: 0, scale: 0.8 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.8 }}
+                    initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.8, y: 20 }}
                     onClick={() => navigate(-1)}
-                    className="fixed top-16 left-4 z-40 w-10 h-10 rounded-full flex items-center justify-center shadow-lg backdrop-blur-md transition-all duration-300 active:scale-90 hover:scale-105"
+                    className="fixed bottom-24 left-4 z-[100] w-12 h-12 rounded-full flex items-center justify-center shadow-2xl backdrop-blur-md transition-all duration-300 active:scale-90 hover:scale-110 hover:shadow-[0_8px_30px_rgba(139,92,246,0.5)]"
                     style={{
-                        background: 'linear-gradient(135deg, var(--accent-color), #8b5cf6)',
-                        boxShadow: '0 4px 15px rgba(139, 92, 246, 0.3)'
+                        background: 'linear-gradient(135deg, #6366f1, #8b5cf6, #a855f7)',
+                        boxShadow: '0 6px 25px rgba(139, 92, 246, 0.4), 0 0 0 3px rgba(255, 255, 255, 0.1)'
                     }}
                 >
-                    <ArrowLeft size={20} className="text-white" />
+                    <motion.div
+                        animate={{ x: [-2, 0, -2] }}
+                        transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+                    >
+                        <ArrowLeft size={22} className="text-white drop-shadow-lg" />
+                    </motion.div>
                 </motion.button>
             )}
 
             {/* Main Content */}
             <main className="pt-24 pb-28 px-4 max-w-md mx-auto min-h-screen relative z-10">
+
                 <motion.div
                     initial={{ opacity: 0, y: 20, filter: 'blur(10px)' }}
                     animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
@@ -223,6 +249,8 @@ export const AppLayout = () => {
                 })}
             </nav>
 
+            <ToastContainer />
+
             <LanguageSelectionModal
                 isOpen={onboardingStep === 'language'}
                 onSelect={handleLanguageSelected}
@@ -247,6 +275,6 @@ export const AppLayout = () => {
             />
 
             <TutorialManager />
-        </div>
+        </div >
     );
 };

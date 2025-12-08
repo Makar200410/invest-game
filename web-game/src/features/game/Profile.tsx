@@ -1,18 +1,67 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
     User, Moon, Sun, Globe, LogOut,
-    RotateCcw, ChevronRight, Shield, Award, Bell, ArrowLeft, BadgeCheck
+    RotateCcw, ChevronRight, Shield, Award, Bell, Camera
 } from 'lucide-react';
 import { useGameStore } from '../../store/gameStore';
 import { Card } from '../../components/ui/Card';
+import { ProBadge } from '../../components/ui/ProBadge';
+import { Avatar } from '../../components/ui/Avatar';
 
 export const Profile = () => {
     const { t, i18n } = useTranslation();
     const navigate = useNavigate();
-    const { user, logout, startTutorial, balance, settings, toggleNotifications, isPremium, lastLogin } = useGameStore();
+    const { user, logout, startTutorial, balance, settings, toggleNotifications, isPremium, lastLogin, setProfilePhoto } = useGameStore();
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Handle photo upload
+    const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            // Validate file size (max 2MB)
+            if (file.size > 2 * 1024 * 1024) {
+                alert('Photo must be less than 2MB');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    // Create canvas for resizing
+                    const canvas = document.createElement('canvas');
+                    const maxSize = 200; // Max 200x200
+                    let width = img.width;
+                    let height = img.height;
+
+                    if (width > height) {
+                        if (width > maxSize) {
+                            height *= maxSize / width;
+                            width = maxSize;
+                        }
+                    } else {
+                        if (height > maxSize) {
+                            width *= maxSize / height;
+                            height = maxSize;
+                        }
+                    }
+
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx?.drawImage(img, 0, 0, width, height);
+
+                    const resizedPhoto = canvas.toDataURL('image/jpeg', 0.8);
+                    setProfilePhoto(resizedPhoto);
+                };
+                img.src = event.target?.result as string;
+            };
+            reader.readAsDataURL(file);
+        }
+    };
 
     // Theme State
     const [theme, setTheme] = useState<'swiss' | 'dark'>(() => {
@@ -70,15 +119,6 @@ export const Profile = () => {
 
     return (
         <div className="space-y-4 pb-20">
-            {/* Back Button */}
-            <button
-                onClick={() => navigate(-1)}
-                className="flex items-center gap-2 text-sm opacity-70 hover:opacity-100 transition-opacity"
-                style={{ color: 'var(--text-primary)' }}
-            >
-                <ArrowLeft size={18} />
-                {t('back')}
-            </button>
             {/* Header */}
             <header className="flex items-center justify-between mb-4">
                 <h1 className="text-xl font-bold">{t('profile')}</h1>
@@ -99,14 +139,28 @@ export const Profile = () => {
                 </div>
 
                 <div className="relative z-10 flex items-center gap-3">
-                    <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl font-bold border-2 border-white/30 shadow-inner">
-                        {user.username.substring(0, 2).toUpperCase()}
+                    {/* Avatar with photo upload */}
+                    <div className="relative">
+                        <Avatar username={user.username} size="lg" className="shadow-lg" />
+                        <button
+                            onClick={() => fileInputRef.current?.click()}
+                            className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center hover:bg-white/30 transition-all active:scale-90"
+                        >
+                            <Camera size={14} className="text-white" />
+                        </button>
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={handlePhotoUpload}
+                            className="hidden"
+                        />
                     </div>
                     <div>
                         <div className="flex items-center gap-2">
                             <h2 className="text-xl font-bold">{user.username}</h2>
                             {isPremium && (
-                                <BadgeCheck size={18} className="text-yellow-400 drop-shadow-[0_0_4px_rgba(250,204,21,0.6)]" />
+                                <ProBadge size="sm" />
                             )}
                         </div>
                         <p className="opacity-80 text-xs flex items-center gap-1">

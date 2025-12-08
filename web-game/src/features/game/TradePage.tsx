@@ -11,15 +11,16 @@ export const TradePage: React.FC = () => {
     const { t } = useTranslation();
     const { id } = useParams();
     const [searchParams] = useSearchParams();
-    const initialType = searchParams.get('type') as 'buy' | 'sell' | 'short' || 'buy';
+    const initialType = searchParams.get('type') as 'buy' | 'sell' | 'short' | 'cover' || 'buy';
     const navigate = useNavigate();
 
-    const { balance, buyAsset, sellAsset, portfolio, leveragedPositions, shortPositions, skills } = useGameStore();
+    const { balance, buyAsset, sellAsset, closeShortPosition, portfolio, leveragedPositions, shortPositions, skills } = useGameStore();
     const [asset, setAsset] = useState<MarketItem | null>(null);
     const [amount, setAmount] = useState('1');
     const [leverage, setLeverage] = useState(1);
-    const [tradeType, setTradeType] = useState<'buy' | 'sell' | 'short'>(initialType);
+    const [tradeType, setTradeType] = useState<'buy' | 'sell' | 'short' | 'cover'>(initialType);
     const [showInsufficientFunds, setShowInsufficientFunds] = useState(false);
+    const [showInsufficientAssets, setShowInsufficientAssets] = useState(false);
 
     useEffect(() => {
         const loadData = async () => {
@@ -55,21 +56,46 @@ export const TradePage: React.FC = () => {
         }
     }, [asset]);
 
+    // Calculate positions (needs to be before useEffect for auto-switch)
+    const portfolioItem = asset ? portfolio.find(p => p.id === asset.id) : null;
+    const leveragedAmount = asset ? leveragedPositions
+        .filter(p => p.assetId === asset.id)
+        .reduce((sum, p) => sum + p.amount, 0) : 0;
+    const owned = (portfolioItem?.amount || 0) + leveragedAmount;
+
+    const shortedAmount = asset ? shortPositions
+        .filter(p => p.assetId === asset.id)
+        .reduce((sum, p) => sum + p.amount, 0) : 0;
+
+    // Auto-switch to valid trade type based on position status
+    // This must be called BEFORE any early returns to maintain hook order
+    useEffect(() => {
+        if (!asset) return; // Skip if no asset loaded yet
+
+        if (owned > 0) {
+            // Has long positions: valid tabs are buy, sell
+            if (tradeType !== 'buy' && tradeType !== 'sell') {
+                setTradeType('buy');
+            }
+        } else if (shortedAmount > 0) {
+            // Has short positions: valid tabs are cover, short
+            if (tradeType !== 'cover' && tradeType !== 'short') {
+                setTradeType('cover');
+            }
+        } else {
+            // No positions: valid tabs are buy, short
+            if (tradeType !== 'buy' && tradeType !== 'short') {
+                setTradeType('buy');
+            }
+        }
+    }, [asset, owned, shortedAmount, tradeType]);
+
+    // Early return for loading state - AFTER all hooks
     if (!asset) return (
         <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--bg-primary)' }}>
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--accent-color)]"></div>
         </div>
     );
-
-    const portfolioItem = portfolio.find(p => p.id === asset.id);
-    const leveragedAmount = leveragedPositions
-        .filter(p => p.assetId === asset.id)
-        .reduce((sum, p) => sum + p.amount, 0);
-    const owned = (portfolioItem?.amount || 0) + leveragedAmount;
-
-    const shortedAmount = shortPositions
-        .filter(p => p.assetId === asset.id)
-        .reduce((sum, p) => sum + p.amount, 0);
 
     const numAmount = parseFloat(amount) || 0;
 
@@ -95,11 +121,33 @@ export const TradePage: React.FC = () => {
                 setShowInsufficientFunds(true);
                 return;
             }
-            // If shorted, clamp to shortedAmount to prevent opening long
-            const finalAmount = shortedAmount > 0 ? Math.min(numAmount, shortedAmount) : numAmount;
-            buyAsset(asset.id, asset.price, finalAmount, leverage);
-            navigate(-1);
+            // Normal buy (will auto-cover shorts if any exist via buyAsset logic)
+            buyAsset(asset.id, asset.price, numAmount, leverage);
+            navigate('/house');
+        } else if (tradeType === 'cover') {
+            // Close short positions directly - no balance check required
+            const assetShorts = shortPositions.filter(p => p.assetId === asset.id);
+            if (assetShorts.length === 0) return;
+
+            if (numAmount > shortedAmount) {
+                setShowInsufficientAssets(true);
+                return;
+            }
+
+            let remainingToClose = numAmount;
+            // Close positions FIFO
+            for (const pos of assetShorts) {
+                if (remainingToClose <= 0) break;
+                const closeAmount = Math.min(remainingToClose, pos.amount);
+                closeShortPosition(pos.id, asset.price, closeAmount);
+                remainingToClose -= closeAmount;
+            }
+            navigate('/house');
         } else if (tradeType === 'sell') {
+            if (numAmount > owned) {
+                setShowInsufficientAssets(true);
+                return;
+            }
             if (amountToSell > 0) {
                 sellAsset(asset.id, asset.price, amountToSell);
             }
@@ -111,7 +159,7 @@ export const TradePage: React.FC = () => {
                 }
                 sellAsset(asset.id, asset.price, amountToShort, undefined, true, leverage);
             }
-            navigate(-1);
+            navigate('/house');
         } else if (tradeType === 'short') {
             if (!skills.shortSelling || owned > 0) return; // Logic handled by UI state
 
@@ -122,7 +170,7 @@ export const TradePage: React.FC = () => {
 
             if (owned === 0) {
                 sellAsset(asset.id, asset.price, numAmount, undefined, true, leverage);
-                navigate(-1);
+                navigate('/house');
             }
         }
     };
@@ -133,7 +181,7 @@ export const TradePage: React.FC = () => {
             <div className="shrink-0 sticky top-0 z-10 backdrop-blur-md" style={{ backgroundColor: 'rgba(var(--bg-primary-rgb), 0.8)' }}>
                 <div className="max-w-md mx-auto px-4 h-10 flex items-center justify-between">
                     <button
-                        onClick={() => navigate(-1)}
+                        onClick={() => navigate('/house')}
                         className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
                         <ArrowLeft size={20} style={{ color: 'var(--text-primary)' }} />
                     </button>
@@ -169,19 +217,29 @@ export const TradePage: React.FC = () => {
 
                     {/* Trade Type Selector */}
                     <div id="trade-type-selector" className="p-1 rounded-xl flex relative" style={{ backgroundColor: 'var(--card-bg)' }}>
-                        {(['buy', 'sell', 'short'] as const).map((type) => {
+                        {/* Dynamic tabs based on position status:
+                            - Has LONG positions: Buy, Sell
+                            - Has SHORT positions: Close Short, Short
+                            - No positions: Buy, Short
+                        */}
+                        {(owned > 0
+                            ? ['buy', 'sell'] as const
+                            : shortedAmount > 0
+                                ? ['cover', 'short'] as const
+                                : ['buy', 'short'] as const
+                        ).map((type) => {
                             const isLocked = type === 'short' && !skills.shortSelling;
                             return (
                                 <button
                                     key={type}
-                                    onClick={() => setTradeType(type)}
+                                    onClick={() => setTradeType(type as any)}
                                     className={`flex-1 py-1.5 rounded-lg text-xs font-bold transition-all relative z-10 flex items-center justify-center gap-1 ${tradeType === type ? 'shadow-sm' : 'opacity-50 hover:opacity-80'}`}
                                     style={{
                                         backgroundColor: tradeType === type ? 'var(--bg-primary)' : 'transparent',
                                         color: tradeType === type ? 'var(--text-primary)' : 'var(--text-primary)'
                                     }}
                                 >
-                                    {t(type === 'short' ? 'short_sell' : type)}
+                                    {t(type === 'short' ? 'short_sell' : type === 'cover' ? 'close_short' : type)}
                                     {isLocked && <Lock size={10} />}
                                 </button>
                             );
@@ -254,23 +312,25 @@ export const TradePage: React.FC = () => {
                             <button
                                 onClick={() => setAmount(
                                     tradeType === 'sell' ? owned.toString() :
-                                        tradeType === 'buy' && shortedAmount > 0 ? shortedAmount.toString() :
-                                            Math.floor(tradeType === 'buy' ? maxBuyAmount : maxShortAmount).toString()
+                                        tradeType === 'cover' ? shortedAmount.toString() :
+                                            tradeType === 'buy' && shortedAmount > 0 ? shortedAmount.toString() :
+                                                Math.floor(tradeType === 'buy' ? maxBuyAmount : maxShortAmount).toString()
                                 )}
                                 className="text-[10px] font-bold px-3 py-1 rounded-full border transition-colors opacity-60 hover:opacity-100"
                                 style={{ borderColor: 'var(--card-border)' }}
                             >
                                 {t('max')}: {
                                     tradeType === 'sell' ? owned :
-                                        tradeType === 'buy' && shortedAmount > 0 ? shortedAmount :
-                                            Math.floor(tradeType === 'buy' ? maxBuyAmount : maxShortAmount)
+                                        tradeType === 'cover' ? shortedAmount :
+                                            tradeType === 'buy' && shortedAmount > 0 ? shortedAmount :
+                                                Math.floor(tradeType === 'buy' ? maxBuyAmount : maxShortAmount)
                                 }
                             </button>
                         </div>
                     </div>
 
                     {/* Leverage */}
-                    {(tradeType === 'buy' || tradeType === 'short' || (tradeType === 'sell' && amountToShort > 0)) && (
+                    {(tradeType === 'buy' || tradeType === 'short') && (
                         <div id="leverage-selector" className="flex flex-col gap-1 mt-1">
                             <div className="flex justify-center gap-2">
                                 {[1, 2, 5].map((lev) => {
@@ -311,16 +371,43 @@ export const TradePage: React.FC = () => {
                             }</p>
                         </div>
                         <div className="p-2 rounded-2xl border text-center transition-all" style={{ backgroundColor: 'var(--card-bg)', borderColor: 'var(--card-border)' }}>
-                            <p className="text-[10px] uppercase font-bold mb-0.5 tracking-wider opacity-50">{t('total_cost')}</p>
-                            <p className={`text-sm font-black ${(tradeType === 'buy' ? canBuy :
-                                tradeType === 'short' ? canShort :
-                                    (amountToShort > 0 ? canShort : true))
-                                ? '' : 'text-orange-500'
-                                }`}>
-                                ${formatPrice(tradeType === 'buy' ? totalCost : tradeType === 'short' ? marginRequired : (amountToSell * asset.price) - marginRequired)}
-                            </p>
+                            {(tradeType === 'cover' || tradeType === 'sell') ? (
+                                <>
+                                    <p className="text-[10px] uppercase font-bold mb-0.5 tracking-wider opacity-50">{t('total')}</p>
+                                    <p className={`text-sm font-black ${(tradeType === 'cover' && numAmount > shortedAmount) ||
+                                        (tradeType === 'sell' && numAmount > owned)
+                                        ? 'text-orange-500' : ''
+                                        }`}>
+                                        ${formatPrice(asset.price * numAmount)}
+                                    </p>
+                                </>
+                            ) : (
+                                <>
+                                    <p className="text-[10px] uppercase font-bold mb-0.5 tracking-wider opacity-50">
+                                        {tradeType === 'short' ? t('margin_required', 'Margin Required') : t('total_cost')}
+                                    </p>
+                                    <p className={`text-sm font-black ${(tradeType === 'buy' ? canBuy : canShort)
+                                        ? '' : 'text-orange-500'
+                                        }`}>
+                                        ${formatPrice(tradeType === 'buy' ? totalCost : marginRequired)}
+                                    </p>
+                                </>
+                            )}
                         </div>
                     </div>
+
+                    {/* High Margin Warning for Shorts */}
+                    {tradeType === 'short' && marginRequired > balance * 0.5 && leverage === 1 && (
+                        <div className="p-2 rounded-xl bg-orange-500/10 border border-orange-500/20 flex gap-2 items-start">
+                            <AlertTriangle size={16} className="text-orange-500 shrink-0 mt-0.5" />
+                            <div>
+                                <p className="text-[10px] font-bold text-orange-500">{t('high_margin_warning', 'High Margin Required')}</p>
+                                <p className="text-[9px] opacity-70 mt-0.5">
+                                    {t('high_margin_hint', 'With 1x leverage, 100% collateral is required. Use 2x or 5x leverage to reduce margin.')}
+                                </p>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Risk Manager Info */}
                     <div
@@ -348,19 +435,21 @@ export const TradePage: React.FC = () => {
                         <button
                             onClick={handleTrade}
                             disabled={
-                                tradeType === 'buy' ? false : // Funds check in handler
-                                    tradeType === 'sell' ? (amountToShort > 0 && !skills.shortSelling) :
-                                        (!skills.shortSelling || owned > 0)
+                                !asset ||
+                                numAmount <= 0 ||
+                                (tradeType === 'cover' && shortedAmount <= 0) ||
+                                (tradeType === 'short' && (!skills.shortSelling || owned > 0))
                             }
                             className={`w-full py-2 rounded-xl font-black text-sm shadow-lg transition-all transform active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed`}
                             style={{
-                                backgroundColor: tradeType === 'buy' ? 'var(--text-primary)' : tradeType === 'sell' ? '#8b5cf6' : '#eab308',
+                                backgroundColor: tradeType === 'buy' ? 'var(--text-primary)' : tradeType === 'cover' ? '#3b82f6' : tradeType === 'sell' ? '#8b5cf6' : '#eab308',
                                 color: tradeType === 'buy' ? 'var(--bg-primary)' : '#ffffff'
                             }}
                         >
                             {tradeType === 'buy'
-                                ? (shortedAmount > 0 ? t('cover') : t('buy'))
-                                : tradeType === 'sell' ? t('sell') : t('short_sell')} {asset.symbol}
+                                ? t('buy')
+                                : tradeType === 'cover' ? t('close_short', 'Close Short')
+                                    : tradeType === 'sell' ? t('sell') : t('short_sell')} {asset.symbol}
                         </button>
                     </div>
                 </div>
@@ -397,6 +486,47 @@ export const TradePage: React.FC = () => {
 
                                 <button
                                     onClick={() => setShowInsufficientFunds(false)}
+                                    className="w-full py-3 rounded-xl font-bold bg-[var(--text-primary)] text-[var(--bg-primary)] mt-2 hover:opacity-90 transition-opacity"
+                                >
+                                    {t('close')}
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* Insufficient Assets Modal */}
+            <AnimatePresence>
+                {showInsufficientAssets && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            className="bg-[var(--card-bg)] border border-[var(--card-border)] rounded-2xl p-6 w-full max-w-sm relative shadow-2xl"
+                        >
+                            <button
+                                onClick={() => setShowInsufficientAssets(false)}
+                                className="absolute top-4 right-4 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+
+                            <div className="flex flex-col items-center text-center gap-4">
+                                <div className="w-12 h-12 rounded-full bg-red-500/10 flex items-center justify-center text-red-500">
+                                    <AlertTriangle size={24} />
+                                </div>
+
+                                <div>
+                                    <h3 className="text-lg font-bold mb-2" style={{ color: 'var(--text-primary)' }}>{t('insufficient_assets')}</h3>
+                                    <p className="text-sm opacity-70 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                                        {t('insufficient_assets_message')}
+                                    </p>
+                                </div>
+
+                                <button
+                                    onClick={() => setShowInsufficientAssets(false)}
                                     className="w-full py-3 rounded-xl font-bold bg-[var(--text-primary)] text-[var(--bg-primary)] mt-2 hover:opacity-90 transition-opacity"
                                 >
                                     {t('close')}

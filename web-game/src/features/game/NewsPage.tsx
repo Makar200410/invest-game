@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useSearchParams, useLocation, useNavigate } from 'react-router-dom';
-import { Lock, AlertTriangle, ExternalLink, ShieldAlert, Globe, Newspaper, TrendingUp, ArrowLeft } from 'lucide-react';
+import { useSearchParams, useLocation } from 'react-router-dom';
+import { Lock, AlertTriangle, ExternalLink, ShieldAlert, Globe, Newspaper, TrendingUp } from 'lucide-react';
 import { useGameStore } from '../../store/gameStore';
 import { useTranslation } from 'react-i18next';
 
@@ -28,7 +28,6 @@ interface InsiderTip {
 
 export const NewsPage: React.FC = () => {
     const { t } = useTranslation();
-    const navigate = useNavigate();
     const { skills } = useGameStore();
     const [searchParams] = useSearchParams();
     const initialTab = searchParams.get('tab') as 'general' | 'insider' || 'general';
@@ -95,15 +94,6 @@ export const NewsPage: React.FC = () => {
 
     return (
         <div className="pb-24 space-y-4 pt-4 px-4">
-            {/* Back Button */}
-            <button
-                onClick={() => navigate(-1)}
-                className="flex items-center gap-2 text-sm opacity-70 hover:opacity-100 transition-opacity"
-                style={{ color: 'var(--text-primary)' }}
-            >
-                <ArrowLeft size={18} />
-                {t('back')}
-            </button>
             {/* Header */}
             <div className="flex flex-col gap-3">
                 <h1 className="text-2xl font-black tracking-tight" style={{ color: 'var(--text-primary)' }}>

@@ -2,9 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Shield, Award, Wallet, Activity, Briefcase, TrendingDown, Zap, TrendingUp, List, BadgeCheck } from 'lucide-react';
+import { ArrowLeft, Shield, Award, Wallet, Activity, Briefcase, TrendingDown, Zap, TrendingUp, List } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { AssetIcon } from '../../components/ui/AssetIcon';
+import { ProBadge } from '../../components/ui/ProBadge';
+import { Avatar } from '../../components/ui/Avatar';
 import { fetchUserProfile, type UserProfile as IUserProfile } from '../../services/api';
 import { formatPrice } from '../../utils/format';
 
@@ -123,14 +125,12 @@ export const UserProfile: React.FC = () => {
                 </div>
 
                 <div className="relative z-10 flex flex-col items-center text-center gap-4">
-                    <div className="w-24 h-24 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-4xl font-bold border-4 border-white/30 shadow-inner">
-                        {profile.username.substring(0, 2).toUpperCase()}
-                    </div>
+                    <Avatar username={profile.username} size="xl" className="border-4 border-white/30" />
                     <div>
                         <div className="flex items-center justify-center gap-2">
                             <h2 className="text-2xl font-bold">{profile.username}</h2>
                             {profile.isPremium && (
-                                <BadgeCheck size={20} className="text-yellow-400 drop-shadow-[0_0_4px_rgba(250,204,21,0.6)]" />
+                                <ProBadge size="md" />
                             )}
                         </div>
                         <div className="flex items-center justify-center gap-2 mt-1 opacity-90">

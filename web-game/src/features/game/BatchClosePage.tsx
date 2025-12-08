@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Wallet, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Wallet } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useGameStore } from '../../store/gameStore';
 import { formatPrice } from '../../utils/format';
@@ -13,7 +13,7 @@ export const BatchClosePage: React.FC = () => {
     const [searchParams] = useSearchParams();
     const type = searchParams.get('type') as 'long' | 'short' || 'long';
 
-    const { balance, portfolio, leveragedPositions, shortPositions, sellAsset, buyAsset } = useGameStore();
+    const { portfolio, leveragedPositions, shortPositions, sellAsset, closeShortPosition } = useGameStore();
     const [marketItems, setMarketItems] = useState<MarketItem[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -73,22 +73,29 @@ export const BatchClosePage: React.FC = () => {
             let pnl = 0;
 
             if (type === 'short') {
-                pnl = entryVal - currentVal;
-                // Cost to cover
+                // Short positions: PnL = (entryPrice - currentPrice) * amount * leverage
+                const basePnL = entryVal - currentVal;
+                pnl = basePnL * pos.leverage;
+                // Cost to cover (the actual market value)
                 totalValue += currentVal;
             } else {
-                pnl = currentVal - entryVal;
-                // Value to receive
+                // Long positions: PnL = (currentPrice - entryPrice) * amount * leverage (for leveraged)
+                const basePnL = currentVal - entryVal;
+                pnl = pos.type === 'leverage' ? basePnL * pos.leverage : basePnL;
+                // Value to receive (equity after repaying borrowed amount)
                 totalValue += (currentVal - (pos.type === 'leverage' ? (entryVal * (pos.leverage - 1) / pos.leverage) : 0));
             }
             totalPnL += pnl;
+
+            // Calculate pnlPercent based on margin invested, not full position value
+            const marginUsed = pos.type === 'spot' ? entryVal : entryVal / pos.leverage;
 
             return {
                 ...pos,
                 marketItem,
                 currentVal,
                 pnl,
-                pnlPercent: (pnl / entryVal) * 100
+                pnlPercent: (pnl / marginUsed) * 100
             };
         }).filter(Boolean);
 
@@ -108,10 +115,10 @@ export const BatchClosePage: React.FC = () => {
                 }
             });
         } else {
-            // Cover all shorts
+            // Close all shorts directly - no balance check required
             summary.items.forEach(item => {
                 if (item && item.marketItem) {
-                    buyAsset(item.id, item.marketItem.price, item.amount, 1, item.uniqueId);
+                    closeShortPosition(item.uniqueId, item.marketItem.price, item.amount);
                 }
             });
         }
@@ -177,18 +184,7 @@ export const BatchClosePage: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Warning for Shorts */}
-                {type === 'short' && summary.totalValue > balance && (
-                    <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/20 flex gap-3 items-start">
-                        <AlertTriangle className="text-red-500 shrink-0" size={20} />
-                        <div>
-                            <p className="text-sm font-bold text-red-500">{t('insufficient_balance', 'Insufficient Balance')}</p>
-                            <p className="text-xs opacity-70 mt-1">
-                                {t('insufficient_balance_desc', 'You do not have enough cash to cover all short positions.')}
-                            </p>
-                        </div>
-                    </div>
-                )}
+
 
                 {/* Assets List */}
                 <div className="space-y-2">
@@ -228,11 +224,10 @@ export const BatchClosePage: React.FC = () => {
                     <div className="max-w-md mx-auto pointer-events-auto">
                         <button
                             onClick={handleConfirm}
-                            disabled={type === 'short' && summary.totalValue > balance}
                             className={`w-full py-3 rounded-2xl font-black text-base shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 ${type === 'long'
                                 ? 'bg-violet-500 hover:bg-violet-400 text-white shadow-violet-500/20'
                                 : 'bg-blue-500 hover:bg-blue-400 text-white shadow-blue-500/20'
-                                } disabled:opacity-50 disabled:cursor-not-allowed`}
+                                }`}
                         >
                             {type === 'long' ? t('confirm_sell_all', 'Confirm Sell All') : t('confirm_cover_all', 'Confirm Cover All')}
                         </button>

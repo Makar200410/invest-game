@@ -200,18 +200,38 @@ export const Market: React.FC = () => {
         loadFullData();
     }, [marketInterval, skills.multiTimeframe]);
 
-    // Sync score with backend if logged in
+    // Sync score with backend if logged in - MUST include ALL position types
     useEffect(() => {
-        if (user) {
-            const portfolioValue = portfolio.reduce((acc, item) => {
+        if (user && items.length > 0) {
+            // Spot portfolio value
+            const spotValue = portfolio.reduce((acc, item) => {
                 const marketItem = items.find(i => i.id === item.id);
                 return acc + (marketItem ? marketItem.price * item.amount : 0);
             }, 0);
-            const totalValue = balance + portfolioValue;
 
+            // Leveraged positions equity (current value - borrowed)
+            const leveragedEquityValue = leveragedPositions.reduce((acc, pos) => {
+                const marketItem = items.find(i => i.id === pos.assetId);
+                if (!marketItem) return acc;
+                const currentValue = marketItem.price * pos.amount;
+                const borrowed = (pos.entryPrice * pos.amount) * (pos.leverage - 1) / pos.leverage;
+                return acc + (currentValue - borrowed);
+            }, 0);
+
+            // Short positions equity (margin + PnL)
+            const shortEquityValue = shortPositions.reduce((acc, pos) => {
+                const marketItem = items.find(i => i.id === pos.assetId);
+                if (!marketItem) return acc;
+                const basePnL = (pos.entryPrice - marketItem.price) * pos.amount;
+                const pnl = basePnL * (pos.leverage || 1);
+                return acc + ((pos.marginLocked || 0) + pnl);
+            }, 0);
+
+            // Total net worth = balance + all position equities
+            const totalValue = balance + spotValue + leveragedEquityValue + shortEquityValue;
             updateScore(user.username, totalValue);
         }
-    }, [user, balance, portfolio, items]);
+    }, [user, balance, portfolio, leveragedPositions, shortPositions, items]);
 
 
 

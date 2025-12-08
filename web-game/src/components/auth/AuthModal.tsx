@@ -24,6 +24,32 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
 
     if (!isOpen) return null;
 
+    const getTranslatedError = (errorMsg: string) => {
+        if (!errorMsg) return '';
+        const lowerError = errorMsg.toLowerCase();
+
+        // Login Errors
+        if (lowerError.includes('invalid') && (lowerError.includes('username') || lowerError.includes('password') || lowerError.includes('credentials'))) {
+            return t('invalid_credentials');
+        }
+        if (lowerError.includes('not found') || lowerError.includes('does not exist')) {
+            return t('account_not_registered');
+        }
+
+        // Registration Errors
+        if (lowerError.includes('username') && (lowerError.includes('taken') || lowerError.includes('exists'))) {
+            return t('username_already_exists');
+        }
+        if (lowerError.includes('email') && (lowerError.includes('taken') || lowerError.includes('exists'))) {
+            return t('email_already_exists');
+        }
+        if (lowerError.includes('password') && lowerError.includes('short')) {
+            return t('password_too_short');
+        }
+
+        return errorMsg;
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
@@ -58,10 +84,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onLogin }
                     onClose();
                 }
             } else {
-                setError(result?.error || t('error_occurred'));
+                const errorMsg = result?.error || t('error_occurred');
+                setError(getTranslatedError(errorMsg));
             }
         } catch (err: any) {
-            setError(err.response?.data?.error || t('connection_error'));
+            const errorMsg = err.response?.data?.error || t('connection_error');
+            setError(getTranslatedError(errorMsg));
         } finally {
             setLoading(false);
         }
