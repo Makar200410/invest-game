@@ -244,12 +244,18 @@ const fetchAllCryptoPrices = async (): Promise<Map<string, number>> => {
     try {
         // Cache for 2 seconds to avoid redundant calls
         if (Date.now() - binanceCacheTime < 2000 && binancePriceCache.size > 0) {
-            console.log(`[Binance] Using cache (${binancePriceCache.size} prices, age: ${Date.now() - binanceCacheTime}ms)`);
             return binancePriceCache;
         }
 
-        // Fetch from Binance API
-        const response = await fetch('https://api.binance.com/api/v3/ticker/price');
+        // Fetch from Binance API with 5 second timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+        const response = await fetch('https://api.binance.com/api/v3/ticker/price', {
+            signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
             console.error(`[Binance API] Failed with status: ${response.status}`);
@@ -302,11 +308,9 @@ const fetchCryptoPrice = async (symbol: string): Promise<{ price: number, time: 
 
 // Helper to fetch history from Binance for all Binance-tracked assets
 const fetchCryptoHistory = async (symbol: string, interval: string): Promise<any[]> => {
+    // Only try 2 endpoints with a 5 second timeout each to prevent slow page loads
     const endpoints = [
         'https://api.binance.com',
-        'https://api1.binance.com',
-        'https://api2.binance.com',
-        'https://api3.binance.com',
         'https://data-api.binance.vision'
     ];
 
@@ -326,11 +330,20 @@ const fetchCryptoHistory = async (symbol: string, interval: string): Promise<any
     else if (interval === '1mo') binanceInterval = '1M'; // Binance uses '1M' for monthly
 
     const limit = 500; // Fetch enough candles
+    const TIMEOUT_MS = 5000; // 5 second timeout
 
     for (const endpoint of endpoints) {
         try {
-            // console.log(`Fetching crypto history for ${symbol} from ${endpoint}...`);
-            const response = await fetch(`${endpoint}/api/v3/klines?symbol=${binanceSymbol}&interval=${binanceInterval}&limit=${limit}`);
+            // Create AbortController for timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+            const response = await fetch(
+                `${endpoint}/api/v3/klines?symbol=${binanceSymbol}&interval=${binanceInterval}&limit=${limit}`,
+                { signal: controller.signal }
+            );
+
+            clearTimeout(timeoutId);
 
             if (!response.ok) continue; // Try next endpoint
 
@@ -348,12 +361,15 @@ const fetchCryptoHistory = async (symbol: string, interval: string): Promise<any
 
             if (candles.length > 0) return candles;
         } catch (error: any) {
-            console.warn(`Binance fetch failed from ${endpoint}: ${error.message || error}`);
+            // Don't log timeout errors to reduce noise
+            if (error.name !== 'AbortError') {
+                console.warn(`Binance history fetch failed from ${endpoint}: ${error.message || error}`);
+            }
             // Continue to next endpoint
         }
     }
 
-    console.error(`All Binance endpoints failed for ${symbol}`);
+    // Return empty - will fall back to Yahoo
     return [];
 };
 
