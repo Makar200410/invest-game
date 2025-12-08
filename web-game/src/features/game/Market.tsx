@@ -191,7 +191,7 @@ export const Market: React.FC = () => {
 
     // Price Update Interval (60 seconds)
     useEffect(() => {
-        const interval = setInterval(updatePricesOnly, 60000);
+        const interval = setInterval(updatePricesOnly, 15000);
         return () => clearInterval(interval);
     }, []);
 

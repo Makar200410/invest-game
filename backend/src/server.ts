@@ -43,6 +43,9 @@ app.use(cors());
 app.use(compression()); // Enable gzip compression
 app.use(express.json());
 
+// Trust proxy for proper IP detection behind reverse proxies (Railway, Heroku, etc.)
+app.set('trust proxy', true);
+
 app.use('/api/news', newsRoutes);
 app.use('/api/tournament', tournamentRoutes);
 
@@ -112,8 +115,8 @@ initDB().then(async () => {
         updateFundamentals();
         updateMarketNews();
 
-        // Schedule updates every 15 seconds
-        cron.schedule('*/15 * * * * *', () => {
+        // Schedule updates every 10 seconds (minimum safe interval for Yahoo)
+        cron.schedule('*/10 * * * * *', () => {
             updateMarketData();
         });
 
@@ -274,7 +277,7 @@ app.get('/api/indicators/:symbol', async (req, res) => {
         // The fetcher currently returns all for '1d', so we are good.
         let history: any[] = await fetchHistory(yahooSymbol, queryInterval);
 
-        console.log(`[Indicators] Symbol: ${yahooSymbol}, History Length: ${history.length}`);
+        console.log(`[Indicators] Symbol: ${yahooSymbol}, Interval: ${queryInterval}, History: ${history.length} candles`);
 
         // Retry with forceFresh if data is insufficient
         if (history.length < 50) {
@@ -372,6 +375,8 @@ app.get('/api/indicators/:symbol', async (req, res) => {
         else if (buyCount > sellCount) recommendation = 'Buy';
         else if (sellCount > buyCount + 5) recommendation = 'Strong Sell';
         else if (sellCount > buyCount) recommendation = 'Sell';
+
+        console.log(`[Indicators] ${yahooSymbol}@${queryInterval} → ${recommendation} (Buy:${buyCount} Sell:${sellCount} Neutral:${neutralCount})`);
 
         res.json({
             pivotPoints,
@@ -518,11 +523,42 @@ app.post('/api/comments/:id/like', async (req, res) => {
 
 // Auth & Rating Endpoints
 
+// Debug endpoint to check IP and registration count
+app.get('/api/debug/ip', async (req, res) => {
+    let rawIp = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
+    if (Array.isArray(rawIp)) rawIp = rawIp[0];
+
+    let ip = String(rawIp).trim();
+    if (ip.startsWith('::ffff:')) ip = ip.substring(7);
+    if (ip === '::1' || ip === '127.0.0.1') ip = 'localhost';
+
+    const usersOnIp = await getUsersByIp(ip);
+
+    res.json({
+        rawIp,
+        normalizedIp: ip,
+        accountsRegistered: usersOnIp.length,
+        maxAllowed: 4,
+        canRegister: usersOnIp.length < 4,
+        registeredUsernames: usersOnIp.map(u => u.username)
+    });
+});
+
 app.post('/api/register', async (req, res) => {
     console.log('Register request received:', req.body.username);
     const { username, password, email } = req.body;
-    // Get IP address
-    const ip = req.ip || req.connection.remoteAddress || 'unknown';
+
+    // Get IP address with normalization
+    // Handle: X-Forwarded-For header, IPv6 mapped addresses, etc.
+    let rawIp = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'unknown';
+    if (Array.isArray(rawIp)) rawIp = rawIp[0];
+
+    // Normalize IP: remove IPv6 prefix, handle localhost variations
+    let ip = String(rawIp).trim();
+    if (ip.startsWith('::ffff:')) ip = ip.substring(7); // Convert IPv6-mapped IPv4 to IPv4
+    if (ip === '::1' || ip === '127.0.0.1') ip = 'localhost';
+
+    console.log(`[Registration] IP Detection: raw="${rawIp}" normalized="${ip}"`);
 
     if (!username || !password) {
         console.log('Registration failed: Missing username or password');
@@ -537,9 +573,11 @@ app.post('/api/register', async (req, res) => {
         }
 
         // Check IP Limit
-        const usersOnIp = await getUsersByIp(String(ip));
+        const usersOnIp = await getUsersByIp(ip);
+        console.log(`[Registration] Found ${usersOnIp.length} existing accounts for IP: ${ip}`);
+
         if (usersOnIp.length >= 4) {
-            console.log('Registration failed: IP limit reached', ip);
+            console.log(`Registration failed: IP limit reached (${usersOnIp.length}/4) for ${ip}`);
             return res.status(403).json({ error: 'Registration limit reached for this IP address (Max 4 accounts).' });
         }
 

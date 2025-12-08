@@ -52,6 +52,7 @@ export const updateMarketNews = async () => {
         chunks.push(SYMBOLS.slice(i, i + CHUNK_SIZE));
     }
 
+    let totalNewsFetched = 0;
     for (const chunk of chunks) {
         await Promise.all(chunk.map(async (symbol) => {
             try {
@@ -70,6 +71,7 @@ export const updateMarketNews = async () => {
                     }));
 
                     await saveMarketNews(newsItems);
+                    totalNewsFetched += newsItems.length;
                 }
             } catch (error) {
                 // console.error(`Failed to update news for ${symbol}:`, error);
@@ -79,7 +81,7 @@ export const updateMarketNews = async () => {
         // Small delay between chunks
         await new Promise(resolve => setTimeout(resolve, 2000));
     }
-    console.log(`[${new Date().toISOString()}] Market News Update Complete.`);
+    console.log(`[${new Date().toISOString()}] Market News Update Complete. Fetched ${totalNewsFetched} news articles from Yahoo.`);
 };
 
 
@@ -121,7 +123,7 @@ export const updateFundamentals = async () => {
                 if (result) {
                     await saveMarketFundamentals(symbol, result);
                     updatedCount++;
-                    // console.log(`Updated fundamentals for ${symbol}`);
+                    console.log(`  [Fundamentals] Updated ${symbol} (${updatedCount}/${SYMBOLS.length})`);
                 }
             } catch (error) {
                 console.error(`Failed to update fundamentals for ${symbol}:`, error);
@@ -219,22 +221,75 @@ const SYMBOLS = [
     '^BVSP' // Indices
 ];
 
-// Helper to fetch crypto price from Binance
-const fetchCryptoPrice = async (symbol: string): Promise<{ price: number, time: number } | null> => {
+// Helper to fetch ALL crypto prices from Binance in ONE request (more efficient)
+// Weight: 4 (vs 10 for 10 separate calls)
+let binancePriceCache: Map<string, number> = new Map();
+let binanceCacheTime = 0;
+
+// Mapping of Yahoo symbols to Binance symbols for non-crypto assets
+const BINANCE_SPECIAL_MAP: { [yahooSymbol: string]: string } = {
+    'GC=F': 'PAXGUSDT',      // Gold (PAXG = 1 troy ounce)
+    'EURUSD=X': 'EURUSDT',   // EUR/USD forex
+    'GBPUSD=X': 'GBPUSDT',   // GBP/USD forex
+};
+
+// Set of all symbols that should use Binance real-time data
+const BINANCE_SYMBOLS = new Set([
+    'BTC-USD', 'ETH-USD', 'SOL-USD', 'BNB-USD', 'XRP-USD',
+    'ADA-USD', 'DOGE-USD', 'AVAX-USD', 'DOT-USD', 'MATIC-USD',
+    'GC=F', 'EURUSD=X', 'GBPUSD=X'
+]);
+
+const fetchAllCryptoPrices = async (): Promise<Map<string, number>> => {
     try {
-        // Map Yahoo symbol to Binance symbol
-        const binanceSymbol = symbol.replace('-USD', 'USDT');
-        const response = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${binanceSymbol}`);
-        if (!response.ok) return null;
-        const data = await response.json();
-        return {
-            price: parseFloat(data.price),
-            time: Date.now()
-        };
+        // Cache for 2 seconds to avoid redundant calls
+        if (Date.now() - binanceCacheTime < 2000 && binancePriceCache.size > 0) {
+            return binancePriceCache;
+        }
+
+        const response = await fetch('https://api.binance.com/api/v3/ticker/price');
+        if (!response.ok) return binancePriceCache;
+
+        const data: { symbol: string; price: string }[] = await response.json();
+        const prices = new Map<string, number>();
+
+        // Map Binance symbols to Yahoo-style symbols
+        // Create reverse mapping for special symbols (gold, forex)
+        const binanceToYahoo: { [key: string]: string } = {};
+        Object.entries(BINANCE_SPECIAL_MAP).forEach(([yahoo, binance]) => {
+            binanceToYahoo[binance] = yahoo;
+        });
+
+        data.forEach(item => {
+            // Check for special mappings (gold, forex)
+            if (binanceToYahoo[item.symbol]) {
+                prices.set(binanceToYahoo[item.symbol], parseFloat(item.price));
+            }
+
+            // Handle crypto (-USD suffix)
+            if (item.symbol.endsWith('USDT')) {
+                const yahooSymbol = item.symbol.replace('USDT', '-USD');
+                prices.set(yahooSymbol, parseFloat(item.price));
+            }
+        });
+
+        binancePriceCache = prices;
+        binanceCacheTime = Date.now();
+        return prices;
     } catch (error) {
-        console.error(`Binance fetch failed for ${symbol}:`, error);
-        return null;
+        console.error('Binance batch fetch failed:', error);
+        return binancePriceCache;
     }
+};
+
+// Legacy single-symbol fetch (kept for compatibility)
+const fetchCryptoPrice = async (symbol: string): Promise<{ price: number, time: number } | null> => {
+    const prices = await fetchAllCryptoPrices();
+    const price = prices.get(symbol);
+    if (price) {
+        return { price, time: Date.now() };
+    }
+    return null;
 };
 
 // Helper to fetch crypto history from Binance
@@ -410,7 +465,7 @@ export const updateMarketData = async () => {
 
         // 2. Fetch All Quotes in Batch (Chunks of 42)
         let yahooRequests = 0;
-        const BATCH_SIZE = 42;
+        const BATCH_SIZE = 166; // Fetch all symbols in one batch for maximum speed
 
         for (let i = 0; i < allSymbols.length; i += BATCH_SIZE) {
             const chunk = allSymbols.slice(i, i + BATCH_SIZE);
@@ -425,41 +480,39 @@ export const updateMarketData = async () => {
                     if (s.includes('-USD')) cryptoFallbackNeeded.push(s);
                 });
             }
-            await new Promise(resolve => setTimeout(resolve, 500)); // Small delay between chunks
+            await new Promise(resolve => setTimeout(resolve, 300)); // Minimal delay (safety margin for Yahoo rate limits)
         }
         console.log(`[Batch Fetch] Made ${yahooRequests} Yahoo API requests for ${allSymbols.length} symbols.`);
 
-        // 3. Identify missing/failed Crypto for Binance Fallback
-        // (Disabled to use Yahoo Finance for everything as requested)
-        /*
-        const cryptoSymbols = SYMBOLS.filter(s => s.includes('-USD'));
-        cryptoSymbols.forEach(symbol => {
-            const found = results.find(r => r.symbol === symbol);
-            if (!found || !found.regularMarketPrice) {
-                cryptoFallbackNeeded.push(symbol);
+        // 3. Use Binance for real-time data (crypto, gold, forex)
+        const binanceAssets = SYMBOLS.filter(s => BINANCE_SYMBOLS.has(s));
+        console.log(`[Binance] Fetching ${binanceAssets.length} assets with real-time data (crypto + gold + forex)...`);
+
+        // Fetch all Binance prices in one request
+        const binancePrices = await fetchAllCryptoPrices();
+
+        binanceAssets.forEach(symbol => {
+            const price = binancePrices.get(symbol);
+            if (price) {
+                // Find and update the Yahoo result with Binance real-time price
+                const existingIndex = results.findIndex(r => r.symbol === symbol);
+                const binanceQuote = {
+                    symbol: symbol,
+                    regularMarketPrice: price,
+                    regularMarketTime: new Date(),
+                    regularMarketVolume: 0,
+                    shortName: symbol.replace('-USD', '').replace('=F', '').replace('=X', ''),
+                    regularMarketChangePercent: existingIndex >= 0 ? results[existingIndex]?.regularMarketChangePercent || 0 : 0
+                };
+
+                if (existingIndex >= 0) {
+                    // Replace Yahoo data with Binance (keep Yahoo's 24h change)
+                    results[existingIndex] = { ...results[existingIndex], ...binanceQuote };
+                } else {
+                    results.push(binanceQuote);
+                }
             }
         });
-
-        // 4. Fetch Crypto Fallback from Binance (Parallel)
-        if (cryptoFallbackNeeded.length > 0) {
-            // console.log(`Fetching ${cryptoFallbackNeeded.length} crypto from Binance fallback...`);
-            const cryptoResults = await Promise.all([...new Set(cryptoFallbackNeeded)].map(async (symbol) => {
-                const data = await fetchCryptoPrice(symbol);
-                if (data) {
-                    return {
-                        symbol: symbol,
-                        regularMarketPrice: data.price,
-                        regularMarketTime: new Date(data.time),
-                        regularMarketVolume: 0,
-                        shortName: symbol,
-                        regularMarketChangePercent: 0
-                    };
-                }
-                return null;
-            }));
-            results.push(...cryptoResults.filter(r => r !== null));
-        }
-        */
 
         // 4. Process Results
         const processedItems = await Promise.all(results.map(async (quote: any) => {
