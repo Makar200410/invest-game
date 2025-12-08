@@ -115,8 +115,8 @@ initDB().then(async () => {
         updateFundamentals();
         updateMarketNews();
 
-        // Schedule updates every 10 seconds (minimum safe interval for Yahoo)
-        cron.schedule('*/10 * * * * *', () => {
+        // Schedule updates every 5 seconds (fast updates for Binance real-time data)
+        cron.schedule('*/5 * * * * *', () => {
             updateMarketData();
         });
 
