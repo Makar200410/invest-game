@@ -137,36 +137,10 @@ export const updateFundamentals = async () => {
 };
 
 export const fetchYahooAnalysis = async (symbol: string) => {
-    // Try to get from DB first
+    // Only return cached data - don't make slow API calls
+    // Fundamentals are updated by the scheduled cron job every 30 minutes
     const data = await getMarketFundamentals(symbol);
-    if (data) {
-        return data;
-    }
-
-    // Fallback to fresh fetch if not in DB (e.g. first run)
-    try {
-        console.log(`Fetching fresh Yahoo analysis for ${symbol} (Fallback)...`);
-        const result = await yahooFinance.quoteSummary(symbol, {
-            modules: [
-                'summaryDetail',
-                'financialData',
-                'defaultKeyStatistics',
-                'assetProfile',
-                'earnings',
-                'recommendationTrend'
-            ] as any
-        }, {
-            validateResult: false  // Disable validation to handle schema mismatches from Yahoo
-        });
-
-        if (result) {
-            await saveMarketFundamentals(symbol, result);
-        }
-        return result;
-    } catch (error) {
-        console.error(`Failed to fetch Yahoo analysis for ${symbol}:`, error);
-        return null;
-    }
+    return data || null;
 };
 
 

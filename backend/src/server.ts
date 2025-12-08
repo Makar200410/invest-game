@@ -277,15 +277,7 @@ app.get('/api/indicators/:symbol', async (req, res) => {
         // The fetcher currently returns all for '1d', so we are good.
         let history: any[] = await fetchHistory(yahooSymbol, queryInterval);
 
-        console.log(`[Indicators] Symbol: ${yahooSymbol}, Interval: ${queryInterval}, History: ${history.length} candles`);
-
-        // Retry with forceFresh if data is insufficient
-        if (history.length < 50) {
-            console.log(`[Indicators] Insufficient history for ${yahooSymbol} (${history.length}). Retrying with forceFresh...`);
-            history = await fetchHistory(yahooSymbol, queryInterval, true);
-            console.log(`[Indicators] Retry result for ${yahooSymbol}: ${history.length} items`);
-        }
-
+        // Don't retry - just use what we have or return error
         if (history.length < 15) { // Absolute minimum for RSI(14)
             return res.status(400).json({ error: 'Not enough data for technical analysis' });
         }
