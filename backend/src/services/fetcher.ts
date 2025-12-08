@@ -248,7 +248,7 @@ const fetchAllCryptoPrices = async (): Promise<Map<string, number>> => {
             return binancePriceCache;
         }
 
-        console.log('[Binance API] Making fresh request to api.binance.com...');
+        // Fetch from Binance API
         const response = await fetch('https://api.binance.com/api/v3/ticker/price');
 
         if (!response.ok) {
@@ -257,7 +257,7 @@ const fetchAllCryptoPrices = async (): Promise<Map<string, number>> => {
         }
 
         const data: { symbol: string; price: string }[] = await response.json();
-        console.log(`[Binance API] Received ${data.length} trading pairs`);
+
 
         const prices = new Map<string, number>();
 
@@ -281,12 +281,8 @@ const fetchAllCryptoPrices = async (): Promise<Map<string, number>> => {
             }
         });
 
-        // Log some sample prices
-        console.log(`[Binance API] BTC-USD: $${prices.get('BTC-USD')?.toFixed(2) || 'N/A'}, ETH-USD: $${prices.get('ETH-USD')?.toFixed(2) || 'N/A'}`);
-
         binancePriceCache = prices;
         binanceCacheTime = Date.now();
-        console.log(`[Binance API] Cached ${prices.size} prices`);
         return prices;
     } catch (error) {
         console.error('[Binance API] Fetch failed with error:', error);
@@ -477,20 +473,16 @@ export const updateMarketData = async () => {
     let items = [];
 
     try {
-        // 1. Prepare Symbols - Separate Yahoo and Binance assets
-        const binanceAssets = SYMBOLS.filter(s => BINANCE_SYMBOLS.has(s));
-        const yahooOnlySymbols = SYMBOLS.filter(s => !BINANCE_SYMBOLS.has(s));
-
-        console.log(`[Data Sources] Yahoo: ${yahooOnlySymbols.length} symbols, Binance: ${binanceAssets.length} symbols`);
-
+        // 1. Prepare Symbols
+        const allSymbols = [...SYMBOLS];
         const results: any[] = [];
 
-        // 2. Fetch Yahoo-only assets (153 symbols)
+        // 2. Fetch ALL symbols from Yahoo first (maintains original ordering)
         let yahooRequests = 0;
         const BATCH_SIZE = 166;
 
-        for (let i = 0; i < yahooOnlySymbols.length; i += BATCH_SIZE) {
-            const chunk = yahooOnlySymbols.slice(i, i + BATCH_SIZE);
+        for (let i = 0; i < allSymbols.length; i += BATCH_SIZE) {
+            const chunk = allSymbols.slice(i, i + BATCH_SIZE);
             try {
                 const quotes = await yahooFinance.quote(chunk);
                 yahooRequests++;
@@ -500,33 +492,35 @@ export const updateMarketData = async () => {
             }
             await new Promise(resolve => setTimeout(resolve, 300));
         }
-        console.log(`[Yahoo] Made ${yahooRequests} API requests for ${yahooOnlySymbols.length} symbols.`);
+        console.log(`[Yahoo] Made ${yahooRequests} API requests for ${allSymbols.length} symbols.`);
 
-        // 3. Fetch Binance assets (13 symbols) - completely separate from Yahoo
-        console.log(`[Binance] Fetching ${binanceAssets.length} assets with real-time data...`);
+        // 3. Overwrite Binance assets with real-time prices (keeps original position)
+        const binanceAssets = SYMBOLS.filter(s => BINANCE_SYMBOLS.has(s));
         const binancePrices = await fetchAllCryptoPrices();
 
+        let binanceUpdated = 0;
         binanceAssets.forEach(symbol => {
             const price = binancePrices.get(symbol);
             if (price) {
-                // Create Binance quote directly (not replacing Yahoo data)
+                const existingIndex = results.findIndex(r => r.symbol === symbol);
                 const binanceQuote = {
                     symbol: symbol,
                     regularMarketPrice: price,
                     regularMarketTime: new Date(),
                     regularMarketVolume: 0,
                     shortName: symbol.replace('-USD', '').replace('=F', '').replace('=X', ''),
-                    regularMarketChangePercent: 0 // Will be calculated from history
+                    regularMarketChangePercent: existingIndex >= 0 ? results[existingIndex]?.regularMarketChangePercent || 0 : 0
                 };
-                results.push(binanceQuote);
-            } else {
-                console.warn(`[Binance] No price available for ${symbol}`);
+
+                if (existingIndex >= 0) {
+                    results[existingIndex] = { ...results[existingIndex], ...binanceQuote };
+                } else {
+                    results.push(binanceQuote);
+                }
+                binanceUpdated++;
             }
         });
-
-        // Log Binance update summary
-        const binanceUpdated = binanceAssets.filter(s => binancePrices.has(s)).length;
-        console.log(`[Binance] Got prices for ${binanceUpdated}/${binanceAssets.length} assets`);
+        console.log(`[Binance] Updated ${binanceUpdated}/${binanceAssets.length} assets with real-time prices`);
 
         // 4. Process Results
         const processedItems = await Promise.all(results.map(async (quote: any) => {
@@ -673,7 +667,6 @@ export const fetchHistory = async (symbol: string, interval: string = '5m', forc
         // Use Binance for all Binance-tracked assets (crypto, gold, forex)
         // This ensures chart data comes from Binance, not Yahoo
         if (BINANCE_SYMBOLS.has(symbol)) {
-            console.log(`[History] Using Binance for ${symbol} (${interval})`);
             historyData = await fetchCryptoHistory(symbol, interval);
         }
 
