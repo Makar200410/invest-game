@@ -244,13 +244,21 @@ const fetchAllCryptoPrices = async (): Promise<Map<string, number>> => {
     try {
         // Cache for 2 seconds to avoid redundant calls
         if (Date.now() - binanceCacheTime < 2000 && binancePriceCache.size > 0) {
+            console.log(`[Binance] Using cache (${binancePriceCache.size} prices, age: ${Date.now() - binanceCacheTime}ms)`);
             return binancePriceCache;
         }
 
+        console.log('[Binance API] Making fresh request to api.binance.com...');
         const response = await fetch('https://api.binance.com/api/v3/ticker/price');
-        if (!response.ok) return binancePriceCache;
+
+        if (!response.ok) {
+            console.error(`[Binance API] Failed with status: ${response.status}`);
+            return binancePriceCache;
+        }
 
         const data: { symbol: string; price: string }[] = await response.json();
+        console.log(`[Binance API] Received ${data.length} trading pairs`);
+
         const prices = new Map<string, number>();
 
         // Map Binance symbols to Yahoo-style symbols
@@ -273,11 +281,15 @@ const fetchAllCryptoPrices = async (): Promise<Map<string, number>> => {
             }
         });
 
+        // Log some sample prices
+        console.log(`[Binance API] BTC-USD: $${prices.get('BTC-USD')?.toFixed(2) || 'N/A'}, ETH-USD: $${prices.get('ETH-USD')?.toFixed(2) || 'N/A'}`);
+
         binancePriceCache = prices;
         binanceCacheTime = Date.now();
+        console.log(`[Binance API] Cached ${prices.size} prices`);
         return prices;
     } catch (error) {
-        console.error('Binance batch fetch failed:', error);
+        console.error('[Binance API] Fetch failed with error:', error);
         return binancePriceCache;
     }
 };
@@ -292,7 +304,7 @@ const fetchCryptoPrice = async (symbol: string): Promise<{ price: number, time: 
     return null;
 };
 
-// Helper to fetch crypto history from Binance
+// Helper to fetch history from Binance for all Binance-tracked assets
 const fetchCryptoHistory = async (symbol: string, interval: string): Promise<any[]> => {
     const endpoints = [
         'https://api.binance.com',
@@ -302,7 +314,16 @@ const fetchCryptoHistory = async (symbol: string, interval: string): Promise<any
         'https://data-api.binance.vision'
     ];
 
-    const binanceSymbol = symbol.replace('-USD', 'USDT');
+    // Convert Yahoo symbol to Binance symbol
+    let binanceSymbol: string;
+    if (BINANCE_SPECIAL_MAP[symbol]) {
+        // Use special mapping for gold and forex
+        binanceSymbol = BINANCE_SPECIAL_MAP[symbol];
+    } else {
+        // Standard crypto: BTC-USD -> BTCUSDT
+        binanceSymbol = symbol.replace('-USD', 'USDT');
+    }
+
     // Map intervals: 1m, 5m, 15m, 1h, 1d are same. 3h -> 4h (Binance doesn't have 3h)
     let binanceInterval = interval;
     if (interval === '3h') binanceInterval = '4h';
@@ -456,67 +477,56 @@ export const updateMarketData = async () => {
     let items = [];
 
     try {
-        // 1. Prepare Symbols
-        // We will try to fetch EVERYTHING from Yahoo first in batches of 42.
-        // Yahoo supports crypto (e.g. BTC-USD), so we include them.
-        const allSymbols = [...SYMBOLS];
+        // 1. Prepare Symbols - Separate Yahoo and Binance assets
+        const binanceAssets = SYMBOLS.filter(s => BINANCE_SYMBOLS.has(s));
+        const yahooOnlySymbols = SYMBOLS.filter(s => !BINANCE_SYMBOLS.has(s));
+
+        console.log(`[Data Sources] Yahoo: ${yahooOnlySymbols.length} symbols, Binance: ${binanceAssets.length} symbols`);
+
         const results: any[] = [];
-        const cryptoFallbackNeeded: string[] = [];
 
-        // 2. Fetch All Quotes in Batch (Chunks of 42)
+        // 2. Fetch Yahoo-only assets (153 symbols)
         let yahooRequests = 0;
-        const BATCH_SIZE = 166; // Fetch all symbols in one batch for maximum speed
+        const BATCH_SIZE = 166;
 
-        for (let i = 0; i < allSymbols.length; i += BATCH_SIZE) {
-            const chunk = allSymbols.slice(i, i + BATCH_SIZE);
+        for (let i = 0; i < yahooOnlySymbols.length; i += BATCH_SIZE) {
+            const chunk = yahooOnlySymbols.slice(i, i + BATCH_SIZE);
             try {
                 const quotes = await yahooFinance.quote(chunk);
                 yahooRequests++;
                 results.push(...quotes);
             } catch (e) {
-                console.error('Batch quote fetch failed:', e);
-                // If a batch fails, we might want to mark these for fallback if they are crypto
-                chunk.forEach(s => {
-                    if (s.includes('-USD')) cryptoFallbackNeeded.push(s);
-                });
+                console.error('Yahoo batch quote fetch failed:', e);
             }
-            await new Promise(resolve => setTimeout(resolve, 300)); // Minimal delay (safety margin for Yahoo rate limits)
+            await new Promise(resolve => setTimeout(resolve, 300));
         }
-        console.log(`[Batch Fetch] Made ${yahooRequests} Yahoo API requests for ${allSymbols.length} symbols.`);
+        console.log(`[Yahoo] Made ${yahooRequests} API requests for ${yahooOnlySymbols.length} symbols.`);
 
-        // 3. Use Binance for real-time data (crypto, gold, forex)
-        const binanceAssets = SYMBOLS.filter(s => BINANCE_SYMBOLS.has(s));
-        console.log(`[Binance] Fetching ${binanceAssets.length} assets with real-time data (crypto + gold + forex)...`);
-
-        // Fetch all Binance prices in one request
+        // 3. Fetch Binance assets (13 symbols) - completely separate from Yahoo
+        console.log(`[Binance] Fetching ${binanceAssets.length} assets with real-time data...`);
         const binancePrices = await fetchAllCryptoPrices();
 
         binanceAssets.forEach(symbol => {
             const price = binancePrices.get(symbol);
             if (price) {
-                // Find and update the Yahoo result with Binance real-time price
-                const existingIndex = results.findIndex(r => r.symbol === symbol);
+                // Create Binance quote directly (not replacing Yahoo data)
                 const binanceQuote = {
                     symbol: symbol,
                     regularMarketPrice: price,
                     regularMarketTime: new Date(),
                     regularMarketVolume: 0,
                     shortName: symbol.replace('-USD', '').replace('=F', '').replace('=X', ''),
-                    regularMarketChangePercent: existingIndex >= 0 ? results[existingIndex]?.regularMarketChangePercent || 0 : 0
+                    regularMarketChangePercent: 0 // Will be calculated from history
                 };
-
-                if (existingIndex >= 0) {
-                    // Replace Yahoo data with Binance (keep Yahoo's 24h change)
-                    results[existingIndex] = { ...results[existingIndex], ...binanceQuote };
-                } else {
-                    results.push(binanceQuote);
-                }
+                results.push(binanceQuote);
+            } else {
+                console.warn(`[Binance] No price available for ${symbol}`);
             }
         });
 
         // Log Binance update summary
         const binanceUpdated = binanceAssets.filter(s => binancePrices.has(s)).length;
-        console.log(`[Binance] Updated ${binanceUpdated}/${binanceAssets.length} assets with real-time prices`);
+        console.log(`[Binance] Got prices for ${binanceUpdated}/${binanceAssets.length} assets`);
 
         // 4. Process Results
         const processedItems = await Promise.all(results.map(async (quote: any) => {
@@ -660,8 +670,10 @@ export const fetchHistory = async (symbol: string, interval: string = '5m', forc
 
         let historyData: any[] = [];
 
-        // Use Binance for crypto history as Yahoo provides poor quality minute-level data
-        if (symbol.includes('-USD')) {
+        // Use Binance for all Binance-tracked assets (crypto, gold, forex)
+        // This ensures chart data comes from Binance, not Yahoo
+        if (BINANCE_SYMBOLS.has(symbol)) {
+            console.log(`[History] Using Binance for ${symbol} (${interval})`);
             historyData = await fetchCryptoHistory(symbol, interval);
         }
 
