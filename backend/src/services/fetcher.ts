@@ -514,6 +514,10 @@ export const updateMarketData = async () => {
             }
         });
 
+        // Log Binance update summary
+        const binanceUpdated = binanceAssets.filter(s => binancePrices.has(s)).length;
+        console.log(`[Binance] Updated ${binanceUpdated}/${binanceAssets.length} assets with real-time prices`);
+
         // 4. Process Results
         const processedItems = await Promise.all(results.map(async (quote: any) => {
             try {
